@@ -39,7 +39,11 @@ scikit-learn
 # === UTILITÁRIOS ===
 regex
 tqdm
-pywin32  # compat Windows
+python-dotenv
+#pywin32  # compat Windows
+
+# === FERRAMENTAS DE DESENVOLVIMENTO ===
+jsbeautifier
 
 # === MODELOS LLMs ===
 # LLaMA 3.3 e LLaMA Vision via Ollama — instale separadamente:

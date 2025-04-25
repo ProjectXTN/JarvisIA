@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  jarvis:
+    build: .
+    container_name: jarvis
+    devices:
+      - /dev/snd
+    environment:
+      - OLLAMA_HOST=http://<IP_DO_WINDOWS>:11434
+    volumes:
+      - .:/app
+    network_mode: "host"
+    tty: true
