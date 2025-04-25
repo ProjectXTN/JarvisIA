@@ -1,0 +1,32 @@
+# Evita subir variáveis sensíveis
+.env
+
+# Pastas do ambiente virtual
+venv/
+.env/
+
+# Cache do Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Logs
+*.log
+logs/
+
+# Arquivos temporários
+*.tmp
+*.temp
+*.bak
+*.swp
+.DS_Store
+Thumbs.db
+
+# Arquivos de build
+build/
+dist/
+*.spec
+
+# VSCode settings (opcional)
+.vscode/

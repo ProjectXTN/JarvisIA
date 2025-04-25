@@ -1,0 +1,46 @@
+# === CORE (voz, TTS, VAD, transcrição) ===
+openai-whisper
+edge-tts
+webrtcvad
+pyttsx3
+pyaudio
+speechrecognition
+sounddevice
+numpy
+scipy
+
+# === VISÃO COMPUTACIONAL ===
+Pillow
+opencv-python
+torch
+torchvision
+torchaudio
+
+# === AUTOMAÇÃO E CONTROLE DO SISTEMA ===
+keyboard
+pyautogui
+pyperclip
+
+# === WEB SCRAPING + BUSCAS ===
+requests
+beautifulsoup4
+
+# === BANCO DE DADOS ===
+sqlite-utils
+
+# === INTERFACE GRÁFICA (GUI) ===
+tk
+
+# === ANÁLISE EMOCIONAL (voz ou reflexão escrita) ===
+pyAudioAnalysis
+matplotlib
+scikit-learn
+
+# === UTILITÁRIOS ===
+regex
+tqdm
+pywin32  # compat Windows
+
+# === MODELOS LLMs ===
+# LLaMA 3.3 e LLaMA Vision via Ollama — instale separadamente:
+# https://ollama.com/
