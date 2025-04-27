@@ -5,13 +5,13 @@ import time
 from comandos.comandos_datahora import datetime_commands
 from comandos.comandos_musica import music_commands
 from comandos.comandos_navegador import browser_commands
-from comandos.comandos_sistema import comandos_sistema, comando_desligar
+from comandos.comandos_sistema import system_command, shutdown_command
 from comandos.comandos_imagem import image_commands
 from comandos.comandos_pastas import comandos_pastas
 from comandos.comandos_software import software_commands
 from comandos.comandos_multiplos import multiple_commands
 from comandos.comandos_memoria import comandos_memoria
-from comandos.comandos_avatar import comandos_avatar
+from comandos.comandos_avatar import generate_avatar
 from comandos.comandos_emocionais import emotional_commands
 from comandos.comandos_pesquisa import execute_search
 from comandos.comandos_reflexao import comandos_reflexao
@@ -35,13 +35,13 @@ COMMAND_HANDLERS = [
     datetime_commands,
     music_commands,
     browser_commands,
-    comandos_sistema,
+    system_command,
     comandos_pastas,
     image_commands,
     comandos_memoria,
     comandos_reflexao,
     emotional_commands,
-    comandos_avatar
+    generate_avatar
 ]
 
 def process_command(query):
@@ -54,7 +54,7 @@ def process_command(query):
 
     print(f"[DEBUG] Received phrase: {query}")
 
-    if comando_desligar(query) is False:
+    if shutdown_command(query) is False:
         return False
 
     # Still expecting search-related phrases in Portuguese

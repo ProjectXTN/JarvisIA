@@ -1,7 +1,6 @@
 import os
 import subprocess
 import webbrowser
-from datetime import datetime
 
 def open_folder(folder_name):
     folder_name = folder_name.strip().lower().replace(".", "").replace("á", "a").replace("ã", "a").replace("ç", "c")

@@ -6,74 +6,74 @@ from brain.localizacao import get_location
 from brain.audio import say
 from brain.sistema import open_folder
 
-# Função auxiliar de status
-def uso_sistema():
+# Auxiliary system status function
+def system_usage():
     cpu = psutil.cpu_percent(interval=1)
     mem = psutil.virtual_memory()
-    disco = shutil.disk_usage("/")
+    disk = shutil.disk_usage("/")
     return (
         f"🖥️ Sistema: {platform.system()}\n"
         f"🧠 CPU: {cpu}%\n"
         f"💾 RAM: {mem.percent}%\n"
-        f"💽 Disco: {disco.used // (1024**3)}GB de {disco.total // (1024**3)}GB"
+        f"💽 Disco: {disk.used // (1024**3)}GB de {disk.total // (1024**3)}GB"
     )
 
-# Handler principal de comandos do sistema
-def comando_sistema(query):
+# Main handler for system commands
+def system_command(query):
     query = query.lower()
 
     if "uso da memória" in query or "uso da cpu" in query or "status do sistema" in query:
-        say(uso_sistema())
+        say(system_usage())
         return True
 
     elif "abrir a pasta" in query:
-        nome = query.split("abrir a pasta")[-1].strip()
-        if open_folder(nome):
-            say(f"Pasta \"{nome}\" aberta.")
+        name = query.split("abrir a pasta")[-1].strip()
+        if open_folder(name):
+            say(f"Pasta \"{name}\" aberta.")
         else:
-            say(f"Pasta \"{nome}\" não encontrada.")
+            say(f"Pasta \"{name}\" não encontrada.")
         return True
 
     elif "abrir pasta" in query:
-        caminho = query.split("abrir pasta")[-1].strip()
-        if caminho:
-            resposta = open_folder(caminho)
-            say(resposta)
+        path = query.split("abrir pasta")[-1].strip()
+        if path:
+            response = open_folder(path)
+            say(response)
         else:
             say("Informe o nome da pasta.")
         return True
 
     return False
 
-def comando_desligar(query):
+def shutdown_command(query):
     query = query.lower()
 
-    # Lista de padrões que indicam comandos de desligamento
-    padroes = [
+    # List of patterns indicating shutdown commands
+    patterns = [
         r"\b(jarvis)?[ ,]*desliga[rs]?\b",
         r"\b(encerrar|desligar|sair|off|tchau|falou|vaza|vá embora|vai embora|até logo|adeus)\b",
         r"\b(jarvis)?[ ,]*(pode)?[ ]*(desligar|sair)\b"
     ]
 
-    for padrao in padroes:
-        if re.search(padrao, query):
+    for pattern in patterns:
+        if re.search(pattern, query):
             say("Jarvis desligando.")
-            return False  # Retorna False para encerrar o loop principal
+            return False  # Returns False to exit main loop
 
     return True
 
-def comando_localizacao(query):
+def location_command(query):
     if "onde estou" in query or "qual minha localização" in query:
-        resposta = get_location()
-        say(resposta)
+        response = get_location()
+        say(response)
         return True
     return False
 
-# Dicionário de comandos do sistema
-comandos_sistema = {
-    "abrir a pasta": comando_sistema,
-    "abrir pasta": comando_sistema,
-    "uso da memória": comando_sistema,
-    "uso da cpu": comando_sistema,
-    "status do sistema": comando_sistema
+# System commands dictionary
+system_commands = {
+    "abrir a pasta": system_command,
+    "abrir pasta": system_command,
+    "uso da memória": system_command,
+    "uso da cpu": system_command,
+    "status do sistema": system_command
 }
