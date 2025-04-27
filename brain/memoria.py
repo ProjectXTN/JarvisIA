@@ -8,6 +8,9 @@ DEFAULT_MODEL_HIGH = "llama3.3"
 
 def generate_response(prompt, model_name=DEFAULT_MODEL_HIGH):
     try:
+        # Print debug about which model is being used
+        print(f"[🧠 DEBUG] Usando o modelo: {model_name}")
+        
         system_prompt = (
             "Você é Jarvis, um assistente de inteligência artificial altamente preciso, confiável e direto. "
             "Seu papel é fornecer respostas claras, informativas e bem estruturadas para qualquer pergunta feita. "

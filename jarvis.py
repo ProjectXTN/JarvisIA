@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from threading import Thread
 from brain.audio import say, listen
 from jarvis_commands import process_command
-from comandos.comandos_sistema import comando_desligar
+from comandos.comandos_sistema import shutdown_command
 from core.inicializador import is_already_running, start_llava, remove_lock, passive_mode
 from brain.learning import auto_aprendizado
 from brain.learning.auto_aprendizado import auto_aprender
@@ -47,7 +47,7 @@ while True:
 
         command = query.lower().replace("jarvis", "").strip()
         if command:
-            if comando_desligar(command) is False:
+            if shutdown_command(command) is False:
                 sys.exit()
             if not process_command(command):
                 sys.exit()
@@ -60,7 +60,7 @@ while True:
                     break
                 continue
 
-            if comando_desligar(query.lower()) is False:
+            if shutdown_command(query.lower()) is False:
                 sys.exit()
 
             if ("start studying" in query.lower()) or ("begin studying" in query.lower()):
