@@ -10,7 +10,7 @@ from comandos.comandos_sistema import shutdown_command
 from core.inicializador import is_already_running, start_llava, remove_lock, passive_mode
 from brain.learning import auto_aprendizado
 from brain.learning.auto_aprendizado import auto_aprender
-from brain.utils import sounds_like_jarvis
+from brain.utils import normalize_text, sounds_like_jarvis
 
 atexit.register(remove_lock)
 
@@ -30,33 +30,40 @@ while True:
     if not query:
         continue
     
+    query = query.lower().strip()
+    query = re.sub(r"[^\w\s]", "", query)
+    
     # Activate autonomous learning by voice command
-    if ("start studying" in query.lower()) or ("begin studying" in query.lower()):
+    if ("comece a estudar" in query.lower()) or ("começar a estudar" in query.lower()):
         if not auto_aprendizado.aprendizado_ativado:
             auto_aprendizado.aprendizado_ativado = True
             Thread(target=auto_aprender, daemon=True).start()
-            say("Learning mode activated.")
+            say("Modo de estudos autonomo ativado.")
         else:
-            say("I'm already studying, Pedro.")
+            say("Ja estou estudando, Pedro.")
         continue
 
-    if sounds_like_jarvis(query):
-        print(f"[DEBUG] Activator recognized: {query}")
-        say("Jarvis Activated...")
+    matched, activator_word = sounds_like_jarvis(query)
+    if matched:
+        print("[DEBUG] Activator recognized:", query)
+        say("Jarvis Ativado...")
         last_command_time = datetime.now()
 
-        command = query.lower().replace("jarvis", "").strip()
-        if command:
-            if shutdown_command(command) is False:
-                sys.exit()
-            if not process_command(command):
-                sys.exit()
+        # Remove trigger word and comma/space if present
+        if activator_word:
+            query = re.sub(rf"^{re.escape(activator_word)}[\s,]*", "", query, flags=re.IGNORECASE).strip()
 
+        print(f"[DEBUG] Phrase after removing activator: {query}")
+
+        if query:
+            if shutdown_command(query) is False or not process_command(query):
+                sys.exit()
+                
         while True:
             query = listen()
             if not query:
                 if datetime.now() - last_command_time > timedelta(minutes=2):
-                    say("No activity detected. Returning to passive mode.")
+                    say("Nem ma atividade detectada. Retornando para o modo passivo.")
                     break
                 continue
 

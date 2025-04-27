@@ -3,6 +3,7 @@ import subprocess
 import requests
 import time
 from brain.audio import listen
+from brain.utils import normalize_text, sounds_like_jarvis
 
 LOCK_FILE = "jarvis.lock"
 VISION_MODELS = ["llama3.2-vision:90b", "llama3.2", "llama3.3"]
@@ -63,6 +64,10 @@ def passive_mode():
         if not text:
             continue
 
-        text = text.strip()
-        if "jarvis" in text.lower():
-            return text
+        text_raw = text.strip()
+        text_normalized = normalize_text(text_raw)
+
+        if sounds_like_jarvis(text_normalized):
+            return text_raw
+        else:
+            print(f"[DEBUG] Nenhuma ativação detectada em: {text_raw}")

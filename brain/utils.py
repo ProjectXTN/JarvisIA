@@ -2,6 +2,14 @@ import os
 import re
 import difflib
 from datetime import datetime
+import unicodedata
+
+def normalize_text(text):
+    text = text.lower()
+    text = unicodedata.normalize('NFD', text)
+    text = text.encode('ascii', 'ignore').decode('utf-8')
+    text = re.sub(r"[^\w\s]", "", text)
+    return text.strip()
 
 def contains_old_date(response: str, tolerance=1) -> bool:
     """Returns True if very old dates are found in the response."""
@@ -52,12 +60,23 @@ def clean_output(text):
 
 def sounds_like_jarvis(text):
     activation_words = ["jarvis"]
-    text = text.lower()
+    text = normalize_text(text)
+
     words = text.split()
+
+    best_match = 0.0
+    best_word = None
 
     for word in words:
         for activator in activation_words:
             similarity = difflib.SequenceMatcher(None, word, activator).ratio()
-            if similarity >= 0.2:
-                return True
-    return False
+            if similarity > best_match:
+                best_match = similarity
+                best_word = word
+
+    #print(f"[DEBUG] Melhor similaridade detectada: {best_match:.2f} para '{best_word}'")
+
+    if best_match >= 0.6:
+        return True, best_word
+    else:
+        return False, None

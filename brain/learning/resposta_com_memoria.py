@@ -3,7 +3,7 @@ from brain.learning.consultar_memoria import consultar_memoria, consultar_tudo
 from brain.memoria import DEFAULT_MODEL,DEFAULT_MODEL_HIGH, generate_response
 
 
-def generate_contextual_response(question, model=DEFAULT_MODEL):
+def generate_contextual_response(question, model=DEFAULT_MODEL_HIGH):
     # Detect if the question is about programming code
     is_code_request = any(p in question.lower() for p in [
         "código", "script", "função", "programa",
@@ -40,7 +40,7 @@ def generate_contextual_response(question, model=DEFAULT_MODEL):
 
     return generate_response(prompt, model)
 
-def respond_with_inference(question, model=DEFAULT_MODEL):
+def respond_with_inference(question, model=DEFAULT_MODEL_HIGH):
     is_code_request = any(p in question.lower() for p in ["código", "script", "função", "programa", "html", "css", "javascript", "python", "classe", "crie", "faça"])
 
     if is_code_request:

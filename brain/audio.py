@@ -1,4 +1,5 @@
 import asyncio, subprocess, uuid, os
+import re
 import edge_tts
 import sounddevice as sd
 import numpy as np
@@ -11,6 +12,7 @@ import webrtcvad
 import collections
 import threading
 import time
+from brain.utils import clean_output
 
 # === Global variable for GUI integration ===
 gui_callback = None
@@ -66,13 +68,19 @@ async def speak_with_gui(text):
 def say(text):
     global current_audio_process
 
-    # 🔇 Interrupt previous audio if playing
     if current_audio_process and current_audio_process.poll() is None:
         print("🔇 Interrupting previous audio...")
         current_audio_process.terminate()
         current_audio_process = None
 
-    asyncio.run(speak_with_gui(text))
+    # Clean markdown and extra formatting
+    clean_text = clean_output(text).strip()
+
+    # Remove any * that are at the start of lines or isolated between words
+    clean_text = re.sub(r"(^\s*\*\s*|\s+\*\s+)", " ", clean_text, flags=re.MULTILINE)
+
+    asyncio.run(speak_with_gui(clean_text))
+
 
 # === Listening function with VAD + Whisper ===
 def listen():

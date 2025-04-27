@@ -1,7 +1,7 @@
 import os
 import re
 from brain.audio import say, listen
-from brain.memoria import generate_response, DEFAULT_MODEL
+from brain.memoria import generate_response, DEFAULT_MODEL, DEFAULT_MODEL_HIGH
 from jarvis_vision import describe_image
 
 def image_command(query):
@@ -54,12 +54,12 @@ def image_command(query):
                             return True
 
                         if re.search(r"\b(o|a|e|com|em|de|um|uma|é|são|fundo)\b", description.lower()):
-                            translation = generate_response(f"Traduza para português: {description}", DEFAULT_MODEL)
+                            translation = generate_response(f"Traduza para português: {description}", DEFAULT_MODEL_HIGH)
                             description = translation if translation else description
 
                         say(f"{os.path.basename(path)}: {description}")
                     else:
-                        textual_response = generate_response(f"Fale sobre a imagem {base_name}", DEFAULT_MODEL)
+                        textual_response = generate_response(f"Fale sobre a imagem {base_name}", DEFAULT_MODEL_HIGH)
                         say(textual_response)
 
                     return True
