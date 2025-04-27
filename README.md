@@ -2,7 +2,7 @@
 
 Jarvis is an intelligent, sarcastic, and futuristic AI assistant inspired by Tony Stark's iconic system.Built entirely in Python, it supports voice interaction, vision models, autonomous learning, weather reports, emotional memory, music search, journaling, and much more — running 100% on your local machine.
 
-## 🗣️ Important: All Jarvis voice commands and responses are in Brazilian Portuguese (PT-BR).
+## 🗣️ Important: All Jarvis voice commands are in Brazilian Portuguese (PT-BR).
 
 ## 💻 Requirements
 
