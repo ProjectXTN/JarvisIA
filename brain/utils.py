@@ -4,6 +4,24 @@ import difflib
 from datetime import datetime
 import unicodedata
 
+COUNTRY_CODES = {
+    "brasil": "BR",
+    "frança": "FR",
+    "portugal": "PT",
+    "espanha": "ES",
+    "estados unidos": "US",
+    "canadá": "CA",
+    "alemanha": "DE",
+    "japão": "JP",
+    "china": "CN",
+    "itália": "IT",
+    # Adiciona mais se quiser depois
+}
+
+def normalize_country(country_name):
+    country_name = country_name.strip().lower()
+    return COUNTRY_CODES.get(country_name, country_name)
+
 def normalize_text(text):
     text = text.lower()
     text = unicodedata.normalize('NFD', text)

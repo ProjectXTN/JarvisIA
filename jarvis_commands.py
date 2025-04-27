@@ -5,20 +5,22 @@ import time
 from comandos.comandos_datahora import datetime_commands
 from comandos.comandos_musica import music_commands
 from comandos.comandos_navegador import browser_commands
-from comandos.comandos_sistema import system_command, shutdown_command
 from comandos.comandos_imagem import image_commands
 from comandos.comandos_pastas import comandos_pastas
 from comandos.comandos_software import software_commands
 from comandos.comandos_multiplos import multiple_commands
 from comandos.comandos_memoria import comandos_memoria
-from comandos.comandos_avatar import generate_avatar
 from comandos.comandos_emocionais import emotional_commands
-from comandos.comandos_pesquisa import execute_search
 from comandos.comandos_reflexao import comandos_reflexao
+from brain.weatherAPI import handle_weather_query
+from brain.weatherAPI import get_weather, is_weather_request, extract_city
+from comandos.comandos_avatar import generate_avatar
+from comandos.comandos_pesquisa import execute_search
+from comandos.comandos_sistema import system_command, shutdown_command
 from brain.llama_connection import llama_query
 
-from brain.audio import say
-from brain.utils import log_interaction
+from brain.audio import say, listen
+from brain.utils import log_interaction, normalize_country
 from brain.dev import extract_and_save_code
 
 # New: Persistent connection with LLaMA3
@@ -73,6 +75,10 @@ def process_command(query):
                 if re.search(pattern, query):
                     print(f"[DEBUG] Executing regex: {pattern}")
                     return func(query)
+    
+    # Intelligently detects weather forecast request
+    if handle_weather_query(query):
+        return True
 
     # 🔁 Fallback using LLaMA3 + Cache
     if query in response_cache:

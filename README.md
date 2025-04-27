@@ -1,11 +1,11 @@
-# Jarvis IA
+Jarvis IA
 
-Jarvis is an intelligent, sarcastic, and futuristic AI assistant inspired by Tony Stark's iconic system.
-Built in Python, it supports voice interaction, vision models, command automation, emotional memory, music search, personal journaling, and much more — running entirely on your machine.
+Jarvis is an intelligent, sarcastic, and futuristic AI assistant inspired by Tony Stark's iconic system.Built entirely in Python, it supports voice interaction, vision models, autonomous learning, weather reports, emotional memory, music search, journaling, and much more — running 100% on your local machine.
 
 🗣️ Important: All Jarvis voice commands and responses are in Brazilian Portuguese (PT-BR).
 
-## 💻 Requirements
+💻 Requirements
+
 Python 3.10 or higher
 
 CUDA-compatible GPU (recommended for Whisper and LLaMA)
@@ -14,128 +14,186 @@ Ollama for LLaMA 3.3 and LLaMA 3.2 Vision models
 
 ffmpeg, git, git-lfs
 
-Internet connection for web search and autonomous learning
+Brave Search API Key (for web searches)
 
-## 🧠 Features
-🎙 Wake Word Detection — Activates with “Jarvis”
+OpenWeather API Key (for weather forecasts)
 
-🧠 Voice Activity Detection (VAD) — Smart and natural listening
+Internet connection (for searches and autonomous learning)
 
-🗣 Text-to-Speech — Using Microsoft Edge TTS (Antonio Neural)
+🧠 Features
 
-🎧 Speech-to-Text — Using OpenAI Whisper (large)
+🎙 Wake Word Detection — Activates with “Jarvis” or variations (e.g., "Javis")
 
-🧠 LLaMA 3.3 — For contextual responses and memory-based conversation
+🧠 Voice Activity Detection (VAD) — Natural listening using smart silence detection
 
-👁 LLaMA 3.2 Vision 90B — High-precision image understanding
+🗣 Text-to-Speech — Using Microsoft Edge TTS (Antonio Neural voice)
 
-🧩 Multi-command parsing — e.g. “Open the folder and play music”
+🎧 Speech-to-Text — Using OpenAI Whisper (large model optimized for PT-BR)
 
-🔍 Fallback to Web — When unsure, it searches autonomously
+🧠 LLaMA 3.3 — For deep contextual conversations and memory-based learning
 
-🖼 Image vision from local images folder
+👁 LLaMA 3.2 Vision 90B — For detailed image analysis and description
 
-💾 Short-term memory — Maintains session context
+🌦️ Weather Forecast — Voice-based weather queries by city and country
 
-🧠 Long-term persistent memory — Stored with SQLite
+🔍 Autonomous Internet Search — When missing info, Jarvis finds it for you
 
-❤️ Emotional memory — Stores what made you happy, sad, etc.
+🖼 Local Image Vision — Scan and describe images stored locally
 
-📘 Reflective mode — Voice-based journaling with emotional tagging
+💾 Session Memory — Maintains context during conversations
 
-🧪 Voice emotion detection (optional, WIP)
+🧠 Long-Term Memory — Persists important facts, feelings, and events via SQLite
 
-🧠 Autonomous learning — Learns new facts from the internet
+❤️ Emotional Memory — Records happiness, sadness, anger, and more
 
-💻 App launching — Steam, Discord, VS Code, etc.
+📘 Reflective Mode — Journaling about daily experiences with emotional tagging
 
-🖱 System control — Open folders, apps, browser
+🧪 (WIP) Voice emotion recognition
 
-🎵 Apple Music voice integration — Open, search and play music
+🧠 Autonomous Learning — Searches, summarizes, and learns new information online
 
-🧱 Modular architecture — Commands separated in the comandos/ folder
+💻 App Automation — Launch Steam, Discord, VS Code, browsers, and more
 
-##  🗂 Project Structure
+💜 OS Control — Open folders, close programs, manage files
+
+🎵 Apple Music Voice Integration — Search and control your music library
+
+🧱 Modular Architecture — Commands split into organized modules (comandos/)
+
+🗂 Project Structure
 
 jarvis/
-├── comandos/                # Modular command files (music, system, folders, memory, etc.)
-├── brain/                   # Core AI: audio, memory, utils, learning, dev
-├── core/                    # Initialization & model loaders
-├── imagens/                 # Optional: images for vision tasks
-├── tests/                   # Vision testing scripts
-├── jarvis.py                # Main executable script
+├── comandos/                # Modular command files (music, system, folders, memory, search, weather, etc.)
+├── brain/                   # Core modules: audio, memory, utils, learning, weatherAPI
+├── core/                    # Initialization and model bootstrapping
+├── imagens/                 # (Optional) Images for vision analysis
+├── tests/                   # Testing scripts (vision, weather, etc.)
+├── jarvis.py                # Main executable
 ├── requirements.txt         # Dependencies
 └── README.md
 
-## 🗣️ Voice Commands — Examples (in Portuguese)
-"Jarvis, abra a pasta de downloads"
-"Jarvis, descreva a imagem skyline"
-"Jarvis, desligar"
-"Jarvis, toque Arctic Monkeys"
-"Jarvis, pesquise na internet o que é computação quântica"
-"Jarvis, lembre que programar me deixou feliz"
-"Jarvis, o que me deixou feliz este mês?"
-"Jarvis, vamos escrever o diário de hoje"
+🗣️ Voice Commands — Examples (in Portuguese)
 
-## 🖼️ Vision Mode
-To trigger Vision 90B (more precise model):
+"Jarvis, abrir a pasta de downloads"
+
+"Jarvis, descreva a imagem skyline"
+
+"Jarvis, desligar"
+
+"Jarvis, tocar Arctic Monkeys"
+
+"Jarvis, pesquisar o que é computação quântica"
+
+"Jarvis, lembre que programar me deixou feliz"
+
+"Jarvis, o que me deixou feliz este mês?"
+
+"Jarvis, como está o clima em Paris?"
+
+"Jarvis, previsão do tempo para São Paulo"
+
+🖼️ Vision Mode
+
+To trigger Vision 90B model (for precise descriptions):
 
 "Descreva a imagem skyline com detalhes"
-"Me dê uma descrição precisa da imagem"
 
-If not triggered, it defaults to a faster LLaVA model.
+"Quero uma análise precisa da imagem"
 
-## 🎵 Apple Music Integration
+Fallback to faster vision models if necessary.
+
+🌦️ Weather Forecast
+
+Ask naturally about the weather, including for the next days:
+
+"Jarvis, previsão do tempo em Lisboa"  
+"Jarvis, como está o clima em São Paulo?"  
+"Jarvis, previsão do tempo para a próxima semana em Nova York"  
+"Jarvis, meteo em Paris nos próximos dias"
+
+Jarvis will:
+- Detect if you're asking about today's weather or a forecast.
+- Automatically ask for the country if necessary.
+- Understand requests like "semana que vem", "amanhã", or "próximos dias".
+- Fetch accurate, day-by-day weather information using the OpenWeather API.
+- Handle incomplete questions by politely requesting missing information (city or country).
+
+If no specific city is detected, Jarvis defaults to a configured location (Lexy by default).
+
+Jarvis will intelligently ask for the country if needed and retrieve a detailed weather report using OpenWeather API.
+
+🎵 Apple Music Integration
+
 Jarvis can:
 
-🎶 Open your library: "Jarvis, abra o Apple Music"
-🔍 Search and play a song: "Jarvis, toque Arctic Monkeys"
-⏯ Pause, skip, resume: "Jarvis, pause a música", "próxima música"
+🎶 Open Apple Music app: "Jarvis, abra o Apple Music"
 
-## ❤️ Emotional Memory
-Register moments: "Jarvis, lembre que o jantar com a Camila me deixou feliz"
-Query feelings: "Jarvis, o que me deixou triste essa semana?"
-Reflective journaling: "Jarvis, quero escrever sobre meu dia"
+🔍 Search and play songs: "Jarvis, toque Arctic Monkeys"
 
-## 🤖 Developer Mode
-Jarvis understands multi-step voice commands using regex parsing:
+⏯ Pause, skip, resume: "Jarvis, pause a música", "próxima música", "continuar música"
 
-"Abra a pasta de documentos e depois toque música"
-"Inicie o navegador e pesquise o clima"
+❤️ Emotional Memory
 
-## 🧠 Autonomous Learning
-Jarvis can learn by searching the internet:
+Register positive/negative events: "Jarvis, lembre que jantei com Camila e fiquei feliz"
 
-"Jarvis, pesquise o que é entrelaçamento quântico e aprenda"
+Retrieve emotional states: "Jarvis, o que me deixou triste essa semana?"
 
-It will:
+Voice-based journaling: "Jarvis, quero escrever sobre meu dia"
 
-Search using web scraping
+🧬 Developer Mode
 
-Summarize and store the knowledge in the database with source + timestamp
+Jarvis can chain multiple commands in a single voice phrase:
 
-## 🚀 Getting Started
+"Abra a pasta de imagens e depois toque uma música"
+
+"Inicie o navegador e procure sobre inteligência artificial"
+
+🧠 Autonomous Learning
+
+Jarvis can:
+
+Search the internet autonomously
+
+Summarize new knowledge
+
+Store learned facts with sources and dates into the database
+
+Example:
+
+"Jarvis, aprenda sobre entrelaçamento quântico"
+
+🚀 Getting Started
 
 git clone https://github.com/ProjectXTN/Jarvis_IA.git
 cd Jarvis_IA
 python -m venv venv
-venv\Scripts\activate
+venv\Scripts\activate  # or source venv/bin/activate on Linux/Mac
 pip install -r requirements.txt
 
-## 🔒 Lock System
-Jarvis uses a .lock file to avoid multiple instances running at the same time.
+Make sure your .env file contains your API Keys:
 
-## 🧘 Voice Deactivation
+BRAVE_API_KEY=your_brave_api_key
+OPENWEATHER_API_KEY=your_openweather_api_key
+
+🔒 Lock System
+
+Jarvis uses a .lock file system to prevent multiple instances from running simultaneously.
+
+💌 Voice Deactivation
+
 Say:
 
 "Jarvis, pare de responder"
-"Jarvis, silêncio"
+
+"Jarvis, silênço"
+
 "Jarvis, mutar"
 
-To return to passive listening mode.
+Jarvis will return to passive mode until called again.
 
-## Made with 💥 by Pedro MEIRELES
+Made with 💥 by Pedro MEIRELES
 
-## 📢 Observação:
-Todos os comandos e falas do Jarvis são em português do Brasil (PT-BR).
-Para uma experiência fluida, fale naturalmente em português.
+📢 Note:
+
+All commands and conversations with Jarvis are fully in Brazilian Portuguese (PT-BR).For the best experience, speak naturally and clearly.
+

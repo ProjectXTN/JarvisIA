@@ -145,5 +145,6 @@ comandos_memoria = {
     "liste tudo que você sabe": list_all,
     "pesquise sobre": learn_from_web,
     "o que você aprendeu hoje": learnings_today,
-    "o que você aprendeu": learnings_today 
+    "o que você aprendeu": learnings_today,
+    "e você aprendeu": learnings_today 
 }
