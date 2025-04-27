@@ -12,6 +12,7 @@ import webrtcvad
 import collections
 import threading
 import time
+import faster_whisper
 from brain.utils import clean_output
 
 # === Global variable for GUI integration ===
@@ -21,13 +22,19 @@ gui_callback = None
 transcribe_lock = threading.Lock()
 
 # === Fix Whisper assets path if running as .exe ===
-if getattr(sys, 'frozen', False):
+if getattr(sys, "frozen", False):
     base_path = sys._MEIPASS
     os.environ["WHISPER_ASSETS"] = os.path.join(base_path, "whisper", "assets")
 
 # === Transcription model ===
-model = whisper.load_model("medium").to("cuda" if torch.cuda.is_available() else "cpu")
+# model = whisper.load_model("medium").to("cuda" if torch.cuda.is_available() else "cpu")
+model = faster_whisper.WhisperModel(
+    "medium",
+    device="cuda" if torch.cuda.is_available() else "cpu",
+    compute_type="float16" if torch.cuda.is_available() else "int8",
+)
 current_audio_process = None
+
 
 # === Main speech function with GUI support ===
 async def speak_with_gui(text):
@@ -53,7 +60,8 @@ async def speak_with_gui(text):
 
         current_audio_process = subprocess.Popen(
             ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", filename],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         current_audio_process.wait()
 
@@ -63,6 +71,7 @@ async def speak_with_gui(text):
         if os.path.exists(filename):
             os.remove(filename)
         current_audio_process = None
+
 
 # === Public speech function ===
 def say(text):
@@ -108,7 +117,9 @@ def listen():
     silence_counter = 0
 
     try:
-        stream = sd.InputStream(samplerate=fs, channels=1, dtype='int16', blocksize=frame_size)
+        stream = sd.InputStream(
+            samplerate=fs, channels=1, dtype="int16", blocksize=frame_size
+        )
         stream.start()
 
         while True:
@@ -117,7 +128,10 @@ def listen():
 
             if not triggered:
                 ring_buffer.append((block, is_speech))
-                if sum(1 for _, speech in ring_buffer if speech) > 0.6 * ring_buffer.maxlen:
+                if (
+                    sum(1 for _, speech in ring_buffer if speech)
+                    > 0.6 * ring_buffer.maxlen
+                ):
                     triggered = True
                     audio.extend(b for b, _ in ring_buffer)
                     ring_buffer.clear()
@@ -146,21 +160,32 @@ def listen():
 
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
         scipy.io.wavfile.write(f.name, fs, audio_np)
-        print("🔎 Transcribing with Whisper...")
+        print("🔎 Transcribing with Faster-Whisper...")
 
         try:
             start_time = time.time()
-            
+
             with transcribe_lock:
-                result = model.transcribe(f.name, language="pt")
-                
+                segments, info = model.transcribe(
+                    f.name,
+                    language="pt",       # 🇧🇷 Forçar português
+                    beam_size=5,          # 🔥 Melhorar a qualidade
+                    vad_filter=True,      # 🎙️ Remover ruídos e silêncios
+                    vad_parameters={"threshold": 0.5}  # ⚡ Mais sensível a fala
+                )
+
             end_time = time.time()
             duration = end_time - start_time
             print(f"⏱️ Time to transcribe audio: {duration:.2f} seconds.")
-            
-            text_out = result["text"].strip()
+
+            text_out = ""
+            for segment in segments:
+                text_out += segment.text
+
+            text_out = text_out.strip()
+
         except Exception as e:
-            print(f"Error during transcription: {e}")
+            print(f"❌ Error during transcription: {e}")
             return ""
 
         if text_out:

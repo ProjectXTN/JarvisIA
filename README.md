@@ -28,7 +28,7 @@ Internet connection (for searches and autonomous learning)
 
 🗣 Text-to-Speech — Using Microsoft Edge TTS (Antonio Neural voice)
 
-🎧 Speech-to-Text — Using OpenAI Whisper (large model optimized for PT-BR)
+🎧 Speech-to-Text — Using OpenAI Whisper/Fast-Whisper (large model optimized for PT-BR)
 
 🧠 LLaMA 3.3 — For deep contextual conversations and memory-based learning
 
