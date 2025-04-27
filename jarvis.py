@@ -69,22 +69,22 @@ while True:
 
             if shutdown_command(query.lower()) is False:
                 sys.exit()
-
-            if ("start studying" in query.lower()) or ("begin studying" in query.lower()):
+                
+            if ("comece a estudar" in query.lower()) or ("começar a estudar" in query.lower()):
                 if not auto_aprendizado.aprendizado_ativado:
                     auto_aprendizado.aprendizado_ativado = True
                     Thread(target=auto_aprender, daemon=True).start()
-                    say("Learning mode activated.")
+                    say("Modo de estudo autônomo ativado.")
                 else:
-                    say("I'm already studying, Pedro.")
+                    say("Já estou estudando, Pedro.")
                 continue
 
-            if re.search(r"\b(stop|interrupt|can stop|halt)\s+(studying|learning)\b", query.lower()):
+            if re.search(r"\b(parar|interromper|cancelar|pausar)\s+(estudo|aprendizado)\b", query.lower()):
                 if auto_aprendizado.aprendizado_ativado:
                     auto_aprendizado.aprendizado_ativado = False
-                    say("Learning mode deactivated.")
+                    say("Modo de estudo desativado.")
                 else:
-                    say("Learning mode is already off.")
+                    say("O modo de estudo já está desligado.")
                 continue
 
             result = process_command(query)
