@@ -12,7 +12,7 @@ from jarvis_commands import process_command
 class JarvisGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Jarvis - Assistente Pessoal")
+        self.root.title("Jarvis - Personal Assistant")
         self.root.geometry("600x500")
 
         self.chat = scrolledtext.ScrolledText(root, wrap=tk.WORD, state='disabled', font=("Consolas", 11))
@@ -22,14 +22,14 @@ class JarvisGUI:
         self.entry.pack(padx=10, pady=(0, 10), fill=tk.X)
         self.entry.bind("<Return>", self.on_enter)
 
-        # Callback do módulo de áudio para exibir falas no chat
+        # Audio module callback to display bot messages
         audio.gui_callback = self.bot_say
 
-        # Mensagem de boas-vindas
+        # Welcome message
         self.bot_say("Olá Pedro, Jarvis está online e pronto para te ajudar.")
 
-        # Inicia escuta contínua por voz (VAD)
-        self.iniciar_escuta_continua()
+        # Start continuous listening (VAD)
+        self.start_continuous_listening()
 
     def bot_say(self, text):
         self.chat.configure(state='normal')
@@ -52,27 +52,26 @@ class JarvisGUI:
         threading.Thread(target=self.handle_input, args=(user_input,), daemon=True).start()
 
     def handle_input(self, text):
-        resultado = process_command(text)
+        result = process_command(text)
         time.sleep(0.8)
-        if resultado is False:
+        if result is False:
             self.bot_say("Tchau! Jarvis desligando. Até a próxima.")
             self.root.after(1000, self.root.destroy)
 
-
-    def iniciar_escuta_continua(self):
-        def loop_escuta():
+    def start_continuous_listening(self):
+        def listen_loop():
             while True:
-                texto = audio.listen()
-                if texto:
+                text = audio.listen()
+                if text:
                     self.entry.delete(0, tk.END)
-                    self.user_say(texto)
-                    self.handle_input(texto)
-        threading.Thread(target=loop_escuta, daemon=True).start()
+                    self.user_say(text)
+                    self.handle_input(text)
+        threading.Thread(target=listen_loop, daemon=True).start()
 
-def iniciar_gui():
+def start_gui():
     root = tk.Tk()
     app = JarvisGUI(root)
     root.mainloop()
 
 if __name__ == "__main__":
-    iniciar_gui()
+    start_gui()

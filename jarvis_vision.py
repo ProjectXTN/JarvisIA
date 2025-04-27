@@ -4,51 +4,51 @@ import re
 VISION_MODEL_LOW = "llava:13b"
 VISION_MODEL_HIGH = "llama3.2-vision:90b"
 
-GATILHOS_DE_PRECISAO = [
-    r"\bdetalh(ad[oa]?|e|es)\b",
-    r"\bprecis[ao]\b",
-    r"\bcom\s+riqueza\b",
-    r"\bem alta definição\b",
-    r"\bcom\s+detalhes\b"
+PRECISION_TRIGGERS = [
+    r"\b(detail(ed)?|details?)\b",
+    r"\bprecision\b",
+    r"\bwith\s+richness\b",
+    r"\bin high definition\b",
+    r"\bwith\s+details\b"
 ]
 
-def prompt_detalhado(texto_usuario):
-    return any(re.search(p, texto_usuario.lower()) for p in GATILHOS_DE_PRECISAO)
+def is_detailed_prompt(user_text):
+    return any(re.search(p, user_text.lower()) for p in PRECISION_TRIGGERS)
 
-def descrever_imagem(caminho_imagem, texto_usuario=""):
-    usar_modelo_detalhado = prompt_detalhado(texto_usuario)
-    modelo_escolhido = VISION_MODEL_HIGH if usar_modelo_detalhado else VISION_MODEL_LOW
+def describe_image(image_path, user_text=""):
+    use_detailed_model = is_detailed_prompt(user_text)
+    chosen_model = VISION_MODEL_HIGH if use_detailed_model else VISION_MODEL_LOW
 
-    prompt_modelo = (
-        "Descreva a imagem com riqueza de detalhes, em português."
-        if usar_modelo_detalhado else
-        "Descreva o conteúdo da imagem de forma clara, em português."
+    model_prompt = (
+        "Describe the image with rich detail, in Portuguese."
+        if use_detailed_model else
+        "Describe the image content clearly, in Portuguese."
     )
 
-    prompt_com_imagem = f"<image>{caminho_imagem}</image>\n{prompt_modelo}"
+    prompt_with_image = f"<image>{image_path}</image>\n{model_prompt}"
 
     try:
-        resultado = subprocess.run(
-            ["ollama", "run", modelo_escolhido],
-            input=prompt_com_imagem,
+        result = subprocess.run(
+            ["ollama", "run", chosen_model],
+            input=prompt_with_image,
             capture_output=True,
             encoding="utf-8",
             text=True,
-            timeout=600 if usar_modelo_detalhado else 90
+            timeout=600 if use_detailed_model else 90
         )
 
-        if resultado.returncode != 0:
-            return f"Erro ao descrever imagem (código {resultado.returncode}): {resultado.stderr.strip()}"
+        if result.returncode != 0:
+            return f"Error describing image (code {result.returncode}): {result.stderr.strip()}"
 
-        saida = resultado.stdout.strip()
-        return saida if saida else "Não consegui descrever a imagem."
+        output = result.stdout.strip()
+        return output if output else "I couldn't describe the image."
 
     except subprocess.TimeoutExpired as e:
-        saida_parcial = e.stdout or ""
+        partial_output = e.stdout or ""
         return (
-            f"A descrição demorou demais e foi interrompida.\n"
-            f"Parcial obtida até o momento:\n{saida_parcial.strip()}"
+            f"The description took too long and was interrupted.\n"
+            f"Partial output obtained so far:\n{partial_output.strip()}"
         )
 
     except Exception as e:
-        return f"Erro crítico ao usar LLaMA: {e}"
+        return f"Critical error using LLaMA: {e}"

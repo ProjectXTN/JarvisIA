@@ -1,6 +1,6 @@
 FROM python:3.13-slim
 
-# Dependências do sistema
+# System dependencies
 RUN apt update && apt install -y \
     ffmpeg \
     espeak-ng \
@@ -17,16 +17,16 @@ RUN apt update && apt install -y \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Diretório de trabalho
+# Working directory
 WORKDIR /app
 
-# Copia os arquivos do projeto
+# Copy project files
 COPY . .
 
-# Instala dependências Python
+# Install Python dependencies
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 RUN pip install piper-phonemize
 
-# Comando padrão
+# Default command
 CMD ["python", "jarvis.py"]

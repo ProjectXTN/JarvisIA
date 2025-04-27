@@ -7,8 +7,7 @@ from brain.audio import listen
 LOCK_FILE = "jarvis.lock"
 VISION_MODELS = ["llama3.2-vision:90b", "llama3.2", "llama3.3"]
 
-
-def ja_esta_rodando():
+def is_already_running():
     if os.path.exists(LOCK_FILE):
         return True
     try:
@@ -16,39 +15,39 @@ def ja_esta_rodando():
             f.write(str(os.getpid()))
         return False
     except Exception as e:
-        print(f"Erro ao criar lock: {e}")
+        print(f"Error creating lock: {e}")
         return True
 
-def remover_lock():
+def remove_lock():
     if os.path.exists(LOCK_FILE):
         os.remove(LOCK_FILE)
 
-def iniciar_llava():
+def start_llava():
     try:
         requests.get("http://localhost:11434")
     except requests.exceptions.ConnectionError:
-        print("Iniciando o servidor Ollama...")
+        print("Starting Ollama server...")
         subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(5)
 
-    for modelo in VISION_MODELS:
-        modelos = subprocess.run(["ollama", "list"], capture_output=True, text=True)
-        if modelo not in modelos.stdout:
-            print(f"⬇️ Baixando o modelo {modelo}...")
-            subprocess.run(["ollama", "pull", modelo])
+    for model in VISION_MODELS:
+        models = subprocess.run(["ollama", "list"], capture_output=True, text=True)
+        if model not in models.stdout:
+            print(f"⬇️ Downloading model {model}...")
+            subprocess.run(["ollama", "pull", model])
 
-        print(f"Iniciando o modelo {modelo}...")
-        subprocess.Popen(["ollama", "run", modelo], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print(f"Starting model {model}...")
+        subprocess.Popen(["ollama", "run", model], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     time.sleep(5)
-    aquecer_modelo_vision()
+    warmup_vision_model()
 
-def aquecer_modelo_vision():
-    print("🔥 Pré-aquecendo o modelo vision...")
+def warmup_vision_model():
+    print("🔥 Warming up the vision model...")
     try:
         subprocess.run(
             ["ollama", "run", "llama3.2-vision:90b"],
-            input="<image>nula</image>\nIgnore isso.",
+            input="<image>null</image>\nIgnore this.",
             capture_output=True,
             encoding="utf-8",
             text=True,
@@ -57,13 +56,13 @@ def aquecer_modelo_vision():
     except:
         pass
 
-def modo_passivo():
-    print("Modo passivo ativado. Aguardando a hotword 'Jarvis'...")
+def passive_mode():
+    print("Passive mode activated. Waiting for the 'Jarvis' hotword...")
     while True:
-        texto = listen()
-        if not texto:
+        text = listen()
+        if not text:
             continue
 
-        texto = texto.strip()
-        if "jarvis" in texto.lower():
-            return texto
+        text = text.strip()
+        if "jarvis" in text.lower():
+            return text

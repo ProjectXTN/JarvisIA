@@ -7,83 +7,82 @@ from threading import Thread
 from brain.audio import say, listen
 from jarvis_commands import process_command
 from comandos.comandos_sistema import comando_desligar
-from core.inicializador import iniciar_llava, ja_esta_rodando, remover_lock, modo_passivo
+from core.inicializador import is_already_running, start_llava, remove_lock, passive_mode
 from brain.learning import auto_aprendizado
 from brain.learning.auto_aprendizado import auto_aprender
-from brain.utils import parece_jarvis
+from brain.utils import sounds_like_jarvis
 
+atexit.register(remove_lock)
 
-atexit.register(remover_lock)
-
-if ja_esta_rodando():
-    print("⚠️ Já existe uma instância do Jarvis rodando.")
+if is_already_running():
+    print("⚠️ There is already an instance of Jarvis running.")
     sys.exit()
 
-iniciar_llava()
+start_llava()
 
-# Inicia aprendizado autônomo em segundo plano
+# Start autonomous learning in background
 # Thread(target=auto_aprender, daemon=True).start()
 
-say("Olá Pedro, Jarvis está online e pronto para entrarmos no código da Matrix.")
+say("Ola Pedro, Jarvis esta online.")
 
 while True:
-    query = modo_passivo()
+    query = passive_mode()
     if not query:
         continue
     
-    # Ativar aprendizado autônomo por comando de voz
-    if ("comece a estudar" in query.lower()) or ("começa a estudar" in query.lower()):
+    # Activate autonomous learning by voice command
+    if ("start studying" in query.lower()) or ("begin studying" in query.lower()):
         if not auto_aprendizado.aprendizado_ativado:
             auto_aprendizado.aprendizado_ativado = True
             Thread(target=auto_aprender, daemon=True).start()
-            say("Modo de aprendizado ativado.")
+            say("Learning mode activated.")
         else:
-            say("Já estou estudando, Pedro.")
+            say("I'm already studying, Pedro.")
         continue
 
-    if parece_jarvis(query):
-        print(f"[DEBUG] Ativador reconhecido: {query}")
-        say("Jarvis Ativado...")
-        tempo_ultimo_comando = datetime.now()
+    if sounds_like_jarvis(query):
+        print(f"[DEBUG] Activator recognized: {query}")
+        say("Jarvis Activated...")
+        last_command_time = datetime.now()
 
-        comando = query.lower().replace("jarvis", "").strip()
-        if comando:
-            if comando_desligar(comando) is False:
+        command = query.lower().replace("jarvis", "").strip()
+        if command:
+            if comando_desligar(command) is False:
                 sys.exit()
-            if not process_command(comando):
+            if not process_command(command):
                 sys.exit()
 
         while True:
             query = listen()
             if not query:
-                if datetime.now() - tempo_ultimo_comando > timedelta(minutes=2):
-                    say("Nenhuma atividade detectada. Retornando ao modo passivo.")
+                if datetime.now() - last_command_time > timedelta(minutes=2):
+                    say("No activity detected. Returning to passive mode.")
                     break
                 continue
 
             if comando_desligar(query.lower()) is False:
                 sys.exit()
-                
-            if ("comece a estudar" in query.lower()) or ("começa a estudar" in query.lower()):
+
+            if ("start studying" in query.lower()) or ("begin studying" in query.lower()):
                 if not auto_aprendizado.aprendizado_ativado:
                     auto_aprendizado.aprendizado_ativado = True
                     Thread(target=auto_aprender, daemon=True).start()
-                    say("Modo de aprendizado ativado.")
+                    say("Learning mode activated.")
                 else:
-                    say("Já estou estudando, Pedro.")
-                continue
-            
-            if re.search(r"\b(pare|parem|interrompa|pode parar|parar)\s+(de\s+)?(estudar|aprender)\b", query.lower()):
-                if auto_aprendizado.aprendizado_ativado:
-                    auto_aprendizado.aprendizado_ativado = False
-                    say("Modo de aprendizado desativado.")
-                else:
-                    say("Já estou com o modo de aprendizado desligado.")
+                    say("I'm already studying, Pedro.")
                 continue
 
-            resultado = process_command(query)
-            if resultado is False:
+            if re.search(r"\b(stop|interrupt|can stop|halt)\s+(studying|learning)\b", query.lower()):
+                if auto_aprendizado.aprendizado_ativado:
+                    auto_aprendizado.aprendizado_ativado = False
+                    say("Learning mode deactivated.")
+                else:
+                    say("Learning mode is already off.")
+                continue
+
+            result = process_command(query)
+            if result is False:
                 sys.exit()
 
             time.sleep(0.5)
-            tempo_ultimo_comando = datetime.now()
+            last_command_time = datetime.now()

@@ -1,4 +1,4 @@
-# === CORE (voz, TTS, VAD, transcrição) ===
+# === CORE (voice, TTS, VAD, transcription) ===
 openai-whisper
 edge-tts
 webrtcvad
@@ -9,42 +9,42 @@ sounddevice
 numpy
 scipy
 
-# === VISÃO COMPUTACIONAL ===
+# === COMPUTER VISION ===
 Pillow
 opencv-python
 torch
 torchvision
 torchaudio
 
-# === AUTOMAÇÃO E CONTROLE DO SISTEMA ===
+# === SYSTEM AUTOMATION AND CONTROL ===
 keyboard
 pyautogui
 pyperclip
 
-# === WEB SCRAPING + BUSCAS ===
+# === WEB SCRAPING + SEARCHES ===
 requests
 beautifulsoup4
 
-# === BANCO DE DADOS ===
+# === DATABASE ===
 sqlite-utils
 
-# === INTERFACE GRÁFICA (GUI) ===
+# === GRAPHICAL USER INTERFACE (GUI) ===
 tk
 
-# === ANÁLISE EMOCIONAL (voz ou reflexão escrita) ===
+# === EMOTIONAL ANALYSIS (voice or written reflection) ===
 pyAudioAnalysis
 matplotlib
 scikit-learn
 
-# === UTILITÁRIOS ===
+# === UTILITIES ===
 regex
 tqdm
 python-dotenv
-pywin32  # compat Windows
+pywin32  # Windows compatibility
 
-# === FERRAMENTAS DE DESENVOLVIMENTO ===
+# === DEVELOPMENT TOOLS ===
 jsbeautifier
 
-# === MODELOS LLMs ===
-# LLaMA 3.3 e LLaMA Vision via Ollama — instale separadamente:
+# === LLM MODELS ===
+# LLaMA 3.3 and LLaMA Vision via Ollama — install separately:
 # https://ollama.com/

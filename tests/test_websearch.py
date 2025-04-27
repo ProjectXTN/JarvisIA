@@ -1,7 +1,7 @@
-from brain.websearch import buscar_na_web
+from brain.websearch import search_web
 
 if __name__ == "__main__":
     consulta = input("🧠 Digite o que quer pesquisar: ")
-    resultado = buscar_na_web(consulta)
+    resultado = search_web(consulta)
     print("\n📡 Resultados da Brave Search:\n")
     print(resultado)

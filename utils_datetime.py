@@ -1,10 +1,10 @@
 # utils_datetime.py
 from datetime import datetime
 
-def responder_data():
-    hoje = datetime.now().strftime("%d/%m/%Y")
-    return f"Hoje é {hoje}."
+def respond_date():
+    today = datetime.now().strftime("%d/%m/%Y")
+    return f"Hoje é {today}."
 
-def responder_hora():
-    hora = datetime.now().strftime("%H:%M")
-    return f"Agora são {hora}."
+def respond_time():
+    time_now = datetime.now().strftime("%H:%M")
+    return f"Agora são {time_now}."
