@@ -1,14 +1,14 @@
 import sqlite3
 import os
 
-def criar_banco():
+def create_database():
     db_path = os.path.abspath('memoria_jarvis.db')
-    print("📂 Banco de dados usado:", db_path)
+    print("📂 Database used:", db_path)
 
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    # Tabela de conhecimentos gerais
+    # General knowledge table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS conhecimento (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -19,7 +19,7 @@ def criar_banco():
         )
     """)
 
-    # Nova tabela: Memória Emocional
+    # New table: Emotional Memory
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS memoria_emocional (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,20 +32,20 @@ def criar_banco():
 
     conn.commit()
     conn.close()
-    print("✅ Tabelas criadas (ou já existentes).")
+    print("✅ Tables created (or already existing).")
 
-def listar_tabelas():
+def list_tables():
     conn = sqlite3.connect('memoria_jarvis.db')
     cursor = conn.cursor()
 
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-    tabelas = cursor.fetchall()
+    tables = cursor.fetchall()
 
-    for tabela in tabelas:
-        print("📁 Tabela encontrada:", tabela[0])
+    for table in tables:
+        print("📁 Table found:", table[0])
 
     conn.close()
 
 if __name__ == "__main__":
-    criar_banco()
-    listar_tabelas()
+    create_database()
+    list_tables()

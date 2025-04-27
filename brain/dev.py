@@ -4,90 +4,80 @@ import unicodedata
 import subprocess
 from jsbeautifier import beautify
 
-PASTA_CODIGOS = "codigos"
-os.makedirs(PASTA_CODIGOS, exist_ok=True)
+CODE_FOLDER = "codigos"
+os.makedirs(CODE_FOLDER, exist_ok=True)
 
-def detectar_linguagem(codigo):
-    if re.search(r"def\s+\w+\s*\(.*\):", codigo):
+def detect_language(code):
+    if re.search(r"def\s+\w+\s*\(.*\):", code):
         return "py"
-    elif re.search(r"function\s+\w+\s*\(.*\)", codigo):
+    elif re.search(r"function\s+\w+\s*\(.*\)", code):
         return "js"
-    elif re.search(r"#include\s+<.*>", codigo):
+    elif re.search(r"#include\s+<.*>", code):
         return "c"
-    elif re.search(r"public\s+class\s+\w+", codigo):
+    elif re.search(r"public\s+class\s+\w+", code):
         return "java"
-    elif re.search(r"<html>|<!DOCTYPE html>", codigo, re.IGNORECASE):
+    elif re.search(r"<html>|<!DOCTYPE html>", code, re.IGNORECASE):
         return "html"
-    elif re.search(r"^SELECT\s+.*\s+FROM", codigo, re.IGNORECASE):
+    elif re.search(r"^SELECT\s+.*\s+FROM", code, re.IGNORECASE):
         return "sql"
-    elif re.search(r"\.style|{[^}]*}", codigo):
+    elif re.search(r"\.style|{[^}]*}", code):
         return "css"
     return "txt"
 
-def limpar_nome_arquivo(texto):
-    texto = unicodedata.normalize('NFKD', texto).encode('ascii', 'ignore').decode('utf-8')
-    texto = re.sub(r"[^\w\s-]", "", texto)
-    texto = re.sub(r"\s+", "_", texto)
-    return texto.lower().strip("_")
+def clean_filename(text):
+    text = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('utf-8')
+    text = re.sub(r"[^\w\s-]", "", text)
+    text = re.sub(r"\s+", "_", text)
+    return text.lower().strip("_")
 
-def formatar_codigo(codigo, linguagem):
-    if linguagem == "py":
+def format_code(code, language):
+    if language == "py":
         try:
             temp = "temp.py"
             with open(temp, "w", encoding="utf-8") as f:
-                f.write(codigo)
+                f.write(code)
             subprocess.run(["black", temp, "--quiet"], check=True)
             with open(temp, "r", encoding="utf-8") as f:
                 return f.read()
         except Exception as e:
-            print(f"[BLACK] Erro: {e}")
-            return codigo
+            print(f"[BLACK] Error: {e}")
+            return code
 
-    elif linguagem in ["js", "html", "css"]:
+    elif language in ["js", "html", "css"]:
         try:
-            temp = f"temp.{linguagem}"
+            temp = f"temp.{language}"
             with open(temp, "w", encoding="utf-8") as f:
-                f.write(codigo)
+                f.write(code)
             subprocess.run(["prettier", "--write", temp], check=True)
             with open(temp, "r", encoding="utf-8") as f:
                 return f.read()
         except Exception as e:
-            print(f"[PRETTIER] Falha, tentando beautify: {e}")
+            print(f"[PRETTIER] Failed, trying beautify: {e}")
             try:
-                return beautify(codigo)
+                return beautify(code)
             except Exception as e:
-                print(f"[BEAUTIFY] Falhou também: {e}")
-                return codigo
+                print(f"[BEAUTIFY] Also failed: {e}")
+                return code
 
-    return codigo
+    return code
 
-def extrair_e_salvar_codigo(resposta_completa, titulo="codigo"):
-    blocos = re.findall(r"```(?:\w+\n)?(.*?)```", resposta_completa, re.DOTALL)
-    if not blocos:
-        print("[DEV] Nenhum bloco de código encontrado.")
+def extract_and_save_code(full_response, title="codigo"):
+    blocks = re.findall(r"```(?:\w+\n)?(.*?)```", full_response, re.DOTALL)
+    if not blocks:
+        print("[DEV] No code block found.")
         return None
 
-    codigo = "\n\n".join(bloco.strip() for bloco in blocos)
-    linguagem = detectar_linguagem(codigo)
+    code = "\n\n".join(block.strip() for block in blocks)
+    language = detect_language(code)
 
-    # Testa compilação antes de formatar, se for Python
-    if linguagem == "py":
+    # Test compilation before formatting, if Python
+    if language == "py":
         try:
-            compile(codigo, "<string>", "exec")
+            compile(code, "<string>", "exec")
         except Exception as e:
-            print(f"[SYNTAX] Erro de sintaxe no código Python: {e}")
+            print(f"[SYNTAX] Python syntax error: {e}")
 
     try:
-        codigo = formatar_codigo(codigo, linguagem)
+        code = format_code(code, language)
     except Exception as e:
-        print(f"[FORMAT] Falha na formatação: {e}")
-
-    nome_limpo = limpar_nome_arquivo(titulo or "codigo")
-    nome_arquivo = f"{nome_limpo}.{linguagem}"
-    caminho = os.path.join(PASTA_CODIGOS, nome_arquivo)
-
-    with open(caminho, "w", encoding="utf-8") as f:
-        f.write(codigo.strip())
-
-    print(f"[DEV] Código salvo como: {caminho}")
-    return caminho
+        print

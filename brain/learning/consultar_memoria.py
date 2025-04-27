@@ -1,8 +1,8 @@
 import sqlite3
-from brain.learning.utils import caminho_banco
+from brain.learning.utils import database_path
 
 def consultar_memoria(topico):
-    conn = sqlite3.connect(caminho_banco())
+    conn = sqlite3.connect(database_path())
     cursor = conn.cursor()
 
     print(f"[DEBUG] Consultando por: '{topico.lower()}'")
@@ -15,7 +15,7 @@ def consultar_memoria(topico):
 
 def consultar_tudo():
     try:
-        conn = sqlite3.connect(caminho_banco())
+        conn = sqlite3.connect(database_path())
         cursor = conn.cursor()
 
         cursor.execute("SELECT titulo, conteudo FROM conhecimento ORDER BY data DESC")

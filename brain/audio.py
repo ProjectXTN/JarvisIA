@@ -12,22 +12,22 @@ import collections
 import threading
 import time
 
-# === Variável global para integração com GUI ===
+# === Global variable for GUI integration ===
 gui_callback = None
 
-# === Lock para evitar concorrência no Whisper ===
+# === Lock to prevent concurrency on Whisper ===
 transcribe_lock = threading.Lock()
 
-# === Corrige o path dos assets do Whisper se for .exe ===
+# === Fix Whisper assets path if running as .exe ===
 if getattr(sys, 'frozen', False):
     base_path = sys._MEIPASS
     os.environ["WHISPER_ASSETS"] = os.path.join(base_path, "whisper", "assets")
 
-# === Modelo de transcrição ===
+# === Transcription model ===
 model = whisper.load_model("medium").to("cuda" if torch.cuda.is_available() else "cpu")
 current_audio_process = None
 
-# === Função principal de fala com suporte à GUI ===
+# === Main speech function with GUI support ===
 async def speak_with_gui(text):
     global current_audio_process
 
@@ -39,15 +39,15 @@ async def speak_with_gui(text):
     filename = f"jarvis_{uuid.uuid4().hex}.mp3"
 
     try:
-        start_time = time.time()  # ⏱️ Início do tempo
+        start_time = time.time()  # ⏱️ Start timing
 
         communicate = edge_tts.Communicate(text, voice="pt-BR-AntonioNeural")
         await communicate.save(filename)
 
-        end_time = time.time()  # ⏱️ Fim do tempo
+        end_time = time.time()  # ⏱️ End timing
 
         duration = end_time - start_time
-        print(f"⏱️ Tempo para gerar áudio: {duration:.2f} segundos.")
+        print(f"⏱️ Time to generate audio: {duration:.2f} seconds.")
 
         current_audio_process = subprocess.Popen(
             ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", filename],
@@ -56,31 +56,31 @@ async def speak_with_gui(text):
         current_audio_process.wait()
 
     except Exception as e:
-        print(f"Erro na síntese ou reprodução de áudio: {e}")
+        print(f"Error in audio synthesis or playback: {e}")
     finally:
         if os.path.exists(filename):
             os.remove(filename)
         current_audio_process = None
 
-# === Função pública de fala ===
+# === Public speech function ===
 def say(text):
     global current_audio_process
 
-    # 🔇 Interrompe o áudio anterior se estiver tocando
+    # 🔇 Interrupt previous audio if playing
     if current_audio_process and current_audio_process.poll() is None:
-        print("🔇 Interrompendo áudio anterior...")
+        print("🔇 Interrupting previous audio...")
         current_audio_process.terminate()
         current_audio_process = None
 
     asyncio.run(speak_with_gui(text))
 
-# === Função de escuta com VAD + Whisper ===
+# === Listening function with VAD + Whisper ===
 def listen():
     global current_audio_process
     stream = None
 
     if current_audio_process and current_audio_process.poll() is None:
-        print("🔇 Interrompendo resposta ativa...")
+        print("🔇 Interrupting active response...")
         current_audio_process.terminate()
         current_audio_process = None
 
@@ -90,7 +90,7 @@ def listen():
     frame_size = int(fs * duration_ms / 1000)
     block_duration = frame_size / fs if fs > 0 else 0.01
 
-    print("\n🎙️ Ouvindo com VAD...")
+    print("\n🎙️ Listening with VAD...")
 
     audio = []
     ring_buffer = collections.deque(maxlen=10)
@@ -122,23 +122,23 @@ def listen():
                 else:
                     silence_counter = 0
     except Exception as e:
-        print(f"Erro durante captura de áudio: {e}")
+        print(f"Error during audio capture: {e}")
         return ""
     finally:
         if stream:
             stream.stop()
 
     audio_np = np.concatenate(audio, axis=0)
-    volume_medio = np.abs(audio_np).mean()
-    print(f"🔊 Volume médio detectado: {volume_medio:.2f}")
+    average_volume = np.abs(audio_np).mean()
+    print(f"🔊 Average detected volume: {average_volume:.2f}")
 
-    if volume_medio < 100:
-        print("🧘 Volume baixo, ignorando...")
+    if average_volume < 100:
+        print("🧘 Low volume detected, ignoring...")
         return ""
 
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
         scipy.io.wavfile.write(f.name, fs, audio_np)
-        print("🔎 Transcrevendo com Whisper...")
+        print("🔎 Transcribing with Whisper...")
 
         try:
             start_time = time.time()
@@ -148,16 +148,16 @@ def listen():
                 
             end_time = time.time()
             duration = end_time - start_time
-            print(f"⏱️ Tempo para transcrever áudio: {duration:.2f} segundos.")
+            print(f"⏱️ Time to transcribe audio: {duration:.2f} seconds.")
             
-            texto = result["text"].strip()
+            text_out = result["text"].strip()
         except Exception as e:
-            print(f"Erro na transcrição: {e}")
+            print(f"Error during transcription: {e}")
             return ""
 
-        if texto:
-            print("🖙️ Você disse:", texto)
-            return texto
+        if text_out:
+            print("🖙️ You said:", text_out)
+            return text_out
         else:
-            print("Nenhum texto detectado.")
+            print("No text detected.")
             return ""

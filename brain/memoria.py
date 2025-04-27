@@ -1,12 +1,10 @@
 from brain.utils import clean_output
 import subprocess
 
-contexto_memoria = []
-MAX_CONTEXTO = 5
+memory_context = []
+MAX_CONTEXT = 5
 DEFAULT_MODEL = "llama3.2"
 DEFAULT_MODEL_HIGH = "llama3.3"
-
-
 
 def generate_response(prompt, model_name=DEFAULT_MODEL_HIGH):
     try:
@@ -25,14 +23,14 @@ def generate_response(prompt, model_name=DEFAULT_MODEL_HIGH):
             "Seja direto, inteligente, com um toque de humor ácido quando fizer sentido. "
             "Responda sempre em português. "
         )
-        historico = "\n".join([f"Usuário: {p}\nJarvis: {r}" for p, r in contexto_memoria[-MAX_CONTEXTO:]])
-        full_prompt = f"{system_prompt}\n{historico}\nUsuário: {prompt}\nJarvis:"
+        history = "\n".join([f"Usuário: {p}\nJarvis: {r}" for p, r in memory_context[-MAX_CONTEXT:]])
+        full_prompt = f"{system_prompt}\n{history}\nUsuário: {prompt}\nJarvis:"
         command = ["ollama", "run", model_name, full_prompt]
         result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8")
-        resposta = clean_output(result.stdout.strip())
-        contexto_memoria.append((prompt, resposta))
-        if len(contexto_memoria) > MAX_CONTEXTO:
-            contexto_memoria.pop(0)
-        return resposta
+        response = clean_output(result.stdout.strip())
+        memory_context.append((prompt, response))
+        if len(memory_context) > MAX_CONTEXT:
+            memory_context.pop(0)
+        return response
     except Exception as e:
         return f"Erro ao gerar resposta: {e}"

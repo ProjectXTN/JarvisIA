@@ -1,14 +1,13 @@
 import sqlite3
-from brain.learning.utils import caminho_banco
+from brain.learning.utils import database_path
 
-def consultar_emocoes(emocao, data_inicio=None, data_fim=None):
+def query_emotions(emotion, start_date=None, end_date=None):
     try:
-        from brain.learning.utils import caminho_banco
-        conn = sqlite3.connect(caminho_banco())
+        conn = sqlite3.connect(database_path())
 
         cursor = conn.cursor()
 
-        if data_inicio and data_fim:
+        if start_date and end_date:
             cursor.execute("""
                 SELECT evento, emocao, data, tags
                 FROM memoria_emocional
@@ -16,7 +15,7 @@ def consultar_emocoes(emocao, data_inicio=None, data_fim=None):
                 AND date(data) BETWEEN ? AND ?
                 ORDER BY data DESC
                 LIMIT 10
-            """, (emocao, data_inicio, data_fim))
+            """, (emotion, start_date, end_date))
         else:
             cursor.execute("""
                 SELECT evento, emocao, data, tags
@@ -24,11 +23,11 @@ def consultar_emocoes(emocao, data_inicio=None, data_fim=None):
                 WHERE emocao = ?
                 ORDER BY data DESC
                 LIMIT 10
-            """, (emocao,))
+            """, (emotion,))
 
-        resultados = cursor.fetchall()
+        results = cursor.fetchall()
         conn.close()
-        return resultados
+        return results
     except Exception as e:
-        print("[ERRO] Falha ao consultar emoções:", e)
+        print("[ERROR] Failed to query emotions:", e)
         return []

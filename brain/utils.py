@@ -3,33 +3,33 @@ import re
 import difflib
 from datetime import datetime
 
-def contem_data_antiga(resposta: str, tolerancia=1) -> bool:
-    """Retorna True se encontrar datas muito antigas na resposta."""
-    anos = re.findall(r"\b(19\d{2}|20\d{2})\b", resposta)
-    if not anos:
+def contains_old_date(response: str, tolerance=1) -> bool:
+    """Returns True if very old dates are found in the response."""
+    years = re.findall(r"\b(19\d{2}|20\d{2})\b", response)
+    if not years:
         return False
 
-    ano_atual = datetime.now().year
-    for ano in anos:
-        if int(ano) < (ano_atual - tolerancia):  # permite 2023 se estamos em 2024
+    current_year = datetime.now().year
+    for year in years:
+        if int(year) < (current_year - tolerance):  # allow 2023 if we are in 2024
             return True
     return False
 
-def resposta_desatualizada(resposta: str, query: str) -> bool:
-    palavras_chave = ["hoje", "atual", "agora", "neste momento", "previsão", "cotação", "valor"]
-    ignorar_se_query_historica = ["história", "presidentes", "biografia", "quando", "passado", "fundação", "inauguração"]
+def is_outdated_response(response: str, query: str) -> bool:
+    keywords = ["hoje", "atual", "agora", "neste momento", "previsão", "cotação", "valor"]
+    ignore_if_historical_query = ["história", "presidentes", "biografia", "quando", "passado", "fundação", "inauguração"]
 
     query_lower = query.lower()
 
-    # Se for uma pergunta histórica, não considerar desatualizada
-    if any(p in query_lower for p in ignorar_se_query_historica):
+    # If it's a historical question, do not consider outdated
+    if any(p in query_lower for p in ignore_if_historical_query):
         return False
 
-    # Se a pergunta fala de algo atual, verificar datas antigas
-    if any(p in query_lower for p in palavras_chave):
-        anos = re.findall(r"\b(19\d{2}|20\d{2})\b", resposta)
-        for ano in anos:
-            if int(ano) < datetime.now().year - 1:
+    # If the question talks about something current, check for old dates
+    if any(p in query_lower for p in keywords):
+        years = re.findall(r"\b(19\d{2}|20\d{2})\b", response)
+        for year in years:
+            if int(year) < datetime.now().year - 1:
                 return True
 
     return False
@@ -45,19 +45,19 @@ def log_interaction(user_input, response):
 
 def clean_output(text):
     text = re.sub(r"(\*\*|__)(.*?)\1", r"\2", text)
-    text = re.sub(r"(\*|_)(.*?)\1", r"\2", text) 
+    text = re.sub(r"(\*|_)(.*?)\1", r"\2", text)
     lines = text.splitlines()
     lines = [line for line in lines if line.strip() and not line.strip().startswith(">")]
     return " ".join(lines)
 
-def parece_jarvis(texto):
-    palavras_ativadoras = ["jarvis"]
-    texto = texto.lower()
-    palavras = texto.split()
+def sounds_like_jarvis(text):
+    activation_words = ["jarvis"]
+    text = text.lower()
+    words = text.split()
 
-    for palavra in palavras:
-        for ativador in palavras_ativadoras:
-            similaridade = difflib.SequenceMatcher(None, palavra, ativador).ratio()
-            if similaridade >= 0.2: 
+    for word in words:
+        for activator in activation_words:
+            similarity = difflib.SequenceMatcher(None, word, activator).ratio()
+            if similarity >= 0.2:
                 return True
     return False

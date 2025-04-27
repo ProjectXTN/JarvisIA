@@ -3,10 +3,10 @@ import subprocess
 import webbrowser
 from datetime import datetime
 
-def abrir_pasta(nome_pasta):
-    nome_pasta = nome_pasta.strip().lower().replace(".", "").replace("á", "a").replace("ã", "a").replace("ç", "c")
+def open_folder(folder_name):
+    folder_name = folder_name.strip().lower().replace(".", "").replace("á", "a").replace("ã", "a").replace("ç", "c")
 
-    pastas_mapeadas = {
+    mapped_folders = {
         "documentos": "Documents",
         "downloads": "Downloads",
         "imagens": "Pictures",
@@ -18,14 +18,14 @@ def abrir_pasta(nome_pasta):
         "desktop": "Desktop"
     }
 
-    pasta_convertida = pastas_mapeadas.get(nome_pasta, nome_pasta.capitalize())
-    caminho = os.path.expanduser(f"~\\{pasta_convertida}")
+    converted_folder = mapped_folders.get(folder_name, folder_name.capitalize())
+    path = os.path.expanduser(f"~\\{converted_folder}")
 
-    if os.path.isdir(caminho):
-        subprocess.Popen(["explorer", caminho])
-        return f"Abrindo a pasta \"{nome_pasta}\"."
+    if os.path.isdir(path):
+        subprocess.Popen(["explorer", path])
+        return f"Abrindo a pasta \"{folder_name}\"."
     else:
-        return f"Não encontrei a pasta \"{nome_pasta}\" na sua máquina."
+        return f"Não encontrei a pasta \"{folder_name}\" na sua máquina."
 
 def open_browser():
     webbrowser.open("https://www.google.com", new=2)

@@ -1,19 +1,19 @@
 import sqlite3
-from brain.learning.utils import caminho_banco
+from brain.learning.utils import database_path
 
-def registrar_emocao(evento, emocao, data, tags=None):
+def register_emotion(event, emotion, date, tags=None):
     try:
-        conn = sqlite3.connect(caminho_banco())
+        conn = sqlite3.connect(database_path())
         cursor = conn.cursor()
 
         cursor.execute("""
             INSERT INTO memoria_emocional (evento, emocao, data, tags)
             VALUES (?, ?, ?, ?)
-        """, (evento, emocao, data, tags))
+        """, (event, emotion, date, tags))
 
         conn.commit()
         conn.close()
         return True
     except Exception as e:
-        print("[ERRO] Falha ao registrar emoção:", e)
+        print("[ERROR] Failed to register emotion:", e)
         return False

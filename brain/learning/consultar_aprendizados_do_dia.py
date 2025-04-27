@@ -1,9 +1,9 @@
 import sqlite3
 from datetime import datetime
-from brain.learning.utils import caminho_banco
+from brain.learning.utils import database_path
 
 def aprendizados_de_hoje():
-    conn = sqlite3.connect(caminho_banco())
+    conn = sqlite3.connect(database_path())
     cursor = conn.cursor()
 
     data_hoje = datetime.now().strftime("%Y-%m-%d")

@@ -3,8 +3,8 @@ import re
 import string
 import os
 from datetime import datetime
-from comandos.comandos_pesquisa import executar_pesquisa
-from brain.learning.inserir_memoria import inserir_memoria
+from comandos.comandos_pesquisa import execute_search
+from brain.learning.inserir_memoria import insert_memory
 from brain.memoria import generate_response, DEFAULT_MODEL
 from brain.learning.consultar_memoria import consultar_memoria
 
@@ -92,7 +92,7 @@ def auto_aprender():
                 return
 
             pergunta = f"O que é {topico}?"
-            resposta, fonte = executar_pesquisa(pergunta, falar=False)
+            resposta, fonte = execute_search(pergunta, falar=False)
 
             if isinstance(resposta, str) and "Erro" not in resposta:
                 titulo = limpar_titulo(topico)
@@ -102,7 +102,7 @@ def auto_aprender():
                     print(f"⚠️ Já sei sobre: {titulo}. Pulando...\n")
                     continue
 
-                sucesso = inserir_memoria(titulo, resposta, fonte, data)
+                sucesso = insert_memory(titulo, resposta, fonte, data)
                 if sucesso:
                     log_aprendizado(titulo, resposta, fonte, data)
                     aprendidos_hoje.append(titulo)

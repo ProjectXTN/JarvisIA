@@ -1,5 +1,5 @@
-def normalizar_emocao(emocao):
-    mapa = {
+def normalize_emotion(emotion):
+    mapping = {
         "muito": "feliz",
         "muito feliz": "feliz",
         "felizão": "feliz",
@@ -16,4 +16,4 @@ def normalizar_emocao(emocao):
         "me irritou": "irritado",
         "me marcou": "marcante",
     }
-    return mapa.get(emocao.strip().lower(), emocao.strip().lower())
+    return mapping.get(emotion.strip().lower(), emotion.strip().lower())
