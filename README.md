@@ -2,9 +2,9 @@ Jarvis IA
 
 Jarvis is an intelligent, sarcastic, and futuristic AI assistant inspired by Tony Stark's iconic system.Built entirely in Python, it supports voice interaction, vision models, autonomous learning, weather reports, emotional memory, music search, journaling, and much more — running 100% on your local machine.
 
-🗣️ Important: All Jarvis voice commands and responses are in Brazilian Portuguese (PT-BR).
+## 🗣️ Important: All Jarvis voice commands and responses are in Brazilian Portuguese (PT-BR).
 
-💻 Requirements
+## 💻 Requirements
 
 Python 3.10 or higher
 
@@ -20,7 +20,7 @@ OpenWeather API Key (for weather forecasts)
 
 Internet connection (for searches and autonomous learning)
 
-🧠 Features
+## 🧠 Features
 
 🎙 Wake Word Detection — Activates with “Jarvis” or variations (e.g., "Javis")
 
@@ -60,7 +60,7 @@ Internet connection (for searches and autonomous learning)
 
 🧱 Modular Architecture — Commands split into organized modules (comandos/)
 
-🗂 Project Structure
+## 🗂 Project Structure
 
 jarvis/
 ├── comandos/                # Modular command files (music, system, folders, memory, search, weather, etc.)
@@ -72,7 +72,7 @@ jarvis/
 ├── requirements.txt         # Dependencies
 └── README.md
 
-🗣️ Voice Commands — Examples (in Portuguese)
+## 🗣️ Voice Commands — Examples (in Portuguese)
 
 "Jarvis, abrir a pasta de downloads"
 
@@ -92,7 +92,7 @@ jarvis/
 
 "Jarvis, previsão do tempo para São Paulo"
 
-🖼️ Vision Mode
+## 🖼️ Vision Mode
 
 To trigger Vision 90B model (for precise descriptions):
 
@@ -102,7 +102,7 @@ To trigger Vision 90B model (for precise descriptions):
 
 Fallback to faster vision models if necessary.
 
-🌦️ Weather Forecast
+## 🌦️ Weather Forecast
 
 Ask naturally about the weather, including for the next days:
 
@@ -122,7 +122,7 @@ If no specific city is detected, Jarvis defaults to a configured location (Lexy 
 
 Jarvis will intelligently ask for the country if needed and retrieve a detailed weather report using OpenWeather API.
 
-🎵 Apple Music Integration
+## 🎵 Apple Music Integration
 
 Jarvis can:
 
@@ -132,7 +132,7 @@ Jarvis can:
 
 ⏯ Pause, skip, resume: "Jarvis, pause a música", "próxima música", "continuar música"
 
-❤️ Emotional Memory
+## ❤️ Emotional Memory
 
 Register positive/negative events: "Jarvis, lembre que jantei com Camila e fiquei feliz"
 
@@ -140,7 +140,7 @@ Retrieve emotional states: "Jarvis, o que me deixou triste essa semana?"
 
 Voice-based journaling: "Jarvis, quero escrever sobre meu dia"
 
-🧬 Developer Mode
+## 🧬 Developer Mode
 
 Jarvis can chain multiple commands in a single voice phrase:
 
@@ -148,7 +148,7 @@ Jarvis can chain multiple commands in a single voice phrase:
 
 "Inicie o navegador e procure sobre inteligência artificial"
 
-🧠 Autonomous Learning
+## 🧠 Autonomous Learning
 
 Jarvis can:
 
@@ -162,7 +162,7 @@ Example:
 
 "Jarvis, aprenda sobre entrelaçamento quântico"
 
-🚀 Getting Started
+## 🚀 Getting Started
 
 git clone https://github.com/ProjectXTN/Jarvis_IA.git
 cd Jarvis_IA
@@ -175,11 +175,11 @@ Make sure your .env file contains your API Keys:
 BRAVE_API_KEY=your_brave_api_key
 OPENWEATHER_API_KEY=your_openweather_api_key
 
-🔒 Lock System
+## 🔒 Lock System
 
 Jarvis uses a .lock file system to prevent multiple instances from running simultaneously.
 
-💌 Voice Deactivation
+## 💌 Voice Deactivation
 
 Say:
 
@@ -193,7 +193,7 @@ Jarvis will return to passive mode until called again.
 
 Made with 💥 by Pedro MEIRELES
 
-📢 Note:
+## 📢 Note:
 
 All commands and conversations with Jarvis are fully in Brazilian Portuguese (PT-BR).For the best experience, speak naturally and clearly.
 
