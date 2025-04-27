@@ -88,7 +88,13 @@ def process_command(query):
         start_time = time.time()
         response = llama_query(query)
         end_time = time.time()
-        print(f"⏱️ Time to generate response (turbo memory): {end_time - start_time:.2f} seconds.")
+
+        generation_time = end_time - start_time
+
+        if response:
+            print(f"\n🧠 Jarvis generated (in {generation_time:.2f} seconds):\n{response}\n")
+        else:
+            print(f"⚠️ LLaMA failed to generate a response after {generation_time:.2f} seconds.")
 
         if response:
             response_cache[query] = response
