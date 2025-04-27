@@ -2,6 +2,7 @@ import sys
 import atexit
 import time
 import re
+from brain.initiate.personalized_greeting import personalized_greeting
 from datetime import datetime, timedelta
 from threading import Thread
 from brain.audio import say, listen
@@ -10,7 +11,7 @@ from comandos.comandos_sistema import shutdown_command
 from core.inicializador import is_already_running, start_llava, remove_lock, passive_mode
 from brain.learning import auto_aprendizado
 from brain.learning.auto_aprendizado import auto_aprender
-from brain.utils import normalize_text, sounds_like_jarvis
+from brain.utils import sounds_like_jarvis
 
 atexit.register(remove_lock)
 
@@ -23,7 +24,8 @@ start_llava()
 # Start autonomous learning in background
 # Thread(target=auto_aprender, daemon=True).start()
 
-say("Ola Pedro, Jarvis esta online.")
+# Hello Pedro! =)
+personalized_greeting()
 
 while True:
     query = passive_mode()
