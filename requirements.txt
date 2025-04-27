@@ -40,7 +40,7 @@ scikit-learn
 regex
 tqdm
 python-dotenv
-#pywin32  # compat Windows
+pywin32  # compat Windows
 
 # === FERRAMENTAS DE DESENVOLVIMENTO ===
 jsbeautifier

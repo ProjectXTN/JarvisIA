@@ -10,6 +10,8 @@ from comandos.comandos_sistema import comando_desligar
 from core.inicializador import iniciar_llava, ja_esta_rodando, remover_lock, modo_passivo
 from brain.learning import auto_aprendizado
 from brain.learning.auto_aprendizado import auto_aprender
+from brain.utils import parece_jarvis
+
 
 atexit.register(remover_lock)
 
@@ -30,7 +32,7 @@ while True:
         continue
     
     # Ativar aprendizado autônomo por comando de voz
-    if "comece a estudar" in query.lower():
+    if ("comece a estudar" in query.lower()) or ("começa a estudar" in query.lower()):
         if not auto_aprendizado.aprendizado_ativado:
             auto_aprendizado.aprendizado_ativado = True
             Thread(target=auto_aprender, daemon=True).start()
@@ -39,16 +41,8 @@ while True:
             say("Já estou estudando, Pedro.")
         continue
 
-    # Desativar aprendizado autônomo
-    if re.search(r"\b(pare|parem|interrompa|pode parar|parar)\s+(de\s+)?(estudar|aprender)\b", query.lower()):
-        if auto_aprendizado.aprendizado_ativado:
-            auto_aprendizado.aprendizado_ativado = False
-            say("Modo de aprendizado desativado.")
-        else:
-            say("Já estou com o modo de aprendizado desligado.")
-        continue
-
-    if "jarvis" in query.lower():
+    if parece_jarvis(query):
+        print(f"[DEBUG] Ativador reconhecido: {query}")
         say("Jarvis Ativado...")
         tempo_ultimo_comando = datetime.now()
 
@@ -69,6 +63,23 @@ while True:
 
             if comando_desligar(query.lower()) is False:
                 sys.exit()
+                
+            if ("comece a estudar" in query.lower()) or ("começa a estudar" in query.lower()):
+                if not auto_aprendizado.aprendizado_ativado:
+                    auto_aprendizado.aprendizado_ativado = True
+                    Thread(target=auto_aprender, daemon=True).start()
+                    say("Modo de aprendizado ativado.")
+                else:
+                    say("Já estou estudando, Pedro.")
+                continue
+            
+            if re.search(r"\b(pare|parem|interrompa|pode parar|parar)\s+(de\s+)?(estudar|aprender)\b", query.lower()):
+                if auto_aprendizado.aprendizado_ativado:
+                    auto_aprendizado.aprendizado_ativado = False
+                    say("Modo de aprendizado desativado.")
+                else:
+                    say("Já estou com o modo de aprendizado desligado.")
+                continue
 
             resultado = process_command(query)
             if resultado is False:

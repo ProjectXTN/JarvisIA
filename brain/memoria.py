@@ -8,7 +8,7 @@ DEFAULT_MODEL_HIGH = "llama3.3"
 
 
 
-def generate_response(prompt, model_name=DEFAULT_MODEL):
+def generate_response(prompt, model_name=DEFAULT_MODEL_HIGH):
     try:
         system_prompt = (
             "Você é Jarvis, um assistente de inteligência artificial altamente preciso, confiável e direto. "

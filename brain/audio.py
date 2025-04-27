@@ -10,6 +10,7 @@ import sys
 import webrtcvad
 import collections
 import threading
+import time
 
 # === Variável global para integração com GUI ===
 gui_callback = None
@@ -23,7 +24,7 @@ if getattr(sys, 'frozen', False):
     os.environ["WHISPER_ASSETS"] = os.path.join(base_path, "whisper", "assets")
 
 # === Modelo de transcrição ===
-model = whisper.load_model("large").to("cuda" if torch.cuda.is_available() else "cpu")
+model = whisper.load_model("medium").to("cuda" if torch.cuda.is_available() else "cpu")
 current_audio_process = None
 
 # === Função principal de fala com suporte à GUI ===
@@ -36,17 +37,30 @@ async def speak_with_gui(text):
         print(f"\n🧠 Jarvis: {text}")
 
     filename = f"jarvis_{uuid.uuid4().hex}.mp3"
-    communicate = edge_tts.Communicate(text, voice="pt-BR-AntonioNeural")
-    await communicate.save(filename)
 
-    current_audio_process = subprocess.Popen(
-        ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", filename],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-    )
-    current_audio_process.wait()
+    try:
+        start_time = time.time()  # ⏱️ Início do tempo
 
-    os.remove(filename)
-    current_audio_process = None
+        communicate = edge_tts.Communicate(text, voice="pt-BR-AntonioNeural")
+        await communicate.save(filename)
+
+        end_time = time.time()  # ⏱️ Fim do tempo
+
+        duration = end_time - start_time
+        print(f"⏱️ Tempo para gerar áudio: {duration:.2f} segundos.")
+
+        current_audio_process = subprocess.Popen(
+            ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", filename],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        current_audio_process.wait()
+
+    except Exception as e:
+        print(f"Erro na síntese ou reprodução de áudio: {e}")
+    finally:
+        if os.path.exists(filename):
+            os.remove(filename)
+        current_audio_process = None
 
 # === Função pública de fala ===
 def say(text):
@@ -127,8 +141,15 @@ def listen():
         print("🔎 Transcrevendo com Whisper...")
 
         try:
+            start_time = time.time()
+            
             with transcribe_lock:
                 result = model.transcribe(f.name, language="pt")
+                
+            end_time = time.time()
+            duration = end_time - start_time
+            print(f"⏱️ Tempo para transcrever áudio: {duration:.2f} segundos.")
+            
             texto = result["text"].strip()
         except Exception as e:
             print(f"Erro na transcrição: {e}")

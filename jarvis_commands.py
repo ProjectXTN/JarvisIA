@@ -1,5 +1,6 @@
 import re
 import string
+import time
 
 from comandos.comandos_datahora import comandos_datahora
 from comandos.comandos_musica import comandos_musica
@@ -14,12 +15,18 @@ from comandos.comandos_avatar import comandos_avatar
 from comandos.comandos_emocionais import comandos_emocionais
 from comandos.comandos_pesquisa import executar_pesquisa
 from comandos.comandos_reflexao import comandos_reflexao
+from brain.llama_connection import llama_query
 
-from brain.memoria import generate_response, DEFAULT_MODEL
 from brain.audio import say
 from brain.utils import log_interaction
-from brain.learning.resposta_com_memoria import generate_contextual_response, responder_com_inferencia
 from brain.dev import extrair_e_salvar_codigo
+
+# Novo: Conexão persistente com o LLaMA3
+import requests
+session = requests.Session()
+
+# Cache de respostas para acelerar
+respostas_cache = {}
 
 # Junta todos os comandos com detecção baseada em regex interna
 COMMAND_HANDLERS = [
@@ -66,29 +73,27 @@ def process_command(query):
                     print(f"[DEBUG] Executando regex: {padrao}")
                     return func(query)
 
-    # 🔁 Fallback: resposta com memória
-    resposta = generate_contextual_response(query, DEFAULT_MODEL)
-    if resposta and resposta.strip():
-        log_interaction(query, resposta)
+    # 🔁 Fallback usando LLaMA3 + Cache
+    if query in respostas_cache:
+        resposta = respostas_cache[query]
+        print("[DEBUG] Resposta recuperada do cache.")
+    else:
+        start_time = time.time()
+        resposta = llama_query(query)
+        end_time = time.time()
+        print(f"⏱️ Tempo para gerar resposta (memória turbo): {end_time - start_time:.2f} segundos.")
 
-        if "```" in resposta:  # Detecta bloco de código gerado
-            print("[🤖 SALVANDO] Código detectado via memória.")
-            extrair_e_salvar_codigo(resposta, titulo=query)
-        else:
-            say(resposta)
-        return True
+        if resposta:
+            respostas_cache[query] = resposta
 
-    # 🔁 Fallback final: inferência direta
-    resposta = responder_com_inferencia(query)
-    if resposta and resposta.strip():
+    if resposta:
         log_interaction(query, resposta)
 
         if "```" in resposta:
-            print("[🤖 SALVANDO] Código detectado via inferência.")
+            print("[🤖 SALVANDO] Código detectado via memória.")
             extrair_e_salvar_codigo(resposta, titulo=query)
-        else:
-            say(resposta)
+        say(resposta)
         return True
 
-    say("Desculpe, ainda não aprendi nada sobre isso.")
+    say("Desculpe, ainda não aprendi sobre isso.")
     return True

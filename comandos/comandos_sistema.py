@@ -57,7 +57,7 @@ def comando_desligar(query):
 
     for padrao in padroes:
         if re.search(padrao, query):
-            say("Tchau! Jarvis desligando. Até a próxima.")
+            say("Jarvis desligando.")
             return False  # Retorna False para encerrar o loop principal
 
     return True

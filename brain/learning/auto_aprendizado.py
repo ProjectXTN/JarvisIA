@@ -71,9 +71,11 @@ def log_aprendizado(titulo, conteudo, fonte, data):
 
 def auto_aprender():
     while True:
-        print(
-            f"\n🧠 [AUTO-LEARNING] Iniciando novo ciclo às {datetime.now().strftime('%H:%M:%S')}..."
-        )
+        if not aprendizado_ativado:
+            print("🛑 [AUTO-LEARNING] Modo de aprendizado desativado. Pausando...\n")
+            break
+
+        print(f"\n🧠 [AUTO-LEARNING] Iniciando novo ciclo às {datetime.now().strftime('%H:%M:%S')}...")
         topicos = gerar_topicos_populares()
 
         if not topicos:
@@ -85,15 +87,17 @@ def auto_aprender():
         aprendidos_hoje = []
 
         for topico in topicos:
-            pergunta = f"O que é {topico}?"
+            if not aprendizado_ativado:  # Checar também dentro do FOR para parar no meio
+                print("🛑 [AUTO-LEARNING] Modo de aprendizado desativado durante ciclo. Pausando...\n")
+                return
 
+            pergunta = f"O que é {topico}?"
             resposta, fonte = executar_pesquisa(pergunta, falar=False)
 
             if isinstance(resposta, str) and "Erro" not in resposta:
                 titulo = limpar_titulo(topico)
                 data = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                # 👇 Impede duplicatas
                 if consultar_memoria(titulo):
                     print(f"⚠️ Já sei sobre: {titulo}. Pulando...\n")
                     continue

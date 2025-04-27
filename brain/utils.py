@@ -1,5 +1,6 @@
 import os
 import re
+import difflib
 from datetime import datetime
 
 def contem_data_antiga(resposta: str, tolerancia=1) -> bool:
@@ -43,9 +44,20 @@ def log_interaction(user_input, response):
         f.write(f"[{datetime.now().strftime('%H:%M:%S')}] Jarvis: {response}\n\n")
 
 def clean_output(text):
-    # Remove negrito/itálico em Markdown (**, *, __, _)
-    text = re.sub(r"(\*\*|__)(.*?)\1", r"\2", text)  # negrito
-    text = re.sub(r"(\*|_)(.*?)\1", r"\2", text)      # itálico
+    text = re.sub(r"(\*\*|__)(.*?)\1", r"\2", text)
+    text = re.sub(r"(\*|_)(.*?)\1", r"\2", text) 
     lines = text.splitlines()
     lines = [line for line in lines if line.strip() and not line.strip().startswith(">")]
     return " ".join(lines)
+
+def parece_jarvis(texto):
+    palavras_ativadoras = ["jarvis"]
+    texto = texto.lower()
+    palavras = texto.split()
+
+    for palavra in palavras:
+        for ativador in palavras_ativadoras:
+            similaridade = difflib.SequenceMatcher(None, palavra, ativador).ratio()
+            if similaridade >= 0.2: 
+                return True
+    return False

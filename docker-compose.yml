@@ -7,7 +7,7 @@ services:
     devices:
       - /dev/snd
     environment:
-      - OLLAMA_HOST=http://<IP_DO_WINDOWS>:11434
+      - OLLAMA_HOST=http://<IP_DO_WINDOWS>:11500
     volumes:
       - .:/app
     network_mode: "host"
