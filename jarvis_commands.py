@@ -13,14 +13,14 @@ from comandos.comandos_memoria import comandos_memoria
 from comandos.comandos_emocionais import emotional_commands
 from comandos.comandos_reflexao import comandos_reflexao
 from brain.weatherAPI import handle_weather_query
-from brain.weatherAPI import get_weather, is_weather_request, extract_city
+from brain.storage.file_saver import save_response_to_file, should_save_to_file
 from comandos.comandos_avatar import generate_avatar
 from comandos.comandos_pesquisa import execute_search
 from comandos.comandos_sistema import system_command, shutdown_command
 from brain.llama_connection import llama_query
 
-from brain.audio import say, listen
-from brain.utils import log_interaction, normalize_country
+from brain.audio import say
+from brain.utils import log_interaction
 from brain.dev import extract_and_save_code
 
 # New: Persistent connection with LLaMA3
@@ -103,10 +103,19 @@ def process_command(query):
         log_interaction(query, response)
 
         if "```" in response:
-            print("[🤖 SAVING] Code detected via memory.")
+            print("[🤖 SAVING] Código detectado na resposta, chamando extract_and_save_code()...")
             extract_and_save_code(response, titulo=query)
+
         say(response)
+
+        # Log extra para checar decisão de salvar
+        if should_save_to_file(query):
+            save_response_to_file(query, response)
+        else:
+            print(f"[DEBUG] Detecção: NÃO deve salvar a resposta.")
+
         return True
 
+    # Se não houver resposta
     say("Desculpe, ainda não aprendi sobre isso.")
     return True

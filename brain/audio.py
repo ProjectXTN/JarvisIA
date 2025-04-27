@@ -96,8 +96,6 @@ def say(text, lang="pt-BR", gender="MALE"):
     # (Opcional) Também remove linhas que são só espaços e hífens
     clean_text = re.sub(r"^\s*-+\s*$", "", clean_text, flags=re.MULTILINE)
 
-    print(f"\n🧠 Jarvis: {clean_text}\n")
-
     # === CONTINUA NORMAL ===
     url = f"https://texttospeech.googleapis.com/v1/text:synthesize?key={API_KEY_GOOGLE_SPEECH}"
 
