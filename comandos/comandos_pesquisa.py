@@ -1,12 +1,10 @@
 import re
 from brain.audio import say
-from brain.websearch import buscar_na_web
+from brain.websearch import search_web
 
-def executar_pesquisa(query, falar=True):
+
+def execute_search(query, speak=True):
     try:
-        from brain.audio import say
-        from brain.websearch import buscar_na_web
-
         cleaned = re.sub(
             r"^(jarvis,?\s*)?(pesquise|procure|busque)(\s+(na\s+(internet|web))|\s+sobre)?\s+",
             "",
@@ -14,30 +12,29 @@ def executar_pesquisa(query, falar=True):
             flags=re.IGNORECASE
         ).strip(" ,.")
 
-
-        print(f"🔍 Pesquisa limpa: '{cleaned}'")
+        print(f"🔍 Cleaned search: '{cleaned}'")
 
         if not cleaned:
-            if falar:
+            if speak:
                 say("O que você quer que eu pesquise?")
             return None, None
 
-        resposta = buscar_na_web(cleaned)
+        response = search_web(cleaned)
 
-        if isinstance(resposta, tuple):
-            conteudo, fonte = resposta
+        if isinstance(response, tuple):
+            content, source = response
         else:
-            conteudo, fonte = str(resposta), "desconhecida"
+            content, source = str(response), "desconhecida"
 
-        if falar and conteudo:
-            say(str(conteudo[:3000]) + "..." if len(conteudo) > 3000 else str(conteudo))
-        elif falar:
+        if speak and content:
+            say(str(content[:3000]) + "..." if len(content) > 3000 else str(content))
+        elif speak:
             say("Não encontrei nada relevante na internet.")
 
-        return conteudo, fonte
+        return content, source
 
     except Exception as e:
-        print(f"[ERRO] Falha na pesquisa web: {e}")
-        if falar:
+        print(f"[ERROR] Web search failed: {e}")
+        if speak:
             say("Algo deu errado ao tentar pesquisar.")
         return None, None

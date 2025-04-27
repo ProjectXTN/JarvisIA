@@ -2,13 +2,13 @@ import os
 import re
 from brain.audio import say, listen
 from brain.memoria import generate_response, DEFAULT_MODEL
-from jarvis_vision import descrever_imagem
+from jarvis_vision import describe_image
 
-def comando_imagem(query):
+def image_command(query):
     try:
         query = query.lower()
 
-        padroes = [
+        patterns = [
             r"(descrev[ae]?|analisa[rs]?|veja|olha|visualiza[rs]?).*(imagem|foto)",
             r"(imagem|foto).*(descrev[ae]?|analisa[rs]?|veja|olha|visualiza[rs]?)",
             r"o que (tem|há|existe).*(imagem|foto)",
@@ -17,7 +17,7 @@ def comando_imagem(query):
             r"o que você vê.*(imagem|foto)"
         ]
 
-        if not any(re.search(p, query) for p in padroes):
+        if not any(re.search(p, query) for p in patterns):
             return False
 
         match = re.search(r"(imagem|foto)(?:\s+(?:de|em|do|da|na|no))?\s+([\w-]+)", query)
@@ -25,56 +25,56 @@ def comando_imagem(query):
             say("Informe o nome da imagem. Exemplo: 'descreva a imagem skyline' ou 'analise a foto corrida'.")
             return True
 
-        nome_base = match.group(2)
-        formatos = ["jpg", "jpeg", "png", "webp"]
-        pasta = os.path.expanduser("~/Pictures")
+        base_name = match.group(2)
+        formats = ["jpg", "jpeg", "png", "webp"]
+        folder = os.path.expanduser("~/Pictures")
 
-        for ext in formatos:
-            caminho = os.path.join(pasta, f"{nome_base}.{ext}")
-            if os.path.exists(caminho):
-                say(f"Você quer que eu analise visualmente a imagem \"{nome_base}\" ?")
+        for ext in formats:
+            path = os.path.join(folder, f"{base_name}.{ext}")
+            if os.path.exists(path):
+                say(f"Você quer que eu analise visualmente a imagem \"{base_name}\" ?")
                 try:
-                    resposta = listen()
-                    if not resposta:
+                    response = listen()
+                    if not response:
                         say("Não entendi sua resposta. Vou deixar essa imagem para depois.")
                         return True
 
-                    resposta = resposta.lower()
-                    gatilhos_analise = [
+                    response = response.lower()
+                    analysis_triggers = [
                         "sim", "pode", "claro", "analise", "analisa", "análise", "olhe", "olha",
                         "descreva", "descrever", "faça a análise", "explique a imagem", "explique",
                         "me diga o que tem", "quero que veja", "quero que analise", "traduza visualmente", "quero que você analise",
                     ]
 
-                    if any(g in resposta for g in gatilhos_analise):
-                        descricao = descrever_imagem(caminho, texto_usuario=query)
+                    if any(trigger in response for trigger in analysis_triggers):
+                        description = describe_image(path, user_text=query)
 
-                        if not descricao or not descricao.strip():
-                            say(f"Tentei analisar a imagem {os.path.basename(caminho)}, mas não consegui obter uma descrição.")
+                        if not description or not description.strip():
+                            say(f"Tentei analisar a imagem {os.path.basename(path)}, mas não consegui obter uma descrição.")
                             return True
 
-                        if re.search(r"\b(the|and|with|in|of|a|is|are|car|background)\b", descricao.lower()):
-                            traducao = generate_response(f"Traduza para português: {descricao}", DEFAULT_MODEL)
-                            descricao = traducao if traducao else descricao
+                        if re.search(r"\b(o|a|e|com|em|de|um|uma|é|são|fundo)\b", description.lower()):
+                            translation = generate_response(f"Traduza para português: {description}", DEFAULT_MODEL)
+                            description = translation if translation else description
 
-                        say(f"{os.path.basename(caminho)}: {descricao}")
+                        say(f"{os.path.basename(path)}: {description}")
                     else:
-                        resposta_textual = generate_response(f"Fale sobre a imagem {nome_base}", DEFAULT_MODEL)
-                        say(resposta_textual)
+                        textual_response = generate_response(f"Fale sobre a imagem {base_name}", DEFAULT_MODEL)
+                        say(textual_response)
 
                     return True
                 except Exception as e:
                     say(f"Ocorreu um erro durante a interação com a imagem: {e}")
                     return True
 
-        say(f"Não encontrei a imagem ou foto \"{nome_base}\" na sua pasta Imagens.")
+        say(f"Não encontrei a imagem ou foto \"{base_name}\" na sua pasta Imagens.")
         return True
 
     except Exception as e:
         say(f"Ocorreu um erro geral na análise da imagem: {e}")
         return True
 
-comandos_imagem = {
-    "imagem": comando_imagem,
-    "foto": comando_imagem,
+image_commands = {
+    "imagem": image_command,
+    "foto": image_command,
 }

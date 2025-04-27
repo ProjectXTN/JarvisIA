@@ -1,19 +1,19 @@
-from utils_datetime import responder_data, responder_hora
+from utils_datetime import respond_date, respond_time
 from brain.audio import say
 
-def comando_data(query):
-    say(responder_data())
+def date_command(query):
+    say(respond_date())
     return True
 
-def comando_hora(query):
-    say(responder_hora())
+def time_command(query):
+    say(respond_time())
     return True
 
-# === DICIONÁRIO DE COMANDOS ===
-comandos_datahora = {
-    "que dia é hoje": comando_data,
-    "qual é a data de hoje": comando_data,
-    "que horas são": comando_hora,
-    "me diga as horas": comando_hora,
-    "horas": comando_hora
+# === COMMANDS DICTIONARY ===
+datetime_commands = {
+    "que dia é hoje": date_command,
+    "qual é a data de hoje": date_command,
+    "que horas são": time_command,
+    "me diga as horas": time_command,
+    "horas": time_command
 }

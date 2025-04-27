@@ -1,7 +1,7 @@
 from brain.audio import say
 from brain.sistema import open_browser, open_vscode
 
-def comando_navegador(query):
+def browser_command(query):
     if "abrir navegador" in query or "abrir chrome" in query:
         say("Abrindo o navegador agora.")
         open_browser()
@@ -14,10 +14,10 @@ def comando_navegador(query):
 
     return False
 
-# === Dicionário de comandos ===
-comandos_navegador = {
-    "abrir navegador": comando_navegador,
-    "abrir chrome": comando_navegador,
-    "abrir vs code": comando_navegador,
-    "abrir visual studio code": comando_navegador
+# === Commands dictionary ===
+browser_commands = {
+    "abrir navegador": browser_command,
+    "abrir chrome": browser_command,
+    "abrir vs code": browser_command,
+    "abrir visual studio code": browser_command
 }

@@ -2,7 +2,7 @@ import subprocess
 import sys
 from brain.audio import say
 
-def gerar_avatar(query):
+def generate_avatar(query):
     try:
         say("Gerando vídeo com o avatar. Isso pode levar alguns segundos.")
 
@@ -19,7 +19,7 @@ def gerar_avatar(query):
         result = subprocess.run(command, capture_output=True, text=True)
 
         if result.returncode != 0:
-            print(f"[ERRO] {result.stderr}")
+            print(f"[ERROR] {result.stderr}")
             say("Houve um erro ao tentar gerar o vídeo.")
             return True
 
@@ -31,9 +31,9 @@ def gerar_avatar(query):
         say("Ocorreu um erro inesperado.")
         return True
 
-comandos_avatar = {
-    "gerar avatar": gerar_avatar,
-    "crie avatar": gerar_avatar,
-    "animar rosto": gerar_avatar,
-    "criar vídeo com avatar": gerar_avatar
+avatar_commands = {
+    "gerar avatar": generate_avatar,
+    "crie avatar": generate_avatar,
+    "animar rosto": generate_avatar,
+    "criar vídeo com avatar": generate_avatar
 }

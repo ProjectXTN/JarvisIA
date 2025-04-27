@@ -1,7 +1,7 @@
 import re
 import string
 from brain.audio import say
-from brain.sistema import abrir_pasta
+from brain.sistema import open_folder
 
 def comando_abrir_pasta(query):
     texto = query.lower()
@@ -13,7 +13,7 @@ def comando_abrir_pasta(query):
 
     if match:
         nome_pasta = match.group(4).strip()
-        resposta = abrir_pasta(nome_pasta)
+        resposta = open_folder(nome_pasta)
         say(resposta)
     else:
         say("Você precisa me dizer o nome da pasta.")

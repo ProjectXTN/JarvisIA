@@ -2,9 +2,9 @@ import psutil
 import shutil
 import platform
 import re
-from brain.localizacao import obter_localizacao
+from brain.localizacao import get_location
 from brain.audio import say
-from brain.sistema import abrir_pasta
+from brain.sistema import open_folder
 
 # Função auxiliar de status
 def uso_sistema():
@@ -28,7 +28,7 @@ def comando_sistema(query):
 
     elif "abrir a pasta" in query:
         nome = query.split("abrir a pasta")[-1].strip()
-        if abrir_pasta(nome):
+        if open_folder(nome):
             say(f"Pasta \"{nome}\" aberta.")
         else:
             say(f"Pasta \"{nome}\" não encontrada.")
@@ -37,7 +37,7 @@ def comando_sistema(query):
     elif "abrir pasta" in query:
         caminho = query.split("abrir pasta")[-1].strip()
         if caminho:
-            resposta = abrir_pasta(caminho)
+            resposta = open_folder(caminho)
             say(resposta)
         else:
             say("Informe o nome da pasta.")
@@ -64,7 +64,7 @@ def comando_desligar(query):
 
 def comando_localizacao(query):
     if "onde estou" in query or "qual minha localização" in query:
-        resposta = obter_localizacao()
+        resposta = get_location()
         say(resposta)
         return True
     return False

@@ -5,31 +5,31 @@ import os
 from datetime import datetime
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from brain.learning.inserir_memoria import inserir_memoria
+from brain.learning.inserir_memoria import insert_memory
 from brain.learning.consultar_memoria import consultar_memoria
 from brain.learning.atualizar_memoria import atualizar_memoria
 from brain.learning.apagar_memoria import apagar_memoria
 from brain.learning.listar_memoria import listar_memoria
 from brain.learning.verificar_memoria import memoria_ja_existe
-from comandos.comandos_pesquisa import executar_pesquisa
+from comandos.comandos_pesquisa import execute_search
 from brain.learning.consultar_aprendizados_do_dia import aprendizados_de_hoje
 from brain.audio import say,listen
 
-def aprender(conteudo):
-    match = re.search(r"aprenda que (.+)", conteudo)
+def learn(content):
+    match = re.search(r"aprenda que (.+)", content)
     if match:
-        dado = match.group(1).strip()
+        data = match.group(1).strip()
 
-        partes = dado.split(" é ", 1)
-        if len(partes) == 2:
-            topico = partes[0].strip().lower()
-            informacao = "é " + partes[1].strip()
+        parts = data.split(" é ", 1)
+        if len(parts) == 2:
+            topic = parts[0].strip().lower()
+            information = "é " + parts[1].strip()
 
-            if memoria_ja_existe(topico):
+            if memoria_ja_existe(topic):
                 say("Eu já sabia disso, mas obrigado por reforçar!")
                 return True
 
-            if inserir_memoria(topico, informacao):
+            if insert_memory(topic, information):
                 say("Aprendido com sucesso.")
             else:
                 say("Algo deu errado ao tentar aprender isso.")
@@ -40,77 +40,77 @@ def aprender(conteudo):
 
 
 
-def lembrar(conteudo):
-    match = re.search(r"(o que você sabe sobre|lembra sobre) (.+)", conteudo)
+def remember(content):
+    match = re.search(r"(o que você sabe sobre|lembra sobre) (.+)", content)
     if match:
-        assunto = match.group(2).strip().rstrip("?.,!").lower()
-        resultado = consultar_memoria(assunto)
-        if resultado:
-            conteudo, fonte, data = resultado
-            say(f"Sim, eu sei que {conteudo} (Fonte: {fonte}, Aprendido em {data})")
+        subject = match.group(2).strip().rstrip("?.,!").lower()
+        result = consultar_memoria(subject)
+        if result:
+            info, source, date = result
+            say(f"Sim, eu sei que {info} (Fonte: {source}, Aprendido em {date})")
         else:
             say("Não tenho essa informação guardada.")
         return True
     return False
 
-def atualizar_info(conteudo):
-    match = re.search(r"atualize (.+) para (.+)", conteudo)
+def update_info(content):
+    match = re.search(r"atualize (.+) para (.+)", content)
     if match:
-        antigo = match.group(1).strip()
-        novo = match.group(2).strip()
-        if atualizar_memoria(antigo, novo):
+        old_info = match.group(1).strip()
+        new_info = match.group(2).strip()
+        if atualizar_memoria(old_info, new_info):
             say("Informação atualizada.")
         else:
             say("Não consegui atualizar isso.")
         return True
     return False
 
-def esquecer(conteudo):
-    match = re.search(r"esqueça (.+)", conteudo)
+def forget(content):
+    match = re.search(r"esqueça (.+)", content)
     if match:
-        dado = match.group(1).strip()
-        if apagar_memoria(dado):
+        data = match.group(1).strip()
+        if apagar_memoria(data):
             say("Informação esquecida.")
         else:
             say("Não consegui encontrar isso para esquecer.")
         return True
     return False
 
-def listar_tudo(conteudo):
-    titulos = listar_memoria()
-    if titulos:
-        lista = ", ".join(titulos)
-        say(f"Eu sei sobre: {lista}.")
+def list_all(content):
+    titles = listar_memoria()
+    if titles:
+        listing = ", ".join(titles)
+        say(f"Eu sei sobre: {listing}.")
     else:
         say("Ainda não aprendi nada.")
     return True
 
-def aprender_da_web(conteudo):
-    match = re.search(r"(pesquise|procure|busque)\s+sobre\s+(.+?)(?:\s+e\s+(aprenda|aprenda isso))?$", conteudo, re.IGNORECASE)
+def learn_from_web(content):
+    match = re.search(r"(pesquise|procure|busque)\s+sobre\s+(.+?)(?:\s+e\s+(aprenda|aprenda isso))?$", content, re.IGNORECASE)
     if match:
-        assunto = match.group(2).strip()
+        subject = match.group(2).strip()
 
-        # Agora retorna (resposta, fonte_principal)
-        resposta, fonte = executar_pesquisa(f"O que é {assunto}?")
-        if not resposta or "Erro" in resposta:
+        # Now returns (response, main_source)
+        response, source = execute_search(f"O que é {subject}?")
+        if not response or "Erro" in response:
             say("Não consegui encontrar nada relevante na internet.")
             return True
 
-        say(f"Deseja que eu memorize isso como conhecimento sobre {assunto}?")
+        say(f"Deseja que eu memorize isso como conhecimento sobre {subject}?")
 
-        confirmacao = listen().lower()
-        if "sim" in confirmacao or "pode" in confirmacao:
-            data = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        confirmation = listen().lower()
+        if "sim" in confirmation or "pode" in confirmation:
+            date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            # Limpeza do título
-            titulo_limpo = assunto.strip().lower()
-            titulo_limpo = re.sub(r"\be\b$", "", titulo_limpo).strip()
-            titulo_limpo = titulo_limpo.strip(string.punctuation)
+            # Clean title
+            clean_title = subject.strip().lower()
+            clean_title = re.sub(r"\be\b$", "", clean_title).strip()
+            clean_title = clean_title.strip(string.punctuation)
 
-            sucesso = inserir_memoria(titulo_limpo, resposta, fonte, data)
+            success = insert_memory(clean_title, response, source, date)
 
-            if sucesso:
-                say(f"Informação aprendida com sucesso a partir da fonte {fonte}.")
+            if success:
+                say(f"Informação aprendida com sucesso a partir da fonte {source}.")
             else:
                 say("Não consegui armazenar essa informação.")
         else:
@@ -118,11 +118,11 @@ def aprender_da_web(conteudo):
         return True
     return False
 
-def aprendizados_hoje(conteudo):
-    titulos = aprendizados_de_hoje()
-    if titulos:
-        lista = ", ".join(titulos)
-        say(f"Hoje eu aprendi sobre: {lista}.")
+def learnings_today(content):
+    titles = aprendizados_de_hoje()
+    if titles:
+        listing = ", ".join(titles)
+        say(f"Hoje eu aprendi sobre: {listing}.")
     else:
         say("Hoje ainda não aprendi nada novo.")
     return True
@@ -130,14 +130,14 @@ def aprendizados_hoje(conteudo):
 
 
 comandos_memoria = {
-    "aprenda que": aprender,
-    "o que você sabe sobre": lembrar,
-    "lembra sobre": lembrar,
-    "atualize": atualizar_info,
-    "esqueça": esquecer,
-    "liste tudo o que você sabe": listar_tudo,
-    "liste tudo que você sabe": listar_tudo,
-    "pesquise sobre": aprender_da_web,
-    "o que você aprendeu hoje": aprendizados_hoje,
-    "o que você aprendeu": aprendizados_hoje 
+    "aprenda que": learn,
+    "o que você sabe sobre": remember,
+    "lembra sobre": remember,
+    "atualize": update_info,
+    "esqueça": forget,
+    "liste tudo o que você sabe": list_all,
+    "liste tudo que você sabe": list_all,
+    "pesquise sobre": learn_from_web,
+    "o que você aprendeu hoje": learnings_today,
+    "o que você aprendeu": learnings_today 
 }

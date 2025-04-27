@@ -6,36 +6,36 @@ from datetime import datetime
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from brain.audio import say
-from brain.learning.inserir_emocao import registrar_emocao
-from brain.learning.consultar_emocao import consultar_emocoes
-from brain.learning.normalizar_emocao import normalizar_emocao
-from brain.learning.interpretar_data import interpretar_intervalo_data
+from brain.learning.inserir_emocao import register_emotion
+from brain.learning.consultar_emocao import query_emotions
+from brain.learning.normalizar_emocao import normalize_emotion
+from brain.learning.interpretar_data import interpret_date_range
 
 
 
-def registrar_lembranca_emocional(conteudo):
+def register_emotional_memory(content):
     try:
         match = re.search(
             r"(lembre que|lembra que|registre que|registro que) (.+?) (me deixou|me fez sentir|me deixa|me deixa com|eu gosto) (.+?)(?: em (.+))?$",
-            conteudo,
+            content,
             re.IGNORECASE,
         )
         if match:
-            evento = match.group(2).strip()
-            emocao_raw = match.group(4).strip().lower()
-            emocao = normalizar_emocao(emocao_raw)
+            event = match.group(2).strip()
+            raw_emotion = match.group(4).strip().lower()
+            emotion = normalize_emotion(raw_emotion)
 
-            data = (
+            date = (
                 match.group(5)
                 if match.group(5)
                 else datetime.now().strftime("%Y-%m-%d")
             )
             tags = None
 
-            sucesso = registrar_emocao(evento, emocao, data, tags)
+            success = register_emotion(event, emotion, date, tags)
 
-            if sucesso:
-                say(f"Lembrança registrada com emoção '{emocao}'.")
+            if success:
+                say(f"Lembrança registrada com emoção '{emotion}'.")
             else:
                 say("Não consegui registrar essa lembrança.")
             return True
@@ -44,56 +44,54 @@ def registrar_lembranca_emocional(conteudo):
             say("Não entendi bem o que você quer que eu lembre com emoção.")
             return True
     except Exception as e:
-        print(f"[ERRO] Falha no registro de lembrança emocional: {e}")
+        print(f"[ERROR] Failed to register emotional memory: {e}")
         say("Ocorreu um erro ao tentar registrar sua lembrança.")
         return True
 
-
-def consultar_lembranca_emocional(conteudo):
+def query_emotional_memory(content):
     try:
-        print(f"[DEBUG] Conteúdo recebido para consulta emocional: {conteudo}")
+        print(f"[DEBUG] Content received for emotional query: {content}")
         match = re.search(
             r"(?:o que\s+|que\s+|)?me\s+(fez feliz|deixou feliz|deixou triste|estressou|marcou|irritou)(.*)?",
-            conteudo,
+            content,
             re.IGNORECASE,
         )
         if match:
-            emocao_raw = match.group(1).strip().lower()
-            complemento = match.group(2).strip().lower() if match.group(2) else ""
-            emocao = normalizar_emocao(emocao_raw)
-            data_inicio, data_fim = interpretar_intervalo_data(complemento)
+            raw_emotion = match.group(1).strip().lower()
+            complement = match.group(2).strip().lower() if match.group(2) else ""
+            emotion = normalize_emotion(raw_emotion)
+            start_date, end_date = interpret_date_range(complement)
 
-            print(f"[DEBUG] Emoção detectada: {emocao}")
-            print(f"[DEBUG] Intervalo de data: {data_inicio} -> {data_fim}")
+            print(f"[DEBUG] Detected emotion: {emotion}")
+            print(f"[DEBUG] Date range: {start_date} -> {end_date}")
 
-            resultados = consultar_emocoes(emocao, data_inicio, data_fim)
-            print(f"[DEBUG] Resultados encontrados: {resultados}")
+            results = query_emotions(emotion, start_date, end_date)
+            print(f"[DEBUG] Results found: {results}")
 
-            if resultados:
-                frases = [f"- {r[0]} (em {r[2]})" for r in resultados]
-                resposta = "\n".join(frases)
-                say(f"Esses eventos te causaram '{emocao}':\n{resposta}")
+            if results:
+                sentences = [f"- {r[0]} (em {r[2]})" for r in results]
+                response = "\n".join(sentences)
+                say(f"Esses eventos te causaram '{emotion}':\n{response}")
             else:
-                say(f"Não encontrei lembranças relacionadas a '{emocao}' nesse período.")
+                say(f"Não encontrei lembranças relacionadas a '{emotion}' nesse período.")
             return True
         else:
-            print("[DEBUG] Nenhuma emoção reconhecida na frase.")
+            print("[DEBUG] No emotion recognized in the sentence.")
             say("Não consegui entender qual emoção ou período você quer que eu consulte.")
             return True
     except Exception as e:
-        print(f"[ERRO] Falha ao consultar lembrança emocional: {e}")
+        print(f"[ERROR] Failed to query emotional memory: {e}")
         say("Ocorreu um erro ao tentar lembrar disso.")
         return True
 
-
-comandos_emocionais = {
-    "lembre que": registrar_lembranca_emocional,
-    "lembra que": registrar_lembranca_emocional,
-    "registre que": registrar_lembranca_emocional,
-    "me fez feliz": consultar_lembranca_emocional,
-    "me deixou triste": consultar_lembranca_emocional,
-    "me estressou": consultar_lembranca_emocional,
-    "me marcou": consultar_lembranca_emocional,
-    "me irritou": consultar_lembranca_emocional,
-    "me deixou feliz": consultar_lembranca_emocional,
+emotional_commands = {
+    "lembre que": register_emotional_memory,
+    "lembra que": register_emotional_memory,
+    "registre que": register_emotional_memory,
+    "me fez feliz": query_emotional_memory,
+    "me deixou triste": query_emotional_memory,
+    "me estressou": query_emotional_memory,
+    "me marcou": query_emotional_memory,
+    "me irritou": query_emotional_memory,
+    "me deixou feliz": query_emotional_memory,
 }

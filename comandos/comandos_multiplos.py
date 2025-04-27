@@ -1,29 +1,29 @@
 import re
 from brain.audio import say
 
-# Expressões que indicam encadeamento de comandos
-PADROES_MULTIPLOS = [
+# Expressions indicating command chaining
+MULTIPLE_PATTERNS = [
     r"\b(e\s+então|e\s+depois|então|depois|e)\b"
 ]
 
-def comando_multiplos(query):
+def multiple_command(query):
     query = query.lower()
 
-    if not any(re.search(p, query) for p in PADROES_MULTIPLOS):
-        return False  # Não contém comando múltiplo
+    if not any(re.search(p, query) for p in MULTIPLE_PATTERNS):
+        return False  # No multiple command detected
 
     from jarvis_commands import process_command
 
-    partes = re.split(r"\b(?:e\s+então|e\s+depois|então|depois|e)\b", query)
+    parts = re.split(r"\b(?:e\s+então|e\s+depois|então|depois|e)\b", query)
 
-    for parte in partes:
-        parte = parte.strip()
-        if parte:
-            sucesso = process_command(parte)
-            if not sucesso:
-                say(f"Não consegui entender essa parte: \"{parte}\".")
+    for part in parts:
+        part = part.strip()
+        if part:
+            success = process_command(part)
+            if not success:
+                say(f"Não consegui entender essa parte: \"{part}\".")
     return True
 
-comandos_multiplos = {
-    "comando_multiplo": comando_multiplos
+multiple_commands = {
+    "comando_multiplo": multiple_command
 }
