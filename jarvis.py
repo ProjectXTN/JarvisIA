@@ -8,7 +8,7 @@ from threading import Thread
 from brain.audio import say, listen
 from jarvis_commands import process_command
 from comandos.comandos_sistema import shutdown_command
-from core.inicializador import is_already_running, start_llava, remove_lock, passive_mode
+from core.inicializador import is_already_running, start_llava, remove_lock, passive_mode, start_stable_diffusion
 from brain.learning import auto_aprendizado
 from brain.learning.auto_aprendizado import auto_aprender
 from brain.utils import sounds_like_jarvis
@@ -20,6 +20,7 @@ if is_already_running():
     sys.exit()
 
 start_llava()
+start_stable_diffusion()
 
 # Start autonomous learning in background
 # Thread(target=auto_aprender, daemon=True).start()

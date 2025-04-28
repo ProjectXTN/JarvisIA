@@ -8,6 +8,7 @@ from brain.utils import normalize_text, sounds_like_jarvis
 LOCK_FILE = "jarvis.lock"
 VISION_MODELS = ["llama3.2-vision:90b", "llama3.2", "llama3.3"]
 
+
 def is_already_running():
     if os.path.exists(LOCK_FILE):
         return True
@@ -19,16 +20,20 @@ def is_already_running():
         print(f"Error creating lock: {e}")
         return True
 
+
 def remove_lock():
     if os.path.exists(LOCK_FILE):
         os.remove(LOCK_FILE)
+
 
 def start_llava():
     try:
         requests.get("http://localhost:11434")
     except requests.exceptions.ConnectionError:
         print("Starting Ollama server...")
-        subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen(
+            ["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
         time.sleep(5)
 
     for model in VISION_MODELS:
@@ -38,10 +43,15 @@ def start_llava():
             subprocess.run(["ollama", "pull", model])
 
         print(f"Starting model {model}...")
-        subprocess.Popen(["ollama", "run", model], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen(
+            ["ollama", "run", model],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
     time.sleep(5)
     warmup_vision_model()
+
 
 def warmup_vision_model():
     print("🔥 Warming up the vision model...")
@@ -52,10 +62,11 @@ def warmup_vision_model():
             capture_output=True,
             encoding="utf-8",
             text=True,
-            timeout=10
+            timeout=10,
         )
     except:
         pass
+
 
 def passive_mode():
     print("Passive mode activated. Waiting for the 'Jarvis' hotword...")
@@ -71,3 +82,29 @@ def passive_mode():
             return text_raw
         else:
             print(f"[DEBUG] Nenhuma ativação detectada em: {text_raw}")
+
+
+def start_stable_diffusion():
+    try:
+        response = requests.get("http://127.0.0.1:7860", timeout=3)
+        if response.status_code == 200:
+            print("✅ Stable Diffusion server is already running.")
+            return
+    except requests.exceptions.RequestException:
+        print("⚙️ Stable Diffusion server not detected. Starting now...")
+
+    try:
+        # Caminho até o Python certo dentro do webui
+        python_path = os.path.abspath("stable-diffusion-webui/venv/Scripts/python.exe")
+        
+        subprocess.Popen(
+            [python_path, "launch.py"],
+            cwd="stable-diffusion-webui",
+            creationflags=subprocess.CREATE_NEW_CONSOLE,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        print("⏳ Waiting for Stable Diffusion server to start...")
+        time.sleep(30)
+    except Exception as e:
+        print(f"❌ Failed to start Stable Diffusion: {e}")
