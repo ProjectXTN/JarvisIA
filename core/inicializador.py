@@ -2,6 +2,7 @@ import os
 import subprocess
 import requests
 import time
+import sys
 from brain.audio import listen
 from brain.utils import normalize_text, sounds_like_jarvis
 
@@ -86,7 +87,7 @@ def passive_mode():
 
 def start_stable_diffusion():
     try:
-        response = requests.get("http://127.0.0.1:7860", timeout=3)
+        response = requests.get("http://127.0.0.1:7860/sdapi/v1/txt2img", timeout=3)
         if response.status_code == 200:
             print("✅ Stable Diffusion server is already running.")
             return
@@ -94,17 +95,28 @@ def start_stable_diffusion():
         print("⚙️ Stable Diffusion server not detected. Starting now...")
 
     try:
-        # Caminho até o Python certo dentro do webui
-        python_path = os.path.abspath("stable-diffusion-webui/venv/Scripts/python.exe")
-        
+        webui_bat = os.path.abspath("stable-diffusion-webui/webui-user.bat")
+
         subprocess.Popen(
-            [python_path, "launch.py"],
+            ["cmd.exe", "/c", webui_bat],
             cwd="stable-diffusion-webui",
             creationflags=subprocess.CREATE_NEW_CONSOLE,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
         )
         print("⏳ Waiting for Stable Diffusion server to start...")
-        time.sleep(30)
+        start_time = time.time()
+        timeout = 120
+        while time.time() - start_time < timeout:
+            try:
+                response = requests.get(
+                    "http://127.0.0.1:7860/sdapi/v1/options", timeout=3
+                )
+                if response.status_code == 200:
+                    print("✅ Stable Diffusion API is online!")
+                    return
+            except requests.exceptions.RequestException:
+                pass
+            time.sleep(3)
+
+        print("❌ Timeout: Stable Diffusion server did not start in time.")
     except Exception as e:
         print(f"❌ Failed to start Stable Diffusion: {e}")

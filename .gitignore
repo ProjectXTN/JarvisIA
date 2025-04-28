@@ -21,6 +21,7 @@ logs/
 *.bak
 *.swp
 .DS_Store
+jarvis.lock
 Thumbs.db
 
 # Arquivos de build
