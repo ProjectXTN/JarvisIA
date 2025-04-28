@@ -12,11 +12,11 @@ from comandos.comandos_multiplos import multiple_commands
 from comandos.comandos_memoria import comandos_memoria
 from comandos.comandos_emocionais import emotional_commands
 from comandos.comandos_reflexao import comandos_reflexao
+from comandos.comandos_pesquisa import execute_search
+from comandos.comandos_avatar import generate_avatar
+from comandos.comandos_sistema import system_command, shutdown_command
 from brain.weatherAPI import handle_weather_query
 from brain.storage.file_saver import save_response_to_file, should_save_to_file
-from comandos.comandos_avatar import generate_avatar
-from comandos.comandos_pesquisa import execute_search
-from comandos.comandos_sistema import system_command, shutdown_command
 from brain.llama_connection import llama_query
 
 from brain.audio import say
@@ -49,17 +49,16 @@ COMMAND_HANDLERS = [
 def process_command(query):
     query = query.lower().strip()
 
-    # Remove "jarvis" from the beginning, with or without comma/space
+    # Remove "jarvis" do começo
     query = re.sub(r"^jarvis[\s,]*", "", query)
     query = query.lstrip(", ").strip()
     query = query.rstrip(string.punctuation)
 
-    print(f"[DEBUG] Received phrase: {query}")
+    print(f"[DEBUG] Phrase after cleaning: {query}")
 
     if shutdown_command(query) is False:
         return False
 
-    # Still expecting search-related phrases in Portuguese
     if re.search(r"\b(pesquise|procure|busque)\s+(na\s+)?(internet|web)\b", query):
         if execute_search(query):
             return True
@@ -68,22 +67,27 @@ def process_command(query):
         if isinstance(group, dict):
             for key, func in group.items():
                 if key in query:
-                    print(f"[DEBUG] Executing command: {key}")
-                    return func(query)
+                    try:
+                        return func(query)
+                    except Exception as e:
+                        say("Houve um problema ao executar o comando. Tente novamente.")
+                        return True
         elif isinstance(group, list):
             for pattern, func in group:
                 if re.search(pattern, query):
-                    print(f"[DEBUG] Executing regex: {pattern}")
-                    return func(query)
-    
-    # Intelligently detects weather forecast request
+                    try:
+                        return func(query)
+                    except Exception as e:
+                        say("Houve um problema ao executar o comando. Tente novamente.")
+                        return True
+
     if handle_weather_query(query):
         return True
 
-    # 🔁 Fallback using LLaMA3 + Cache
+
+    # 🔁 Fallback usando LLaMA3 + Cache
     if query in response_cache:
         response = response_cache[query]
-        print("[DEBUG] Response retrieved from cache.")
     else:
         start_time = time.time()
         response = llama_query(query)
@@ -92,7 +96,7 @@ def process_command(query):
         generation_time = end_time - start_time
 
         if response:
-            print(f"\n🧠 Jarvis generated (in {generation_time:.2f} seconds):\n{response}\n")
+            print(f"\n🧠 Jarvis generated (in {generation_time:.2f} seconds)")
         else:
             print(f"⚠️ LLaMA failed to generate a response after {generation_time:.2f} seconds.")
 
@@ -108,11 +112,10 @@ def process_command(query):
 
         say(response)
 
-        # Log extra para checar decisão de salvar
         if should_save_to_file(query):
             save_response_to_file(query, response)
         else:
-            print(f"[DEBUG] Detecção: NÃO deve salvar a resposta.")
+            print("[DEBUG] Detecção: NÃO deve salvar a resposta.")
 
         return True
 

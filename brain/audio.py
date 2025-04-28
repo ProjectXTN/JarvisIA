@@ -84,16 +84,9 @@ async def speak_with_gui(text):
 # === Public speech function ===
 def say(text, lang="pt-BR", gender="MALE"):
     
-    # Primeiro limpa markdowns e formatação
     clean_text = clean_output(text).strip()
-
-    # Remove * isolados
     clean_text = re.sub(r"(^\s*\*\s*|\s+\*\s+)", " ", clean_text, flags=re.MULTILINE)
-
-    # Remove SEQUÊNCIAS de 3 ou mais hífens (mas mantém hífen normal)
     clean_text = re.sub(r"-{3,}", " ", clean_text)
-
-    # (Opcional) Também remove linhas que são só espaços e hífens
     clean_text = re.sub(r"^\s*-+\s*$", "", clean_text, flags=re.MULTILINE)
 
     # === CONTINUA NORMAL ===
@@ -117,6 +110,7 @@ def say(text, lang="pt-BR", gender="MALE"):
         }
     }
 
+    print(f"\n🧠 Jarvis : {clean_text}")
     print("🔊 Starting TTS generation...")
     start_time = time.time()
 
@@ -218,10 +212,10 @@ def listen():
             with transcribe_lock:
                 segments, info = model.transcribe(
                     f.name,
-                    language="pt",       # 🇧🇷 Forçar português
-                    beam_size=5,          # 🔥 Melhorar a qualidade
-                    vad_filter=True,      # 🎙️ Remover ruídos e silêncios
-                    vad_parameters={"threshold": 0.5}  # ⚡ Mais sensível a fala
+                    language="pt",      
+                    beam_size=5,         
+                    vad_filter=True,      
+                    vad_parameters={"threshold": 0.5} 
                 )
 
             end_time = time.time()

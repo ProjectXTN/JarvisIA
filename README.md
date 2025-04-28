@@ -40,6 +40,8 @@ Internet connection (for searches and autonomous learning)
 
 🖼 Local Image Vision — Scan and describe images stored locally
 
+🧠 AI Image Generation — Create stunning AI-generated images based on voice prompts using Stable Diffusion
+
 💾 Session Memory — Maintains context during conversations
 
 🧠 Long-Term Memory — Persists important facts, feelings, and events via SQLite
@@ -161,6 +163,36 @@ Store learned facts with sources and dates into the database
 Example:
 
 "Jarvis, aprenda sobre entrelaçamento quântico"
+
+## 🧠 Autonomous Learning
+Jarvis can:
+
+Search the internet autonomously
+
+Summarize new knowledge
+
+Store learned facts with sources and dates into the database
+
+Example:
+
+"Jarvis, learn about quantum entanglement."
+
+## 🖼️ AI Image Generation
+Jarvis can:
+
+Generate AI images based on voice prompts
+
+Use Stable Diffusion locally (with support for high-resolution images)
+
+Automatically refine and upscale images when necessary
+
+Example:
+
+"Jarvis, create an ultra-realistic 4K image of a cyberpunk futuristic city with lots of neon and people."
+
+"Jarvis, draw a medieval castle with a dragon flying above."
+
+The generated images are automatically saved under:
 
 ## 🚀 Getting Started
 

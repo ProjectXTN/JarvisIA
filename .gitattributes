@@ -1,0 +1,5 @@
+git lfs track "*.ckpt"
+git lfs track "*.safetensors"
+git lfs track "*.pt"
+git lfs track "*.bin"
+git lfs track "*.onnx"
