@@ -71,6 +71,7 @@ def process_command(query):
                         return func(query)
                     except Exception as e:
                         say("Houve um problema ao executar o comando. Tente novamente.")
+                        print(f'Error COMMAND_HANDLERS {e}')
                         return True
         elif isinstance(group, list):
             for pattern, func in group:
@@ -79,6 +80,7 @@ def process_command(query):
                         return func(query)
                     except Exception as e:
                         say("Houve um problema ao executar o comando. Tente novamente.")
+                        print(f'Error COMMAND_HANDLERS {e}')
                         return True
 
     if handle_weather_query(query):

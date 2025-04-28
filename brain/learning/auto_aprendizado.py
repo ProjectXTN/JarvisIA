@@ -8,7 +8,7 @@ from brain.learning.inserir_memoria import insert_memory
 from brain.memoria import generate_response, DEFAULT_MODEL, DEFAULT_MODEL_HIGH
 from brain.learning.consultar_memoria import consultar_memoria
 
-aprendizado_ativado = False  # Flag global de controle
+aprendizado_ativado = False
 
 
 def limpar_titulo(texto):
@@ -55,7 +55,6 @@ def log_aprendizado(titulo, conteudo, fonte, data):
     log_dir = "logs"
     os.makedirs(log_dir, exist_ok=True)
 
-    # Define nome do arquivo com base na data de hoje
     data_hoje = datetime.now().strftime("%Y-%m-%d")
     nome_arquivo = os.path.join(log_dir, f"aprendizados_{data_hoje}.txt")
 
@@ -87,12 +86,12 @@ def auto_aprender():
         aprendidos_hoje = []
 
         for topico in topicos:
-            if not aprendizado_ativado:  # Checar também dentro do FOR para parar no meio
+            if not aprendizado_ativado:
                 print("🛑 [AUTO-LEARNING] Modo de aprendizado desativado durante ciclo. Pausando...\n")
                 return
 
             pergunta = f"O que é {topico}?"
-            resposta, fonte = execute_search(pergunta, falar=False)
+            resposta, fonte = execute_search(pergunta, speak=False)
 
             if isinstance(resposta, str) and "Erro" not in resposta:
                 titulo = limpar_titulo(topico)
@@ -113,11 +112,11 @@ def auto_aprender():
                 print(f"❌ Não foi possível pesquisar sobre: {topico}")
 
         if aprendidos_hoje:
-            print(f"\n📚 [AUTO-LEARNING] Tópicos aprendidos neste ciclo:")
+            print("\n📚 [AUTO-LEARNING] Tópicos aprendidos neste ciclo:")
             for t in aprendidos_hoje:
                 print(f"   • {t}")
         else:
             print("🛑 Nenhum aprendizado concluído neste ciclo.")
 
-        print(f"\n🔁 Iniciando próximo ciclo...\n")
+        print("\n🔁 Iniciando próximo ciclo...\n")
         time.sleep(2)

@@ -26,7 +26,7 @@ Internet connection (for searches and autonomous learning)
 
 🧠 Voice Activity Detection (VAD) — Natural listening using smart silence detection
 
-🗣 Text-to-Speech — Using Microsoft Edge TTS (Antonio Neural voice)
+🗣 Text-to-Speech — Using Google TTS API
 
 🎧 Speech-to-Text — Using OpenAI Whisper/Fast-Whisper (large model optimized for PT-BR)
 

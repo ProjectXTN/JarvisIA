@@ -79,7 +79,7 @@ def image_command(query):
                         say(f"{os.path.basename(path)}: {description}")
                     else:
                         textual_response = generate_response(
-                            f"Fale sobre a imagem {base_name}", DEFAULT_MODEL_HIGH
+                            f"Fale sobre a imagem {base_name}", DEFAULT_MODEL
                         )
                         say(textual_response)
 

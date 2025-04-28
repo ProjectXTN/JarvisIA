@@ -1,7 +1,6 @@
 import requests
 import base64
 import os
-import platform
 from pathlib import Path
 import time
 from brain.storage.open_file import safe_open_file
@@ -17,8 +16,8 @@ class StableDiffusionGenerator:
         output_folder=None,
         steps=50,
         cfg_scale=10,
-        width=2048,
-        height=2048,
+        width=1024,
+        height=1024,
         sampler_name="DPM++ 2M Karras",
         refiner=True,
     ):

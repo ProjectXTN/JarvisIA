@@ -6,7 +6,7 @@ MAX_CONTEXT = 5
 DEFAULT_MODEL = "llama3.2"
 DEFAULT_MODEL_HIGH = "llama3.3"
 
-def generate_response(prompt, model_name=DEFAULT_MODEL_HIGH):
+def generate_response(prompt, model_name=DEFAULT_MODEL):
     try:
         # Print debug about which model is being used
         print(f"[🧠 DEBUG] Usando o modelo: {model_name}")

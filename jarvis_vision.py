@@ -5,11 +5,11 @@ VISION_MODEL_LOW = "llava:13b"
 VISION_MODEL_HIGH = "llama3.2-vision:90b"
 
 PRECISION_TRIGGERS = [
-    r"\b(detail(ed)?|details?)\b",
-    r"\bprecision\b",
-    r"\bwith\s+richness\b",
-    r"\bin high definition\b",
-    r"\bwith\s+details\b"
+    r"\b(detalh(e|es|ado|ada|ados|adas)?)\b",
+    r"\bprecisão\b",
+    r"\bcom\s+riqueza\b",
+    r"\bem alta definição\b",
+    r"\bcom\s+detalhes\b"
 ]
 
 def is_detailed_prompt(user_text):
@@ -26,6 +26,8 @@ def describe_image(image_path, user_text=""):
     )
 
     prompt_with_image = f"<image>{image_path}</image>\n{model_prompt}"
+    
+    print(f"🔍 [VISION] Analisando imagem usando modelo: {chosen_model}")
 
     try:
         result = subprocess.run(

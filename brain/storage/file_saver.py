@@ -32,8 +32,6 @@ def save_response_to_file(question, response):
 
         file_path = os.path.join(documents_folder, f"{file_title}.txt")
 
-        print(f"[DEBUG] Caminho completo do arquivo: {file_path}")
-
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(f"Pergunta: {question}\n\n")
             f.write(f"Resposta do Jarvis:\n{response}")

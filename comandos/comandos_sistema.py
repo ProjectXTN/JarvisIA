@@ -2,9 +2,10 @@ import psutil
 import shutil
 import platform
 import re
-from brain.localizacao import get_location
 from brain.audio import say
 from brain.sistema import open_folder
+from core.inicializador import get_stable_diffusion_process
+
 
 # Auxiliary system status function
 def system_usage():
@@ -18,20 +19,25 @@ def system_usage():
         f"💽 Disco: {disk.used // (1024**3)}GB de {disk.total // (1024**3)}GB"
     )
 
+
 # Main handler for system commands
 def system_command(query):
     query = query.lower()
 
-    if "uso da memória" in query or "uso da cpu" in query or "status do sistema" in query:
+    if (
+        "uso da memória" in query
+        or "uso da cpu" in query
+        or "status do sistema" in query
+    ):
         say(system_usage())
         return True
 
     elif "abrir a pasta" in query:
         name = query.split("abrir a pasta")[-1].strip()
         if open_folder(name):
-            say(f"Pasta \"{name}\" aberta.")
+            say(f'Pasta "{name}" aberta.')
         else:
-            say(f"Pasta \"{name}\" não encontrada.")
+            say(f'Pasta "{name}" não encontrada.')
         return True
 
     elif "abrir pasta" in query:
@@ -45,6 +51,21 @@ def system_command(query):
 
     return False
 
+
+def shutdown_stable_diffusion():
+    process = get_stable_diffusion_process()
+
+    if process is not None:
+        try:
+            process.terminate()
+            process.wait(timeout=10)
+            print("🛑 Stable Diffusion server terminated cleanly.")
+        except Exception as e:
+            print(f"⚠️ Failed to shutdown Stable Diffusion server: {e}")
+    else:
+        print("⚠️ No Stable Diffusion process to terminate.")
+
+
 def shutdown_command(query):
     query = query.lower()
 
@@ -52,28 +73,16 @@ def shutdown_command(query):
     patterns = [
         r"\b(jarvis)?[ ,]*desliga[rs]?\b",
         r"\b(encerrar|desligar|sair|off|tchau|falou|vaza|vá embora|vai embora|até logo|adeus)\b",
-        r"\b(jarvis)?[ ,]*(pode)?[ ]*(desligar|sair)\b"
+        r"\b(jarvis)?[ ,]*(pode)?[ ]*(desligar|sair)\b",
     ]
 
     for pattern in patterns:
         if re.search(pattern, query):
             say("Jarvis desligando.")
+
+            # 🛠️ Chama o shutdown do servidor antes de sair
+            shutdown_stable_diffusion()
+
             return False  # Returns False to exit main loop
 
     return True
-
-def location_command(query):
-    if "onde estou" in query or "qual minha localização" in query:
-        response = get_location()
-        say(response)
-        return True
-    return False
-
-# System commands dictionary
-system_commands = {
-    "abrir a pasta": system_command,
-    "abrir pasta": system_command,
-    "uso da memória": system_command,
-    "uso da cpu": system_command,
-    "status do sistema": system_command
-}
