@@ -1,7 +1,7 @@
 import os
 import re
 from brain.audio import say, listen
-from brain.memoria import generate_response, DEFAULT_MODEL, DEFAULT_MODEL_HIGH
+from brain.memoria import llama_query, DEFAULT_MODEL, DEFAULT_MODEL_HIGH
 from comandos.commands_dispatch_image import dispatch_image_command
 from jarvis_vision import describe_image
 
@@ -70,7 +70,7 @@ def image_command(query):
 #                            r"\b(o|a|e|com|em|de|um|uma|é|são|fundo)\b",
 #                            description.lower(),
 #                        ):
-#                            translation = generate_response(
+#                            translation = llama_query(
 #                                f"Traduza para português: {description}",
 #                                DEFAULT_MODEL_HIGH,
 #                            )
@@ -78,7 +78,7 @@ def image_command(query):
 
                         say(f"{os.path.basename(path)}: {description}")
                     else:
-                        textual_response = generate_response(
+                        textual_response = llama_query(
                             f"Fale sobre a imagem {base_name}", DEFAULT_MODEL
                         )
                         say(textual_response)

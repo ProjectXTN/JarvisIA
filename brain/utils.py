@@ -70,10 +70,19 @@ def log_interaction(user_input, response):
         f.write(f"[{datetime.now().strftime('%H:%M:%S')}] Jarvis: {response}\n\n")
 
 def clean_output(text):
+    """Clean the model's output for better TTS experience."""
+    # Remove bold and italic markdown
     text = re.sub(r"(\*\*|__)(.*?)\1", r"\2", text)
     text = re.sub(r"(\*|_)(.*?)\1", r"\2", text)
+    
+    # Remove markdown headers (###, ##, #)
+    text = re.sub(r"^\s{0,3}#{1,6}\s*", "", text, flags=re.MULTILINE)
+    
+    # Remove blockquotes
     lines = text.splitlines()
     lines = [line for line in lines if line.strip() and not line.strip().startswith(">")]
+    
+    # Join everything back into a single string
     return " ".join(lines)
 
 def sounds_like_jarvis(text):
@@ -91,8 +100,6 @@ def sounds_like_jarvis(text):
             if similarity > best_match:
                 best_match = similarity
                 best_word = word
-
-    #print(f"[DEBUG] Melhor similaridade detectada: {best_match:.2f} para '{best_word}'")
 
     if best_match >= 0.6:
         return True, best_word

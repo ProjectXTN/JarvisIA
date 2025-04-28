@@ -14,7 +14,7 @@ from brain.learning.verificar_memoria import memoria_ja_existe
 from comandos.comandos_pesquisa import execute_search
 from brain.learning.consultar_aprendizados_do_dia import aprendizados_de_hoje
 from brain.audio import say,listen
-from brain.memoria import generate_response, DEFAULT_MODEL_HIGH
+from brain.memoria import llama_query, DEFAULT_MODEL_HIGH
 
 def learn(content):
     match = re.search(r"aprenda que (.+)", content)
@@ -51,7 +51,7 @@ def remember(content):
             say(f"Sim, eu sei que {info} (Fonte: {source}, Aprendido em {date})")
         else:
             say("Não encontrei essa informação na minha memória. Vou tentar buscar no meu conhecimento interno...")
-            response = generate_response(f"O que você sabe sobre {subject}?")
+            response = llama_query(f"O que você sabe sobre {subject}?")
             if response:
                 say(response)
             else:

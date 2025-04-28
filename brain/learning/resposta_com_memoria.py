@@ -1,6 +1,6 @@
 import re
 from brain.learning.consultar_memoria import consultar_memoria, consultar_tudo
-from brain.memoria import DEFAULT_MODEL,DEFAULT_MODEL_HIGH, generate_response
+from brain.memoria import DEFAULT_MODEL,DEFAULT_MODEL_HIGH, llama_query
 
 
 def generate_contextual_response(question, model=DEFAULT_MODEL_HIGH):
@@ -38,7 +38,7 @@ def generate_contextual_response(question, model=DEFAULT_MODEL_HIGH):
             f"Responda de forma clara, objetiva e apenas com base no que você sabe.\n"
         )
 
-    return generate_response(prompt, model)
+    return llama_query(prompt, model)
 
 def respond_with_inference(question, model=DEFAULT_MODEL_HIGH):
     is_code_request = any(p in question.lower() for p in ["código", "script", "função", "programa", "html", "css", "javascript", "python", "classe", "crie", "faça"])
@@ -49,7 +49,7 @@ def respond_with_inference(question, model=DEFAULT_MODEL_HIGH):
             f"Não adicione comentários, explicações, título, introdução ou conclusão.\n"
             f"Retorne apenas o bloco de código entre crases triplas no formato da linguagem."
         )
-        return generate_response(prompt, model)
+        return llama_query(prompt, model)
 
     topics = re.findall(
         r"\b(?:inteligência artificial|robótica|blockchain|energia renovável|biotecnologia|computação quântica|aumento da população)\b",
@@ -64,7 +64,7 @@ def respond_with_inference(question, model=DEFAULT_MODEL_HIGH):
             f"Pergunta: {question}\n"
             f"Responda de forma objetiva e clara em português."
         )
-        return generate_response(prompt, model)
+        return llama_query(prompt, model)
 
     knowledge_base = []
     for topic in topics:
@@ -82,7 +82,7 @@ def respond_with_inference(question, model=DEFAULT_MODEL_HIGH):
             f"Pergunta: {question}\n"
             f"Responda de forma objetiva e clara em português."
         )
-        return generate_response(prompt, model)
+        return llama_query(prompt, model)
 
     context = "\n\n".join(
         f"[{title.upper()}]\n{text}" for title, text in knowledge_base
@@ -96,4 +96,4 @@ def respond_with_inference(question, model=DEFAULT_MODEL_HIGH):
     )
 
     print(f"[🧠 INFERENCE] Generating response based on multiple knowledge entries...")
-    return generate_response(prompt, model)
+    return llama_query(prompt, model)

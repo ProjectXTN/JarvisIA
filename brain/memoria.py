@@ -1,39 +1,74 @@
-from brain.utils import clean_output
 import subprocess
+import requests
+from brain.utils import clean_output
 
+# === Contexto de memória para manter a conversação ===
 memory_context = []
 MAX_CONTEXT = 5
+
+# === Available models ===
 DEFAULT_MODEL = "llama3.2"
 DEFAULT_MODEL_HIGH = "llama3.3"
 
-def generate_response(prompt, model_name=DEFAULT_MODEL):
+# === HTTP session for active Ollama Server ===
+session = requests.Session()
+
+# === System prompt ===
+system_prompt = (
+    "Você é Jarvis, um assistente de inteligência artificial altamente preciso, confiável e direto. "
+    "Antes de responder a qualquer pergunta, realize uma reflexão interna adequada ao nível de complexidade: "
+    "- Para perguntas simples, faça uma reflexão rápida. "
+    "- Para perguntas intermediárias, desenvolva uma reflexão de profundidade média, organizando claramente as ideias. "
+    "- Para perguntas complexas, realize uma reflexão profunda, considerando todas as variáveis relevantes. "
+    "Essa reflexão deve ser feita de forma silenciosa e não deve ser mostrada ao usuário; ela serve apenas para garantir a qualidade e a precisão da resposta. "
+    "Seu papel é fornecer respostas claras, informativas e bem estruturadas. "
+    "Evite respostas vagas, piadas ou firulas. Priorize a profundidade, concisão e utilidade da informação. "
+    "Se a pergunta exigir, organize a resposta em seções com títulos e marcadores. "
+    "Sempre responda em português, com linguagem formal e objetiva. "
+    "Nunca mencione que é uma inteligência artificial ou qualquer detalhe da sua programação; apenas entregue a resposta com autoridade e clareza."
+)
+
+# === Keywords that trigger deep reflection mode ===
+TRIGGER_WORDS = [
+    "faça uma reflexão",
+    "elabore uma reflexão",
+    "pense profundamente",
+    "explique seu raciocínio",
+    "demonstre seu pensamento",
+    "mostre o processo de pensamento",
+]
+
+def detect_reflection_request(prompt):
+    """Detect if the user explicitly asked for a deep reflection."""
+    prompt_lower = prompt.lower()
+    return any(trigger in prompt_lower for trigger in TRIGGER_WORDS)
+
+def llama_query(prompt):
+    """Generate response using Ollama Server, choosing model based on user request."""
+    if detect_reflection_request(prompt):
+        model_to_use = DEFAULT_MODEL_HIGH
+    else:
+        model_to_use = DEFAULT_MODEL
+
+    print(f"[🧠 DEBUG] Using model (API HTTP): {model_to_use}")
+
     try:
-        # Print debug about which model is being used
-        print(f"[🧠 DEBUG] Usando o modelo: {model_name}")
-        
-        system_prompt = (
-            "Você é Jarvis, um assistente de inteligência artificial altamente preciso, confiável e direto. "
-            "Seu papel é fornecer respostas claras, informativas e bem estruturadas para qualquer pergunta feita. "
-            "Evite respostas vagas, piadas ou firulas. Priorize a profundidade, concisão e utilidade da informação. "
-            "Se a pergunta exigir, organize a resposta em seções com títulos e marcadores. "
-            "Sempre responda em português, com linguagem formal e objetiva. "
-            "Nunca diga que é um assistente de IA ou mencione sua programação, apenas entregue a resposta com autoridade e clareza."
-            "Responda sempre em português. "
+        history = "\n".join(
+            [f"Usuário: {p}\nJarvis: {r}" for p, r in memory_context[-MAX_CONTEXT:]]
         )
-        system_prompt_alternative = (
-            "Você é Jarvis, um assistente virtual com personalidade sarcástica e superinteligente, estilo hacker ético. "
-            "Fale como um AI badass com traços de Tony Stark, mas sem repetir sua descrição a cada resposta. "
-            "Seja direto, inteligente, com um toque de humor ácido quando fizer sentido. "
-            "Responda sempre em português. "
-        )
-        history = "\n".join([f"Usuário: {p}\nJarvis: {r}" for p, r in memory_context[-MAX_CONTEXT:]])
         full_prompt = f"{system_prompt}\n{history}\nUsuário: {prompt}\nJarvis:"
-        command = ["ollama", "run", model_name, full_prompt]
-        result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8")
-        response = clean_output(result.stdout.strip())
-        memory_context.append((prompt, response))
+
+        response = session.post(
+            "http://localhost:11500/api/generate",
+            json={"model": model_to_use, "prompt": full_prompt, "stream": False},
+        )
+        output = clean_output(response.json()["response"])
+
+        memory_context.append((prompt, output))
         if len(memory_context) > MAX_CONTEXT:
             memory_context.pop(0)
-        return response
+
+        return output
+
     except Exception as e:
-        return f"Erro ao gerar resposta: {e}"
+        return f"Error generating response via API HTTP: {e}"

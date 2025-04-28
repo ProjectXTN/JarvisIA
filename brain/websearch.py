@@ -6,7 +6,7 @@ import aiohttp
 import datetime
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
-from brain.memoria import generate_response, DEFAULT_MODEL ,DEFAULT_MODEL_HIGH
+from brain.memoria import llama_query, DEFAULT_MODEL ,DEFAULT_MODEL_HIGH
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -119,7 +119,7 @@ def search_web(query):
         )
 
         try:
-            answer = generate_response(prompt, DEFAULT_MODEL)
+            answer = llama_query(prompt, DEFAULT_MODEL)
             answer = answer[:8000] if isinstance(answer, str) else "Erro: resposta inválida."
         except Exception as e:
             answer = f"Erro ao gerar resposta: {e}"

@@ -7,19 +7,19 @@ def personalized_greeting():
 
     if 5 <= current_hour < 12:
         greeting = (
-            "Bom dia Pedro. Jarvis online e pronto apra entrar no codigo da Matrix!"
+            "Bom dia Pedro. Jarvis online e pronto para entrar no código da Matrix!"
         )
     elif 12 <= current_hour < 18:
         greeting = (
-            "Boa tarde Pedro.  Jarvis online e pronto apra entrar no codigo da Matrix!"
+            "Boa tarde Pedro.  Jarvis online e pronto para entrar no código da Matrix!"
         )
     elif 18 <= current_hour < 23:
         greeting = (
-            "Boa noite Pedro. Jarvis online e pronto apra entrar no codigo da Matrix!"
+            "Boa noite Pedro. Jarvis online e pronto para entrar no código da Matrix!"
         )
     else:
         greeting = (
-            "É madrugada Pedro. Jarvis online e pronto apra entrar no codigo da Matrix!"
+            "É madrugada Pedro. Jarvis online e pronto para entrar no código da Matrix!"
         )
 
     say(greeting)

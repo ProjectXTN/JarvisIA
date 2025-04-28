@@ -17,7 +17,7 @@ from comandos.comandos_avatar import generate_avatar
 from comandos.comandos_sistema import system_command, shutdown_command
 from brain.weatherAPI import handle_weather_query
 from brain.storage.file_saver import save_response_to_file, should_save_to_file
-from brain.llama_connection import llama_query
+from brain.memoria import llama_query 
 
 from brain.audio import say
 from brain.utils import log_interaction
@@ -110,7 +110,7 @@ def process_command(query):
 
         if "```" in response:
             print("[🤖 SAVING] Código detectado na resposta, chamando extract_and_save_code()...")
-            extract_and_save_code(response, titulo=query)
+            extract_and_save_code(response, title=query)
 
         say(response)
 

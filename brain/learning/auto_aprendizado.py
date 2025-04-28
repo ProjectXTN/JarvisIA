@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 from comandos.comandos_pesquisa import execute_search
 from brain.learning.inserir_memoria import insert_memory
-from brain.memoria import generate_response, DEFAULT_MODEL, DEFAULT_MODEL_HIGH
+from brain.memoria import llama_query, DEFAULT_MODEL, DEFAULT_MODEL_HIGH
 from brain.learning.consultar_memoria import consultar_memoria
 
 aprendizado_ativado = False
@@ -24,7 +24,7 @@ def gerar_topicos_populares():
         "Cada tópico deve conter no máximo 3 palavras. Não inclua explicações, apenas a lista simples separada por vírgulas.\n"
         "Exemplo: inteligência artificial, blockchain, computação quântica, cidades inteligentes, biotecnologia avançada"
     )
-    resposta = generate_response(prompt, DEFAULT_MODEL_HIGH)
+    resposta = llama_query(prompt, DEFAULT_MODEL_HIGH)
 
     if not isinstance(resposta, str):
         return []
