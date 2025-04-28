@@ -1,4 +1,4 @@
-from brain.llama_connection import llama_query
+from brain.memoria import llama_query
 from brain.memoria import DEFAULT_MODEL
 
 def translate_to_english(text):

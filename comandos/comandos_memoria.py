@@ -3,8 +3,10 @@ import string
 import sys
 import os
 from datetime import datetime
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from brain.learning.resposta_com_memoria import generate_dynamic_contextual_response
 from brain.learning.inserir_memoria import insert_memory
 from brain.learning.consultar_memoria import consultar_memoria
 from brain.learning.atualizar_memoria import atualizar_memoria
@@ -46,16 +48,16 @@ def remember(content):
     if match:
         subject = match.group(2).strip().rstrip("?.,!").lower()
         result = consultar_memoria(subject)
+
         if result:
             info, source, date = result
             say(f"Sim, eu sei que {info} (Fonte: {source}, Aprendido em {date})")
         else:
-            say("Não encontrei essa informação na minha memória. Vou tentar buscar no meu conhecimento interno...")
-            response = llama_query(f"O que você sabe sobre {subject}?")
+            response = generate_dynamic_contextual_response(subject)
             if response:
                 say(response)
             else:
-                say("Não consegui encontrar informações sobre isso.")
+                say("Não consegui encontrar informações relevantes sobre isso.")
         return True
     return False
 

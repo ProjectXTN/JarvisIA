@@ -43,14 +43,14 @@ def detect_reflection_request(prompt):
     prompt_lower = prompt.lower()
     return any(trigger in prompt_lower for trigger in TRIGGER_WORDS)
 
-def llama_query(prompt):
+def llama_query(prompt, model = DEFAULT_MODEL):
     """Generate response using Ollama Server, choosing model based on user request."""
     if detect_reflection_request(prompt):
-        model_to_use = DEFAULT_MODEL_HIGH
+        model = DEFAULT_MODEL_HIGH
     else:
-        model_to_use = DEFAULT_MODEL
+        model = DEFAULT_MODEL
 
-    print(f"[🧠 DEBUG] Using model (API HTTP): {model_to_use}")
+    print(f"[🧠 DEBUG] Using model (API HTTP): {model}")
 
     try:
         history = "\n".join(
@@ -60,7 +60,7 @@ def llama_query(prompt):
 
         response = session.post(
             "http://localhost:11500/api/generate",
-            json={"model": model_to_use, "prompt": full_prompt, "stream": False},
+            json={"model": model, "prompt": full_prompt, "stream": False},
         )
         output = clean_output(response.json()["response"])
 

@@ -5,118 +5,116 @@ import os
 from datetime import datetime
 from comandos.comandos_pesquisa import execute_search
 from brain.learning.inserir_memoria import insert_memory
-from brain.memoria import llama_query, DEFAULT_MODEL, DEFAULT_MODEL_HIGH
+from brain.memoria import llama_query, DEFAULT_MODEL
 from brain.learning.consultar_memoria import consultar_memoria
 
-aprendizado_ativado = False
+auto_learning_enabled = False
 
+def clean_title(text):
+    """Sanitize title for memory storage."""
+    title = text.strip().lower()
+    title = re.sub(r"\be\b$", "", title).strip()
+    return title.strip(string.punctuation)
 
-def limpar_titulo(texto):
-    titulo = texto.strip().lower()
-    titulo = re.sub(r"\be\b$", "", titulo).strip()
-    return titulo.strip(string.punctuation)
-
-
-def gerar_topicos_populares():
+def generate_dynamic_topics():
+    """Generate dynamic learning topics without predefined areas."""
     prompt = (
-        "Liste 5 tópicos relevantes, atuais e populares nas áreas de ciência, tecnologia, inovação ou sociedade. "
-        "Inclua temas emergentes, pesquisas em destaque, avanços científicos ou tendências tecnológicas. "
-        "Cada tópico deve conter no máximo 3 palavras. Não inclua explicações, apenas a lista simples separada por vírgulas.\n"
-        "Exemplo: inteligência artificial, blockchain, computação quântica, cidades inteligentes, biotecnologia avançada"
+        "Liste 5 tópicos interessantes para aprender, sobre qualquer área (história, tecnologia, arte, ciências humanas, filosofia, negócios, etc). "
+        "Cada tópico deve ter no máximo 3 palavras. Não inclua explicações, apenas a lista simples separada por vírgulas."
     )
-    resposta = llama_query(prompt, DEFAULT_MODEL_HIGH)
+    response = llama_query(prompt)
 
-    if not isinstance(resposta, str):
+    if not isinstance(response, str):
         return []
 
-    topicos = [
+    topics = [
         t.strip().lower()
-        for t in resposta.split(",")
+        for t in response.split(",")
         if 2 < len(t.strip()) < 40 and re.search(r"\w", t)
     ]
 
-    topicos_unicos = list(dict.fromkeys(topicos))[:5]
+    unique_topics = list(dict.fromkeys(topics))[:5]
 
-    if not topicos_unicos:
-        print(f"[DEBUG] Resposta bruta da IA: {resposta}")
-        print("[FALLBACK] Usando tópicos padrão...")
-        topicos_unicos = [
+    if not unique_topics:
+        print(f"[DEBUG] Raw AI response: {response}")
+        print("[FALLBACK] Using default topics...")
+        unique_topics = [
+            "história mundial",
+            "filosofia moderna",
             "inteligência artificial",
-            "blockchain",
-            "robótica",
-            "biotecnologia",
-            "computação quântica",
+            "desenvolvimento pessoal",
+            "exploração espacial",
         ]
 
-    return topicos_unicos
+    return unique_topics
 
-
-def log_aprendizado(titulo, conteudo, fonte, data):
+def log_learning(title, content, source, date):
+    """Save learning logs for reference."""
     log_dir = "logs"
     os.makedirs(log_dir, exist_ok=True)
 
-    data_hoje = datetime.now().strftime("%Y-%m-%d")
-    nome_arquivo = os.path.join(log_dir, f"aprendizados_{data_hoje}.txt")
+    today_date = datetime.now().strftime("%Y-%m-%d")
+    file_name = os.path.join(log_dir, f"aprendizados_{today_date}.txt")
 
     try:
-        with open(nome_arquivo, "a", encoding="utf-8") as f:
-            f.write(f"\n=== {titulo.upper()} ===\n")
-            f.write(f" {data} |  Fonte: {fonte}\n")
-            f.write(f"{conteudo.strip()[:5000]}...\n")
+        with open(file_name, "a", encoding="utf-8") as f:
+            f.write(f"\n=== {title.upper()} ===\n")
+            f.write(f" {date} |  Fonte: {source}\n")
+            f.write(f"{content.strip()[:5000]}...\n")
             f.write("-" * 60 + "\n")
     except Exception as e:
-        print(f"[ERRO] Falha ao salvar log de aprendizado: {e}")
+        print(f"[ERROR] Failed to save learning log: {e}")
 
-
-def auto_aprender():
+def auto_learn():
+    """Continuous loop for autonomous learning."""
     while True:
-        if not aprendizado_ativado:
-            print("🛑 [AUTO-LEARNING] Modo de aprendizado desativado. Pausando...\n")
+        if not auto_learning_enabled:
+            print("🛑 [AUTO-LEARNING] Auto-learning mode disabled. Pausing...\n")
             break
 
-        print(f"\n🧠 [AUTO-LEARNING] Iniciando novo ciclo às {datetime.now().strftime('%H:%M:%S')}...")
-        topicos = gerar_topicos_populares()
+        print(f"\n🧠 [AUTO-LEARNING] Starting new cycle at {datetime.now().strftime('%H:%M:%S')}...")
+        topics = generate_dynamic_topics()
 
-        if not topicos:
-            print("⚠️ Nenhum tópico válido gerado. Tentando novamente em instantes...\n")
+        if not topics:
+            print("⚠️ No valid topics generated. Trying again shortly...\n")
             time.sleep(10)
             continue
 
-        print(f"[AUTO-LEARNING] Tópicos gerados: {topicos}")
-        aprendidos_hoje = []
+        print(f"[AUTO-LEARNING] Generated topics: {topics}")
+        learned_today = []
 
-        for topico in topicos:
-            if not aprendizado_ativado:
-                print("🛑 [AUTO-LEARNING] Modo de aprendizado desativado durante ciclo. Pausando...\n")
+        for topic in topics:
+            if not auto_learning_enabled:
+                print("🛑 [AUTO-LEARNING] Auto-learning mode disabled during cycle. Pausing...\n")
                 return
 
-            pergunta = f"O que é {topico}?"
-            resposta, fonte = execute_search(pergunta, speak=False)
+            question = f"O que é {topic}?"
+            response, source = execute_search(question, speak=False)
 
-            if isinstance(resposta, str) and "Erro" not in resposta:
-                titulo = limpar_titulo(topico)
-                data = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            if isinstance(response, str) and "Erro" not in response:
+                title = clean_title(topic)
+                date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                if consultar_memoria(titulo):
-                    print(f"⚠️ Já sei sobre: {titulo}. Pulando...\n")
+                if consultar_memoria(title):
+                    print(f"⚠️ Already learned about: {title}. Skipping...\n")
                     continue
 
-                sucesso = insert_memory(titulo, resposta, fonte, data)
-                if sucesso:
-                    log_aprendizado(titulo, resposta, fonte, data)
-                    aprendidos_hoje.append(titulo)
-                    print(f"✅ Aprendido: {titulo} (Fonte: {fonte})\n")
+                success = insert_memory(title, response, source, date)
+                if success:
+                    log_learning(title, response, source, date)
+                    learned_today.append(title)
+                    print(f"✅ Learned: {title} (Source: {source})\n")
                 else:
-                    print(f"⚠️ Falha ao salvar: {titulo}")
+                    print(f"⚠️ Failed to save: {title}")
             else:
-                print(f"❌ Não foi possível pesquisar sobre: {topico}")
+                print(f"❌ Could not search about: {topic}")
 
-        if aprendidos_hoje:
-            print("\n📚 [AUTO-LEARNING] Tópicos aprendidos neste ciclo:")
-            for t in aprendidos_hoje:
+        if learned_today:
+            print("\n📚 [AUTO-LEARNING] Topics learned in this cycle:")
+            for t in learned_today:
                 print(f"   • {t}")
         else:
-            print("🛑 Nenhum aprendizado concluído neste ciclo.")
+            print("🛑 No learning completed in this cycle.")
 
-        print("\n🔁 Iniciando próximo ciclo...\n")
+        print("\n🔁 Starting next cycle...\n")
         time.sleep(2)
