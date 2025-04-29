@@ -9,6 +9,17 @@ from brain.utils import normalize_text, sounds_like_jarvis
 LOCK_FILE = "jarvis.lock"
 VISION_MODELS = ["llama3.2-vision:90b", "llama3.2", "llama3.3"]
 stable_diffusion_process = None
+stable_diffusion_pid = None
+
+
+def set_stable_diffusion_pid(pid):
+    global stable_diffusion_pid
+    stable_diffusion_pid = pid
+
+
+def get_stable_diffusion_pid():
+    global stable_diffusion_pid
+    return stable_diffusion_pid
 
 
 def set_stable_diffusion_process(process):
@@ -97,6 +108,8 @@ def passive_mode():
 
 
 def start_stable_diffusion():
+    global stable_diffusion_pid
+
     try:
         response = requests.get("http://127.0.0.1:7860/sdapi/v1/options", timeout=3)
         if response.status_code == 200:
@@ -111,12 +124,15 @@ def start_stable_diffusion():
         process = subprocess.Popen(
             ["cmd.exe", "/c", webui_bat],
             cwd="stable-diffusion-webui",
-            creationflags=subprocess.CREATE_NEW_CONSOLE
+            creationflags=subprocess.CREATE_NEW_CONSOLE,
         )
 
         set_stable_diffusion_process(process)
+        set_stable_diffusion_pid(process.pid)
 
-        print("⏳ Waiting for Stable Diffusion server to start...")
+        print(
+            f"⏳ Waiting for Stable Diffusion server to start (PID {stable_diffusion_pid})..."
+        )
         start_time = time.time()
         timeout = 120
         while time.time() - start_time < timeout:

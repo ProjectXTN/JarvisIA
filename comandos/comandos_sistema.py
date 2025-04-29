@@ -1,3 +1,4 @@
+import subprocess
 import psutil
 import shutil
 import platform
@@ -5,6 +6,7 @@ import re
 from brain.audio import say
 from brain.sistema import open_folder
 from core.inicializador import get_stable_diffusion_process
+from core.inicializador import get_stable_diffusion_pid
 
 
 # Auxiliary system status function
@@ -53,17 +55,16 @@ def system_command(query):
 
 
 def shutdown_stable_diffusion():
-    process = get_stable_diffusion_process()
+    pid = get_stable_diffusion_pid()
 
-    if process is not None:
+    if pid is not None:
         try:
-            process.terminate()
-            process.wait(timeout=10)
-            print("🛑 Stable Diffusion server terminated cleanly.")
+            subprocess.run(["taskkill", "/PID", str(pid), "/F"])
+            print(f"Stable Diffusion (PID {pid}) terminated cleanly.")
         except Exception as e:
-            print(f"⚠️ Failed to shutdown Stable Diffusion server: {e}")
+            print(f"Failed to shutdown Stable Diffusion server: {e}")
     else:
-        print("⚠️ No Stable Diffusion process to terminate.")
+        print("No Stable Diffusion process to terminate.")
 
 
 def shutdown_command(query):
@@ -80,9 +81,8 @@ def shutdown_command(query):
         if re.search(pattern, query):
             say("Jarvis desligando.")
 
-            # 🛠️ Chama o shutdown do servidor antes de sair
             shutdown_stable_diffusion()
 
-            return False  # Returns False to exit main loop
+            return False
 
     return True

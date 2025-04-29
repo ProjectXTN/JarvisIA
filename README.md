@@ -151,20 +151,6 @@ Jarvis can chain multiple commands in a single voice phrase:
 "Inicie o navegador e procure sobre inteligência artificial"
 
 ## 🧠 Autonomous Learning
-
-Jarvis can:
-
-Search the internet autonomously
-
-Summarize new knowledge
-
-Store learned facts with sources and dates into the database
-
-Example:
-
-"Jarvis, aprenda sobre entrelaçamento quântico"
-
-## 🧠 Autonomous Learning
 Jarvis can:
 
 Search the internet autonomously

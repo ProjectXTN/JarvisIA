@@ -4,6 +4,9 @@ import os
 from pathlib import Path
 import time
 from brain.storage.open_file import safe_open_file
+from brain.profiles_image.generateProfile import detect_profile_from_prompt, PROFILES
+from brain.translate import translate_to_english
+
 
 
 class StableDiffusionGenerator:
@@ -13,28 +16,38 @@ class StableDiffusionGenerator:
     def generate_image(
         self,
         prompt,
+        profile_key=None,
         output_folder=None,
-        steps=50,
-        cfg_scale=10,
-        width=1024,
-        height=1024,
-        sampler_name="DPM++ 2M Karras",
         refiner=True,
     ):
+        if profile_key is None:
+            profile_key = detect_profile_from_prompt(prompt)
+            print(f"[DEBUG:] Profile_key : {profile_key}")
+
+        profile = PROFILES.get(profile_key)
+
+        if profile is None:
+            raise ValueError(f"Perfil '{profile_key}' não encontrado!")
+
         if output_folder is None:
             pictures_folder = Path.home() / "Pictures" / "Jarvis" / "Imagens"
             output_folder = pictures_folder
 
-
         Path(output_folder).mkdir(parents=True, exist_ok=True)
+        
+        translated_prompt = translate_to_english(prompt)
 
         payload = {
-            "prompt": prompt,
-            "steps": steps,
-            "cfg_scale": cfg_scale,
-            "width": width,
-            "height": height,
-            "sampler_name": sampler_name,
+            "prompt": translated_prompt,
+            "negative_prompt": profile.negative_prompt,
+            "steps": profile.steps,
+            "cfg_scale": profile.cfg_scale,
+            "width": profile.width,
+            "height": profile.height,
+            "sampler_name": profile.sampler,
+            "override_settings": {
+                "sd_model_checkpoint": profile.model
+            }
         }
 
         try:
@@ -72,19 +85,18 @@ class StableDiffusionGenerator:
             final_path = temp_image_path
 
             if refiner:
-
                 with open(temp_image_path, "rb") as img_file:
                     img_base64 = base64.b64encode(img_file.read()).decode()
 
                 img2img_payload = {
                     "init_images": [f"data:image/png;base64,{img_base64}"],
                     "denoising_strength": 0.2,
-                    "prompt": prompt,
-                    "steps": 20,
-                    "cfg_scale": cfg_scale,
-                    "width": width,
-                    "height": height,
-                    "sampler_name": sampler_name,
+                    "prompt": translated_prompt,
+                    "steps": profile.steps // 2,
+                    "cfg_scale": profile.cfg_scale,
+                    "width": profile.width,
+                    "height": profile.height,
+                    "sampler_name": profile.sampler,
                 }
 
                 try:

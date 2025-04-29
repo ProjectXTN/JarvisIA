@@ -43,8 +43,8 @@ def detect_reflection_request(prompt):
     prompt_lower = prompt.lower()
     return any(trigger in prompt_lower for trigger in TRIGGER_WORDS)
 
-def llama_query(prompt, model = DEFAULT_MODEL):
-    """Generate response using Ollama Server, choosing model based on user request."""
+def llama_query(prompt, model=DEFAULT_MODEL, direct_mode=False):
+    """Generate response using Ollama Server. If direct_mode=True, bypass context and system_prompt."""
     if detect_reflection_request(prompt):
         model = DEFAULT_MODEL_HIGH
     else:
@@ -53,10 +53,13 @@ def llama_query(prompt, model = DEFAULT_MODEL):
     print(f"[🧠 DEBUG] Using model (API HTTP): {model}")
 
     try:
-        history = "\n".join(
-            [f"Usuário: {p}\nJarvis: {r}" for p, r in memory_context[-MAX_CONTEXT:]]
-        )
-        full_prompt = f"{system_prompt}\n{history}\nUsuário: {prompt}\nJarvis:"
+        if direct_mode:
+            full_prompt = prompt
+        else:
+            history = "\n".join(
+                [f"Usuário: {p}\nJarvis: {r}" for p, r in memory_context[-MAX_CONTEXT:]]
+            )
+            full_prompt = f"{system_prompt}\n{history}\nUsuário: {prompt}\nJarvis:"
 
         response = session.post(
             "http://localhost:11500/api/generate",
@@ -64,9 +67,10 @@ def llama_query(prompt, model = DEFAULT_MODEL):
         )
         output = clean_output(response.json()["response"])
 
-        memory_context.append((prompt, output))
-        if len(memory_context) > MAX_CONTEXT:
-            memory_context.pop(0)
+        if not direct_mode:
+            memory_context.append((prompt, output))
+            if len(memory_context) > MAX_CONTEXT:
+                memory_context.pop(0)
 
         return output
 

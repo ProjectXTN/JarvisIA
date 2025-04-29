@@ -9,6 +9,14 @@ from jarvis_vision import describe_image
 def image_command(query):
     try:
         query = query.lower()
+        
+        creation_triggers = [
+            "criar", "crie", "gerar", "gere", "produzir", "produza", "fazer", "faça", "criação"
+        ]
+        
+        if any(trigger in query for trigger in creation_triggers):
+            # Não é análise de imagem! É criação! Não processa aqui.
+            return False
 
         match = re.search(
             r"(imagem|foto)(?:\s+(?:de|em|do|da|na|no))?\s+([\w-]+)", query
