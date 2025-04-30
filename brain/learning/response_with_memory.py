@@ -1,6 +1,6 @@
 import re
-from brain.learning.consultar_memoria import consultar_memoria, consultar_tudo
-from brain.memoria import DEFAULT_MODEL, DEFAULT_MODEL_HIGH, llama_query
+from brain.learning.consult_memory import consultar_memoria, consultar_tudo
+from brain.memory import DEFAULT_MODEL, DEFAULT_MODEL_HIGH, llama_query
 
 def is_code_request(question):
     """Detect if the question is requesting code."""

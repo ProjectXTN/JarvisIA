@@ -1,5 +1,5 @@
 from brain.audio import say
-from brain.sistema import open_browser, open_vscode
+from brain.system import open_browser, open_vscode
 
 def browser_command(query):
     if "abrir navegador" in query or "abrir chrome" in query:

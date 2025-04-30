@@ -2,22 +2,22 @@ import re
 import string
 import time
 
-from comandos.comandos_datahora import datetime_commands
-from comandos.comandos_musica import music_commands
-from comandos.comandos_navegador import browser_commands
-from comandos.comandos_imagem import image_commands
-from comandos.comandos_pastas import comandos_pastas
-from comandos.comandos_software import software_commands
-from comandos.comandos_multiplos import multiple_commands
-from comandos.comandos_memoria import comandos_memoria
-from comandos.comandos_emocionais import emotional_commands
-from comandos.comandos_reflexao import comandos_reflexao
-from comandos.comandos_pesquisa import execute_search
-from comandos.comandos_avatar import generate_avatar
-from comandos.comandos_sistema import system_command, shutdown_command
+from commands.commands_day_time import datetime_commands
+from commands.commands_music import music_commands
+from commands.commands_browser import browser_commands
+from commands.commands_image import image_commands
+from commands.commands_folders import comandos_pastas
+from commands.comandos_software import software_commands
+from commands.commands_multiples import multiple_commands
+from commands.commands_memorie import comandos_memoria
+from commands.commands_emotions import emotional_commands
+from commands.commands_reflection import comandos_reflexao
+from commands.commands_search import execute_search
+from commands.commands_avatar import generate_avatar
+from commands.commands_systeme import system_command, shutdown_command
 from brain.weatherAPI import handle_weather_query
 from brain.storage.file_saver import save_response_to_file, should_save_to_file
-from brain.memoria import llama_query
+from brain.memory import llama_query
 from core import config
 
 from brain.audio import say

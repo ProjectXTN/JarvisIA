@@ -60,7 +60,7 @@ Internet connection (for searches and autonomous learning)
 
 🎵 Apple Music Voice Integration — Search and control your music library
 
-🧱 Modular Architecture — Commands split into organized modules (comandos/)
+🧱 Modular Architecture — Commands split into organized modules (commands/)
 
 ## 🗂 Project Structure
 

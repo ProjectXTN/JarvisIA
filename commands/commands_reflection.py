@@ -5,8 +5,8 @@ from datetime import datetime
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from brain.audio import say, listen
-from brain.learning.inserir_emocao import register_emotion
-from brain.learning.normalizar_emocao import normalize_emotion
+from brain.learning.insert_emotion import register_emotion
+from brain.learning.normalize_emotions import normalize_emotion
 
 def iniciar_reflexao(conteudo):
     try:

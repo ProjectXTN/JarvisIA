@@ -3,10 +3,10 @@ import re
 import string
 import os
 from datetime import datetime
-from comandos.comandos_pesquisa import execute_search
-from brain.learning.inserir_memoria import insert_memory
-from brain.memoria import llama_query, DEFAULT_MODEL
-from brain.learning.consultar_memoria import consultar_memoria
+from commands.commands_search import execute_search
+from brain.learning.insert_memory import insert_memory
+from brain.memory import llama_query, DEFAULT_MODEL
+from brain.learning.consult_memory import consultar_memoria
 
 auto_learning_enabled = False
 

@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from comandos.comandos_memoria import comandos_memoria
+from commands.commands_memorie import comandos_memoria
 
 
 def testar_aprender():

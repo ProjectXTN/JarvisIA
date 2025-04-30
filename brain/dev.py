@@ -4,7 +4,7 @@ import unicodedata
 import subprocess
 from jsbeautifier import beautify
 
-CODE_FOLDER = "codigos"
+CODE_FOLDER = "codes"
 os.makedirs(CODE_FOLDER, exist_ok=True)
 
 def detect_language(code):

@@ -5,7 +5,7 @@ from modules.stable_diffusion_controller import StableDiffusionGenerator
 # NO CORPO DA FUNÇÃO - CERTO
 def dispatch_image_command(query):
     try:
-        from comandos.comandos_imagem import image_command
+        from commands.commands_image import image_command
 
         query = query.lower().strip()
 

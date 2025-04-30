@@ -1,7 +1,7 @@
 import re
 import string
 from brain.audio import say
-from brain.sistema import open_folder
+from brain.system import open_folder
 
 def comando_abrir_pasta(query):
     texto = query.lower()

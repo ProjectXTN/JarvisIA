@@ -6,10 +6,10 @@ from datetime import datetime
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from brain.audio import say
-from brain.learning.inserir_emocao import register_emotion
-from brain.learning.consultar_emocao import query_emotions
-from brain.learning.normalizar_emocao import normalize_emotion
-from brain.learning.interpretar_data import interpret_date_range
+from brain.learning.insert_emotion import register_emotion
+from brain.learning.consult_emotions import query_emotions
+from brain.learning.normalize_emotions import normalize_emotion
+from brain.learning.interpret_date import interpret_date_range
 
 
 

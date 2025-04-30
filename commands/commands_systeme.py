@@ -4,9 +4,9 @@ import shutil
 import platform
 import re
 from brain.audio import say
-from brain.sistema import open_folder
-from core.inicializador import get_stable_diffusion_process
-from core.inicializador import get_stable_diffusion_pid
+from brain.system import open_folder
+from core.initializer import get_stable_diffusion_process
+from core.initializer import get_stable_diffusion_pid
 
 
 # Auxiliary system status function

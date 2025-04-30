@@ -7,16 +7,16 @@ from datetime import datetime, timedelta
 from threading import Thread
 from brain.audio import say, listen
 from jarvis_commands import process_command
-from comandos.comandos_sistema import shutdown_command
-from core.inicializador import (
+from commands.commands_systeme import shutdown_command
+from core.initializer import (
     is_already_running,
     start_llava,
     remove_lock,
     passive_mode,
     start_stable_diffusion,
 )
-from brain.learning import auto_aprendizado
-from brain.learning.auto_aprendizado import auto_learn
+from brain.learning import auto_learning
+from brain.learning.auto_learning import auto_learn
 from brain.utils import sounds_like_jarvis
 
 
@@ -51,8 +51,8 @@ def main():
             or ("comece a aprender" in query.lower())
             or ("começar a aprender" in query.lower())
         ):
-            if not auto_aprendizado.auto_learning_enabled:
-                auto_aprendizado.auto_learning_enabled = True
+            if not auto_learning.auto_learning_enabled:
+                auto_learning.auto_learning_enabled = True
                 Thread(target=auto_learn, daemon=True).start()
                 say("Modo de estudo autônomo ativado.")
             else:
@@ -64,8 +64,8 @@ def main():
             r"\b(para|parar|interromper|interrompa|cancelar|cancele|pausar|pause)\b(?:\s+\w+){0,3}\s+\b(estudo|estudar|aprendizado)\b",
             query.lower(),
         ):
-            if auto_aprendizado.auto_learning_enabled:
-                auto_aprendizado.auto_learning_enabled = False
+            if auto_learning.auto_learning_enabled:
+                auto_learning.auto_learning_enabled = False
                 say("Modo de estudo autônomo desativado.")
             else:
                 say("O modo de estudo já estava desligado.")
@@ -108,8 +108,8 @@ def main():
                 if ("comece a estudar" in query.lower()) or (
                     "começar a estudar" in query.lower()
                 ):
-                    if not auto_aprendizado.aprendizado_ativado:
-                        auto_aprendizado.aprendizado_ativado = True
+                    if not auto_learning.aprendizado_ativado:
+                        auto_learning.aprendizado_ativado = True
                         Thread(target=auto_learn, daemon=True).start()
                         say("Modo de estudo autônomo ativado.")
                     else:
@@ -120,8 +120,8 @@ def main():
                     r"\b(parar|interromper|cancelar|pausar)\s+(estudo|aprendizado)\b",
                     query.lower(),
                 ):
-                    if auto_aprendizado.aprendizado_ativado:
-                        auto_aprendizado.aprendizado_ativado = False
+                    if auto_learning.aprendizado_ativado:
+                        auto_learning.aprendizado_ativado = False
                         say("Modo de estudo desativado.")
                     else:
                         say("O modo de estudo já está desligado.")

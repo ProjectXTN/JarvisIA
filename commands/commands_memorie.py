@@ -6,17 +6,17 @@ from datetime import datetime
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from brain.learning.resposta_com_memoria import generate_dynamic_contextual_response
-from brain.learning.inserir_memoria import insert_memory
-from brain.learning.consultar_memoria import consultar_memoria
-from brain.learning.atualizar_memoria import atualizar_memoria
-from brain.learning.apagar_memoria import apagar_memoria
-from brain.learning.listar_memoria import listar_memoria
-from brain.learning.verificar_memoria import memoria_ja_existe
-from comandos.comandos_pesquisa import execute_search
-from brain.learning.consultar_aprendizados_do_dia import aprendizados_de_hoje
+from brain.learning.response_with_memory import generate_dynamic_contextual_response
+from brain.learning.insert_memory import insert_memory
+from brain.learning.consult_memory import consultar_memoria
+from brain.learning.update_memory import atualizar_memoria
+from brain.learning.clean_memory import apagar_memoria
+from brain.learning.list_memory import listar_memoria
+from brain.learning.verify_memory import memoria_ja_existe
+from commands.commands_search import execute_search
+from brain.learning.consult_learnings_of_the_day import aprendizados_de_hoje
 from brain.audio import say,listen
-from brain.memoria import llama_query, DEFAULT_MODEL_HIGH
+from brain.memory import llama_query, DEFAULT_MODEL_HIGH
 
 def learn(content):
     match = re.search(r"aprenda que (.+)", content)

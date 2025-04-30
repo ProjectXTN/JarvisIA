@@ -1,5 +1,5 @@
-from brain.memoria import llama_query
-from brain.memoria import DEFAULT_MODEL
+from brain.memory import llama_query
+from brain.memory import DEFAULT_MODEL
 
 def translate_to_english(text):
     try:
