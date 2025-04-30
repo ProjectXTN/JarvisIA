@@ -4,8 +4,8 @@ import re
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from brain.audio import say, listen
+from core import config
 
-# Carrega as variáveis do .env
 load_dotenv()
 
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
@@ -28,7 +28,6 @@ def get_weather(city="Lexy", forecast=False, next_week=False):
             return "Não consegui obter a previsão do tempo agora."
 
         if forecast:
-            # 📅 Modo de previsão para os próximos dias ou para a próxima semana
             forecast_texts = []
             for entry in data["list"]:
                 date_str = entry["dt_txt"].split(" ")[0]
@@ -47,12 +46,10 @@ def get_weather(city="Lexy", forecast=False, next_week=False):
                     )
                 )
 
-            # 🧠 Aqui filtramos o que interessa
             unique_days = []
             final_forecast = []
 
             for date_obj, line in forecast_texts:
-                # Se for pedido "semana que vem", pula até segunda-feira da próxima semana
                 if next_week:
                     today = datetime.now()
                     start_next_monday = today + timedelta(days=(7 - today.weekday()))
@@ -71,7 +68,6 @@ def get_weather(city="Lexy", forecast=False, next_week=False):
             )
 
         else:
-            # ☀️ Modo previsão normal (atual)
             weather = data["weather"][0]["description"]
             temp = data["main"]["temp"]
             feels_like = data["main"]["feels_like"]
@@ -172,7 +168,6 @@ def extract_city(query):
 
     city = city.strip(",.?! ").title()
 
-
     invalid_cities = ["Tempo", "Clima", "Previsão", "Meteorologia", "Meteo", "Meteor"]
     if city in invalid_cities or not city:
         return None
@@ -208,7 +203,6 @@ def detect_forecast_request(query):
 
 
 def handle_weather_query(query):
-    """Lida com todo o fluxo de perguntas sobre o clima."""
     if not is_weather_request(query):
         return False
 
@@ -216,37 +210,45 @@ def handle_weather_query(query):
     forecast, next_week = detect_forecast_request(query)
 
     if city:
-        say(f"Você quer saber o clima de {city}. Pode me dizer o país?")
-        country_response = listen().lower().strip()
-
-        if country_response:
-            normalized_country = normalize_country(country_response)
-            location = f"{city},{normalized_country}"
-
-            weather_report = get_weather(
-                location, forecast=forecast, next_week=next_week
-            )
-
-            if "Não consegui obter a previsão" in weather_report:
-                say(
-                    "Desculpe, não entendi o nome da cidade. Pode repetir o nome da cidade, por favor?"
-                )
-                city_retry = listen().lower().strip().title()
-
-                if city_retry:
-                    say("E o país?")
-                    country_retry = listen().lower().strip()
-                    normalized_country = normalize_country(country_retry)
-                    location = f"{city_retry},{normalized_country}"
-                    weather_report = get_weather(
-                        location, forecast=forecast, next_week=next_week
-                    )
-                else:
-                    weather_report = "Não foi possível obter a previsão do tempo."
+        if config.IS_API_REQUEST:
+            location = city
         else:
-            weather_report = get_weather(city, forecast=forecast, next_week=next_week)
-    else:
-        weather_report = get_weather(forecast=forecast, next_week=next_week)
+            say(f"Você quer saber o clima de {city}. Pode me dizer o país?")
+            country_response = listen().lower().strip()
 
-    say(weather_report)
-    return True
+            if country_response:
+                normalized_country = normalize_country(country_response)
+                location = f"{city},{normalized_country}"
+            else:
+                location = city
+    else:
+        location = None
+
+    # Faz a busca pela previsão
+    weather_report = get_weather(
+        location if location else "Lexy",  # fallback
+        forecast=forecast,
+        next_week=next_week
+    )
+
+    # Se não deu certo, tenta repetir no modo CLI
+    if not weather_report or "Não consegui obter" in weather_report:
+        if not config.IS_API_REQUEST:
+            say("Desculpe, não entendi o nome da cidade. Pode repetir o nome da cidade, por favor?")
+            city_retry = listen().lower().strip().title()
+            if city_retry:
+                say("E o país?")
+                country_retry = listen().lower().strip()
+                normalized_country = normalize_country(country_retry)
+                location = f"{city_retry},{normalized_country}"
+                weather_report = get_weather(location, forecast=forecast, next_week=next_week)
+            else:
+                weather_report = "Não foi possível obter a previsão do tempo."
+
+    if not weather_report:
+        weather_report = "Desculpe, não consegui obter a previsão do tempo."
+
+    if not config.IS_API_REQUEST:
+        say(weather_report)
+
+    return weather_report

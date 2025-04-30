@@ -1,12 +1,11 @@
 import os
-import re
 import requests
 import asyncio
 import aiohttp
 import datetime
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
-from brain.memoria import llama_query, DEFAULT_MODEL ,DEFAULT_MODEL_HIGH
+from brain.memoria import llama_query, DEFAULT_MODEL
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -30,7 +29,6 @@ async def fetch_page(session, url):
                 html = await response.text()
                 soup = BeautifulSoup(html, "html.parser")
 
-                # 🔥 Melhorias: tenta pegar só o conteúdo principal
                 main_content = (
                     soup.find('main') or
                     soup.find('article') or
@@ -38,7 +36,6 @@ async def fetch_page(session, url):
                 )
 
                 if main_content:
-                    # Remove navegação, rodapé e aside
                     for tag in main_content.find_all(["nav", "footer", "aside", "header", "script", "style"]):
                         tag.decompose()
 
@@ -78,7 +75,7 @@ def search_web(query):
         if not results:
             return "Nenhum resultado encontrado na web.", "internet"
 
-        links = [result["url"] for result in results[:10]]  # Pega no máximo 10 links
+        links = [result["url"] for result in results[:10]]
         print(f"[🔗] Links encontrados: {links}")
 
         pages_data = asyncio.run(fetch_multiple_pages(links))
@@ -90,10 +87,10 @@ def search_web(query):
 
             url, text = result
             if text and any(year in text for year in [current_year, next_year]) and len(text) > 300:
-                print(f"[✅] Conteúdo válido encontrado em: {url}")
+                print(f"Conteúdo válido encontrado em: {url}")
                 links_with_text.append((url, text[:10000]))
             else:
-                print(f"[❌] Conteúdo ignorado (incompleto ou desatualizado): {url}")
+                print(f"Conteúdo ignorado (incompleto ou desatualizado): {url}")
 
         if not links_with_text:
             return "Não consegui acessar nenhum conteúdo atualizado.", "internet"

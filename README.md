@@ -183,14 +183,19 @@ The generated images are automatically saved under:
 ## 🚀 Getting Started
 
 git clone https://github.com/ProjectXTN/Jarvis_IA.git
+
 cd Jarvis_IA
+
 python -m venv venv
+
 venv\Scripts\activate  # or source venv/bin/activate on Linux/Mac
+
 pip install -r requirements.txt
 
 Make sure your .env file contains your API Keys:
 
 BRAVE_API_KEY=your_brave_api_key
+
 OPENWEATHER_API_KEY=your_openweather_api_key
 
 ## 🔒 Lock System

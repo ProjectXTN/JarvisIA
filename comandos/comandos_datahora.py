@@ -1,15 +1,19 @@
 from utils_datetime import respond_date, respond_time
 from brain.audio import say
+import core.config  # ✅ Corrigido
 
 def date_command(query):
-    say(respond_date())
-    return True
+    response = respond_date()
+    if not core.config.IS_API_REQUEST:
+        say(response)
+    return response
 
 def time_command(query):
-    say(respond_time())
-    return True
+    response = respond_time()
+    if not core.config.IS_API_REQUEST:
+        say(response)
+    return response
 
-# === COMMANDS DICTIONARY ===
 datetime_commands = {
     "que dia é hoje": date_command,
     "qual é a data de hoje": date_command,
