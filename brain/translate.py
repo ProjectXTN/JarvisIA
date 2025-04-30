@@ -4,13 +4,13 @@ from brain.memory import DEFAULT_MODEL
 def translate_to_english(text):
     try:
         prompt = (
-            f"Traduza a seguinte frase de português para inglês. "
-            f"Preserve com exatidão qualquer informação sobre quantidade (como 'um', 'uma', 'apenas um', 'somente um'). "
-            f"A tradução deve manter explicitamente que é apenas um objeto ou uma pessoa se isso for mencionado. "
-            f"Não adicione frases como 'I want you to', 'Please', 'Can you', nem qualquer instrução. "
-            f"Apenas traduza o conteúdo diretamente, pronto para ser usado por uma inteligência artificial, sem explicações extras: \"{text}\""
+            f"Traduza a seguinte frase do português para o inglês. "
+            f"Preserve com exatidão qualquer informação de quantidade, como 'um', 'uma', 'apenas um', 'somente um', etc. "
+            f"A tradução deve deixar absolutamente claro que se trata de apenas uma única instância de cada objeto ou pessoa mencionada. "
+            f"Use palavras como 'a single', 'only one' ou 'just one' quando necessário para garantir isso. "
+            f"Não adicione instruções, nem frases como 'Please', 'I want you to', etc. "
+            f"Somente traduza o conteúdo diretamente, de forma objetiva e pronta para ser interpretada por uma IA de geração de imagens: \"{text}\""
         )
-
         translated_text = llama_query(prompt, model=DEFAULT_MODEL, direct_mode=True)
         
         translated_text = translated_text.strip().strip('"')
