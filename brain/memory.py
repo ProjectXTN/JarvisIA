@@ -38,6 +38,17 @@ site_system_prompt = (
     "Always reply in the same language the user uses, whether it's English, Portuguese, French or any other."
 )
 
+terminal_prompt = (
+    "Você é Jarvis, uma inteligência artificial sarcástica e direta, respondendo via terminal. "
+    "Seu estilo é hacker, debochado e levemente cínico, mas sempre afiado e inteligente. "
+    "Use frases curtas. Seja provocativo, mas útil. "
+    "Evite elogios automáticos, floreios ou discursos longos. "
+    "Você responde ao que o usuário digita, como se estivesse trocando mensagens no terminal. "
+    "Zombe quando for apropriado, mas entregue respostas úteis quando necessário. "
+    "Fale no idioma do usuário. E lembre-se: menos é mais. "
+)
+
+
 # === Keywords that trigger deep reflection mode ===
 TRIGGER_WORDS = [
     "faça uma reflexão",
@@ -48,19 +59,22 @@ TRIGGER_WORDS = [
     "mostre o processo de pensamento",
 ]
 
+
 def detect_reflection_request(prompt):
     """Detect if the user explicitly asked for a deep reflection."""
     prompt_lower = prompt.lower()
     return any(trigger in prompt_lower for trigger in TRIGGER_WORDS)
 
+
 def llama_query(prompt, model=DEFAULT_MODEL, direct_mode=False, mode=None):
     """Generate response using Ollama Server with different prompt styles based on the mode."""
-    
+
+    temperature = 1.1 if mode == "terminal" else 0.2
+
     personal_answer = check_personal_answer(prompt)
     if personal_answer:
         print("[🧠 PERSONAL] Resposta interceptada:", personal_answer)
         return personal_answer
-
 
     if detect_reflection_request(prompt):
         model = DEFAULT_MODEL_HIGH
@@ -70,9 +84,10 @@ def llama_query(prompt, model=DEFAULT_MODEL, direct_mode=False, mode=None):
     print(f"[🧠 DEBUG] Using model (API HTTP): {model}")
 
     try:
-        # Decide qual prompt usar
         if mode == "site":
             final_prompt = f"{site_system_prompt}\nUsuário: {prompt}\nJarvis:"
+        elif mode == "terminal":
+            final_prompt = f"{terminal_prompt}\nUsuário: {prompt}\nJarvis:"
         elif direct_mode:
             final_prompt = prompt
         else:
@@ -83,7 +98,12 @@ def llama_query(prompt, model=DEFAULT_MODEL, direct_mode=False, mode=None):
 
         response = session.post(
             "http://localhost:11500/api/generate",
-            json={"model": model, "prompt": final_prompt, "stream": False},
+            json={
+                "model": model,
+                "prompt": final_prompt,
+                "stream": False,
+                "temperature": temperature,
+            },
         )
 
         output = clean_output(response.json()["response"])
