@@ -23,6 +23,7 @@ torchaudio
 keyboard
 pyautogui
 pyperclip
+psutil
 
 # === WEB SCRAPING + SEARCHES ===
 requests
@@ -44,6 +45,7 @@ regex
 tqdm
 python-dotenv
 pywin32  # Windows compatibility
+unidecode
 
 # === DEVELOPMENT TOOLS ===
 jsbeautifier
