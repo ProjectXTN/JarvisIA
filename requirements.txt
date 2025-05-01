@@ -1,5 +1,8 @@
 # === CORE (voice, TTS, VAD, transcription) ===
 openai-whisper
+faster-whisper
+ctranslate2
+sentencepiece
 edge-tts
 webrtcvad
 pyttsx3
