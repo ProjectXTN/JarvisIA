@@ -62,6 +62,9 @@ Internet connection (for searches and autonomous learning)
 
 🧱 Modular Architecture — Commands split into organized modules (commands/)
 
+🌎 SRT Subtitle Translation — Translate subtitle files (.srt) to any language by voice command, preserving timing and format.
+
+
 ## 🗂 Project Structure
 
 jarvis/
@@ -93,6 +96,8 @@ jarvis/
 "Jarvis, como está o clima em Paris?"
 
 "Jarvis, previsão do tempo para São Paulo"
+
+"Jarvis, traduzir o arquivo (Name of ile) para (langue)"
 
 ## 🖼️ Vision Mode
 
@@ -179,6 +184,31 @@ Example:
 "Jarvis, draw a medieval castle with a dragon flying above."
 
 The generated images are automatically saved under:
+
+## 🌎 SRT Subtitle Translation
+
+Quickly translate any `.srt` subtitle file to your preferred language — just with your voice.
+
+**Example voice commands:**
+
+"Jarvis, traduzir o arquivo legenda para inglês"
+
+"Jarvis, traduzir o arquivo cs50 para espanhol"
+
+"Jarvis, traduzir o arquivo my_subs para português"
+
+**How it works:**
+- Say the command specifying the file name (without `.srt`) and the target language.
+- Jarvis finds the file in your Documents folder.
+- The translation is handled by your local LLM, preserving all subtitle timings and formatting.
+- The translated subtitle is saved as a new `.srt` file (e.g., `legenda-ingles.srt`).
+
+**Jarvis ensures:**
+- Timing and subtitle numbering are always preserved.
+- Only the dialogue text is translated — no explanation or commentary.
+- You can translate to any language supported by your LLM.
+
+Perfect for movies, online courses, or sharing educational content in multiple languages!
 
 ## 🚀 Getting Started
 
