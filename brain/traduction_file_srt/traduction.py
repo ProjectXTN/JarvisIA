@@ -2,6 +2,7 @@ import re
 import subprocess
 import time
 import os
+from brain.memory import llama_query, DEFAULT_MODEL
 
 def translate_subtitle_llm(input_path, output_path, target_lang="portuguese", model="llama3.2"):
     print(f"[DEBUG] START: {input_path=} {output_path=} {target_lang=}")
@@ -30,19 +31,13 @@ def translate_subtitle_llm(input_path, output_path, target_lang="portuguese", mo
                         f"{dialogue_text}\n"
                     )
                 try:
-                    result = subprocess.run(
-                        ["ollama", "run", model],
-                        input=prompt,
-                        capture_output=True,
-                        encoding="utf-8",
-                        text=True,
-                        timeout=120
-                    )
-                    if result.returncode != 0:
-                        print(f"Error translating line {i}: {result.stderr.strip()}")
+                    translated_text_raw = llama_query(prompt, model=model, direct_mode=True)
+                    
+                    if translated_text_raw.startswith("Error generating response via API HTTP:"):
+                        print(f"Error translating line {i}: {translated_text_raw}")
                         translated_text = dialogue_text
                     else:
-                        translated_text = result.stdout.strip()
+                        translated_text = translated_text_raw.strip()
                 except Exception as e:
                     print(f"Critical error in line {i}: {e}")
                     translated_text = dialogue_text
@@ -50,7 +45,6 @@ def translate_subtitle_llm(input_path, output_path, target_lang="portuguese", mo
                 translated_line = ",".join(parts[:9]) + "," + translated_text
                 translated_lines.append(translated_line)
                 print(f"[LOG] Line {i+1}/{len(lines)} translated (Dialogue)")
-                time.sleep(0.2)
             else:
                 translated_lines.append(line)
         with open(output_path, "w", encoding="utf-8") as f:
@@ -75,19 +69,13 @@ def translate_subtitle_llm(input_path, output_path, target_lang="portuguese", mo
                 f"{text}\n"
             )
             try:
-                result = subprocess.run(
-                    ["ollama", "run", model],
-                    input=prompt,
-                    capture_output=True,
-                    encoding="utf-8",
-                    text=True,
-                    timeout=120
-                )
-                if result.returncode != 0:
-                    print(f"Error translating block {i}: {result.stderr.strip()}")
+                translated_text_raw = llama_query(prompt, model=model, direct_mode=True)
+                
+                if translated_text_raw.startswith("Error generating response via API HTTP:"):
+                    print(f"Error translating block {i}: {translated_text_raw}")
                     translated_text = text
                 else:
-                    translated_text = result.stdout.strip()
+                    translated_text = translated_text_raw.strip()
             except Exception as e:
                 print(f"Critical error in block {i}: {e}")
                 translated_text = text
@@ -96,7 +84,6 @@ def translate_subtitle_llm(input_path, output_path, target_lang="portuguese", mo
             translated_srt.append(translated_block)
             block_end = time.time()
             print(f"[LOG] Block {i+1}/{len(blocks)} translated in {block_end - block_start:.2f} seconds")
-            time.sleep(0.2)
         with open(output_path, "w", encoding="utf-8") as f:
             f.write("\n\n".join(translated_srt))
 

@@ -81,8 +81,6 @@ def llama_query(prompt, model=DEFAULT_MODEL, direct_mode=False, mode=None):
     else:
         model = DEFAULT_MODEL
 
-    print(f"[🧠 DEBUG] Using model (API HTTP): {model}")
-
     try:
         if mode == "site":
             final_prompt = f"{site_system_prompt}\nUsuário: {prompt}\nJarvis:"

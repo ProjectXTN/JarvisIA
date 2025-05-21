@@ -12,7 +12,6 @@ def testar_traducao():
     comando = f"traduzir o arquivo {nome_arquivo} para {idioma}"
     print(f"\n[TESTE] Enviando: {comando}")
     resultado = execute_subtitle_translation(comando, speak=False)
-    print(f"\nResultado: {resultado}")
 
 if __name__ == "__main__":
     testar_traducao()
