@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from commands.commands_traduction import execute_traducao_legenda
+from commands.commands_traduction import execute_subtitle_translation
 
 def testar_traducao():
     print("\n=== TESTE DE TRADUÇÃO DE LEGENDA ===")
@@ -11,7 +11,7 @@ def testar_traducao():
 
     comando = f"traduzir o arquivo {nome_arquivo} para {idioma}"
     print(f"\n[TESTE] Enviando: {comando}")
-    resultado = execute_traducao_legenda(comando, speak=False)
+    resultado = execute_subtitle_translation(comando, speak=False)
     print(f"\nResultado: {resultado}")
 
 if __name__ == "__main__":
