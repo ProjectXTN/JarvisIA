@@ -15,6 +15,7 @@ from commands.commands_reflection import comandos_reflexao
 from commands.commands_search import execute_search
 from commands.commands_avatar import generate_avatar
 from commands.commands_systeme import system_command, shutdown_command
+from commands.commands_traduction import translation_commands
 from brain.weatherAPI import handle_weather_query
 from brain.storage.file_saver import save_response_to_file, should_save_to_file
 from brain.memory import llama_query
@@ -39,18 +40,20 @@ COMMAND_HANDLERS = [
     datetime_commands,
     music_commands,
     browser_commands,
+    translation_commands,
     system_command,
     comandos_pastas,
     image_commands,
     comandos_memoria,
     comandos_reflexao,
     emotional_commands,
-    generate_avatar,
+    generate_avatar
 ]
 
 BLOCKED_COMMANDS_API = [
     music_commands,
     browser_commands,
+    translation_commands,
     system_command,
     comandos_pastas,
     image_commands,
