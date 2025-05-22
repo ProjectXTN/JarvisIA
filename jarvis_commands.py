@@ -167,6 +167,8 @@ def process_command_api(query, lang="pt"):
     # if re.search(r"\b(pesquise|procure|busque)\s+(na\s+)?(internet|web)\b", query):
     #     if execute_search(query):
     #         return "Searching the internet..."
+    
+    weather_response = handle_weather_query(query, lang=lang)
 
     for group in COMMAND_HANDLERS:
         if group in BLOCKED_COMMANDS_API:
@@ -197,7 +199,6 @@ def process_command_api(query, lang="pt"):
                         print(f"[API Error COMMAND_HANDLERS] {e}")
                         return "There was an error executing the command."
 
-    weather_response = handle_weather_query(query)
 
     if weather_response and isinstance(weather_response, str):
         return weather_response
