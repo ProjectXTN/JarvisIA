@@ -123,7 +123,7 @@ Regex and heuristics are multi-lingual, so Jarvis intelligently detects queries 
 No more “Biden em 2025”!
 If you ask “Who is the president of the USA?” Jarvis will always give you the most current answer, not just what’s in its model.
 
-🧠 How RAG + Web Search Works
+## 🧠 How RAG + Web Search Works
 Question Received:
 User asks anything by voice or text.
 
@@ -138,7 +138,7 @@ Current/Time-sensitive? → Runs real-time Brave Search, parses the web, summari
 
 Conversation stays fast, relevant, and never obsolete!
 
-🌐 Example Queries
+## 🌐 Example Queries
 "Quem é o presidente dos Estados Unidos?"
 → Busca web + resposta atualizada
 
