@@ -25,9 +25,10 @@ pyautogui
 pyperclip
 psutil
 
-# === WEB SCRAPING + SEARCHES ===
+# === WEB SCRAPING + SEARCH ===
 requests
 beautifulsoup4
+aiohttp
 
 # === DATABASE ===
 sqlite-utils
@@ -44,12 +45,30 @@ scikit-learn
 regex
 tqdm
 python-dotenv
-pywin32  # Windows compatibility
+pywin32     # Windows compatibility
 unidecode
 
 # === DEVELOPMENT TOOLS ===
 jsbeautifier
 
-# === LLM MODELS ===
-# LLaMA 3.3 and LLaMA Vision via Ollama — install separately:
-# https://ollama.com/
+# === LLMs, RAG & EMBEDDINGS ===
+llama-index==0.10.40
+llama-index-embeddings-ollama
+ollama-py  # Client for Ollama local API
+
+# === TESTS ===
+pytest
+
+# === EXTRA: MULTILINGUAL & FORMATTING ===
+langdetect
+langid
+chardet
+
+# === EXTERNAL DEPENDENCIES (not via pip) ===
+# Ollama (for LLaMA 3.3, Vision 90B and Embedding Models)
+# CUDA Toolkit (for GPU acceleration)
+# ffmpeg (audio/video processing)
+# git / git-lfs (for models, optional)
+
+# ===============================
+# See README for manual steps!

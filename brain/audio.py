@@ -17,7 +17,7 @@ import faster_whisper
 import requests
 import json
 import base64
-from brain.utils import clean_output
+from brain.utils.utils import clean_output
 
 load_dotenv()
 

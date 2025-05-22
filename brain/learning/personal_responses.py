@@ -1,5 +1,5 @@
 import re
-from brain.utils import normalize_text
+from brain.utils.utils import normalize_text
 
 def detect_language(text: str):
     """Detecta o idioma com base em palavras-chave simples."""

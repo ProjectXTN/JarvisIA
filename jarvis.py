@@ -17,7 +17,7 @@ from core.initializer import (
 )
 from brain.learning import auto_learning
 from brain.learning.auto_learning import auto_learn
-from brain.utils import sounds_like_jarvis
+from brain.utils.utils import sounds_like_jarvis
 
 
 def main():

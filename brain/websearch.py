@@ -53,7 +53,7 @@ async def fetch_multiple_pages(links):
         tasks = [fetch_page(session, link) for link in links]
         return await asyncio.gather(*tasks)
 
-def search_web(query):
+def search_web(query, min_length=300, total_limit=5000, max_links=10):
     if not BRAVE_API_KEY:
         return "API KEY da Brave Search não encontrada.", "internet"
 
@@ -61,6 +61,7 @@ def search_web(query):
         print(f"[🔎] Pesquisando na internet sobre: {query}")
 
         current_year = str(datetime.datetime.now().year)
+        previous_year = str(int(current_year) - 1)
         next_year = str(int(current_year) + 1)
 
         url = f"https://api.search.brave.com/res/v1/web/search?q={query}"
@@ -75,7 +76,7 @@ def search_web(query):
         if not results:
             return "Nenhum resultado encontrado na web.", "internet"
 
-        links = [result["url"] for result in results[:10]]
+        links = [result["url"] for result in results[:max_links]]
         print(f"[🔗] Links encontrados: {links}")
 
         pages_data = asyncio.run(fetch_multiple_pages(links))
@@ -86,7 +87,8 @@ def search_web(query):
                 continue 
 
             url, text = result
-            if text and any(year in text for year in [current_year, next_year]) and len(text) > 300:
+            # Here: you can change the logic if you want to accept shorter/older texts
+            if text and any(year in text for year in [current_year, next_year, previous_year]) and len(text) > min_length:
                 print(f"Conteúdo válido encontrado em: {url}")
                 links_with_text.append((url, text[:10000]))
             else:
@@ -95,7 +97,7 @@ def search_web(query):
         if not links_with_text:
             return "Não consegui acessar nenhum conteúdo atualizado.", "internet"
 
-        total_limit = 5000
+        # Set up web context
         combined_texts = ""
         for _, text in links_with_text:
             if len(combined_texts) + len(text) > total_limit:
@@ -103,25 +105,10 @@ def search_web(query):
                 break
             combined_texts += text + "\n\n---\n\n"
 
-        sources = "\n".join([f"🔗 {extract_readable_source(link)}" for link, _ in links_with_text])
+        sources = "\n".join([f"{extract_readable_source(link)}" for link, _ in links_with_text])
         main_source = extract_readable_source(links_with_text[0][0]) if links_with_text else "internet"
 
-        prompt = (
-            f"Você é Jarvis, um assistente virtual altamente inteligente. "
-            f"Com base nas informações coletadas abaixo de múltiplas fontes confiáveis, "
-            f"responda à pergunta com clareza, objetividade e em português.\n\n"
-            f"Pergunta: {query}\n\n"
-            f"Conteúdo:\n{combined_texts}\n\n"
-            f"Responda em português, de forma objetiva. No final, mostre as fontes usadas, sem emotions ou ícones.\n"
-        )
-
-        try:
-            answer = llama_query(prompt, DEFAULT_MODEL)
-            answer = answer[:8000] if isinstance(answer, str) else "Erro: resposta inválida."
-        except Exception as e:
-            answer = f"Erro ao gerar resposta: {e}"
-
-        return f"{answer.strip()}\n\n📚 Fontes:\n{sources}", main_source
+        return combined_texts.strip(), sources
 
     except Exception as e:
         print(f"[ERRO] Erro durante a busca web: {e}")

@@ -102,8 +102,8 @@ def traduzir_dia_semana(day_en):
 def is_weather_request(query):
     """Detecta se a consulta é sobre clima."""
     padroes = [
-        r"\b(previsão|clima|meteorologia|meteo|meteor)\b",
-        r"\b(como está o tempo|como está o clima|vai chover|temperatura|como esta o dia|qual a meteo de amanha|qual a meteor de amanha)\b",
+        r"\b(previs[aã]o|previsando|clima|clime|meteorologia|meteo|meteor|tempo)\b",
+        r"\b(como est[aá] o tempo|como est[aá] o clima|vai chover|temperatura|como esta o dia|qual a meteo( de| para)? amanh[aã]|qual a meteor( de| para)? amanh[aã])\b",
     ]
     query = query.lower()
     for padrao in padroes:
@@ -132,7 +132,7 @@ def extract_city(query):
     """Extrai corretamente a cidade da frase de previsão do tempo."""
     query = clean_forecast_keywords(query)
 
-    location_keywords = ["em", "de", "da", "do", "na", "no"]
+    location_keywords = ["para","em", "de", "da", "do", "na", "no"]
     stop_keywords = [
         "para",
         "os",
@@ -203,6 +203,8 @@ def detect_forecast_request(query):
 
 
 def handle_weather_query(query):
+    print(f"[DEBUG] Checking if it is weather query: {query}")
+    
     if not is_weather_request(query):
         return False
 

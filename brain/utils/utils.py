@@ -15,7 +15,6 @@ COUNTRY_CODES = {
     "japão": "JP",
     "china": "CN",
     "itália": "IT",
-    # Adiciona mais se quiser depois
 }
 
 def normalize_country(country_name):

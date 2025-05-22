@@ -1,6 +1,6 @@
 import subprocess
 import requests
-from brain.utils import clean_output
+from brain.utils.utils import clean_output
 from brain.learning.personal_responses import check_personal_answer
 
 

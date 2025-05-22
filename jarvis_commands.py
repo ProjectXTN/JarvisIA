@@ -19,10 +19,12 @@ from commands.commands_traduction import translation_commands
 from brain.weatherAPI import handle_weather_query
 from brain.storage.file_saver import save_response_to_file, should_save_to_file
 from brain.memory import llama_query
+from brain.utils.querySensitive import is_query_time_sensitive
+from brain.pipeline.super_jarvis import super_jarvis_query
 from core import config
 
 from brain.audio import say
-from brain.utils import log_interaction
+from brain.utils.utils import log_interaction
 from brain.dev import extract_and_save_code
 
 # New: Persistent connection with LLaMA3
@@ -76,6 +78,9 @@ def process_command(query):
 
     if shutdown_command(query) is False:
         return False
+    
+    if handle_weather_query(query):
+        return True
 
     if re.search(r"\b(pesquise|procure|busque)\s+(na\s+)?(internet|web)\b", query):
         if execute_search(query):
@@ -101,15 +106,17 @@ def process_command(query):
                         print(f"Error COMMAND_HANDLERS {e}")
                         return True
 
-    if handle_weather_query(query):
-        return True
-
-    # 🔁 Fallback usando LLaMA3 + Cache
+    # 🔁 Fallback usando pipeline RAG+Web (super_jarvis_query)
     if query in response_cache:
         response = response_cache[query]
     else:
         start_time = time.time()
-        response = llama_query(query)
+        if is_query_time_sensitive(query):
+            print("[DEBUG] Query depends on current data. Using RAG+Web.")
+            response = super_jarvis_query(query)
+        else:
+            print("[DEBUG] Timeless query. Using only LLaMA memory.")
+            response = llama_query(query)
         end_time = time.time()
 
         generation_time = end_time - start_time

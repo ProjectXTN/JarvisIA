@@ -36,7 +36,7 @@ Internet connection (for searches and autonomous learning)
 
 🌦️ Weather Forecast — Voice-based weather queries by city and country
 
-🔍 Autonomous Internet Search — When missing info, Jarvis finds it for you
+🔍 RAG + Autonomous Internet Search — Now hybrid: Combines local LLM, memory, and real-time web search for up-to-date answers!
 
 🖼 Local Image Vision — Scan and describe images stored locally
 
@@ -108,6 +108,48 @@ To trigger Vision 90B model (for precise descriptions):
 "Quero uma análise precisa da imagem"
 
 Fallback to faster vision models if necessary.
+
+🚀 What's New: RAG + Web Search (Hybrid Intelligence)
+Smart Decision Making:
+Jarvis analyzes every question and decides:
+
+If it’s time-sensitive or about current events, it automatically performs a live web search, parses results, and feeds context to the LLM before answering.
+
+If the answer is timeless (history, science, definitions), it responds instantly using its own knowledge.
+
+Languages Supported:
+Regex and heuristics are multi-lingual, so Jarvis intelligently detects queries in Portuguese, English, or French and fetches real-time answers when needed.
+
+No more “Biden em 2025”!
+If you ask “Who is the president of the USA?” Jarvis will always give you the most current answer, not just what’s in its model.
+
+🧠 How RAG + Web Search Works
+Question Received:
+User asks anything by voice or text.
+
+Intent & Context Detection:
+Jarvis uses regex and heuristics to decide if the answer should come from memory or if it’s time-sensitive (current events, “who is...”, “quanto é o dólar”, etc).
+
+Hybrid Answering:
+
+Timeless? → Responds instantly from LLaMA’s memory.
+
+Current/Time-sensitive? → Runs real-time Brave Search, parses the web, summarizes context, then LLaMA 3.3 generates a rich answer with references.
+
+Conversation stays fast, relevant, and never obsolete!
+
+🌐 Example Queries
+"Quem é o presidente dos Estados Unidos?"
+→ Busca web + resposta atualizada
+
+"Qual a cotação do euro hoje?"
+→ Busca web + resposta atualizada
+
+"Me conte a história de Napoleão"
+→ LLM responde direto (não vai pra internet)
+
+"Jarvis, previsão do tempo para Lisboa amanhã"
+→ Busca web (se necessário) + dados atualizados
 
 ## 🌦️ Weather Forecast
 

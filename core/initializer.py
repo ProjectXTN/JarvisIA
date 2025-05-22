@@ -4,7 +4,7 @@ import requests
 import time
 import sys
 from brain.audio import listen
-from brain.utils import normalize_text, sounds_like_jarvis
+from brain.utils.utils import normalize_text, sounds_like_jarvis
 
 LOCK_FILE = "jarvis.lock"
 VISION_MODELS = ["llama3.2-vision:90b", "llama3.2", "llama3.3"]
