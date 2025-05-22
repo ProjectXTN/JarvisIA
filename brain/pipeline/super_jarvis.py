@@ -1,6 +1,6 @@
-from brain.websearch import search_web
+from brain.websearch.websearch import search_web
 from brain.rag.query_rag import query_rag
-from brain.memory import llama_query, DEFAULT_MODEL
+from brain.memory.memory import llama_query, DEFAULT_MODEL
 
 def super_jarvis_query(user_prompt):
     # 1. Busca contexto web

@@ -5,7 +5,7 @@ from pathlib import Path
 import time
 from brain.storage.open_file import safe_open_file
 from brain.profiles_image.generateProfile import detect_profile_from_prompt, PROFILES
-from brain.translate import translate_to_english
+from brain.traduction.translate import translate_to_english
 
 
 

@@ -5,7 +5,7 @@ import aiohttp
 import datetime
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
-from brain.memory import llama_query, DEFAULT_MODEL
+from brain.memory.memory import llama_query, DEFAULT_MODEL
 from dotenv import load_dotenv
 
 load_dotenv()

@@ -3,7 +3,7 @@ import sys
 import re
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from brain.weatherAPI import get_weather
+from brain.weatherAPI.weatherAPI import get_weather
 
 def test_get_weather_default_city():
     """

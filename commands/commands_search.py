@@ -1,6 +1,6 @@
 import re
 from brain.audio import say
-from brain.websearch import search_web
+from brain.websearch.websearch import search_web
 
 
 def execute_search(query, speak=True):

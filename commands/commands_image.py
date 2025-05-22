@@ -1,7 +1,7 @@
 import os
 import re
 from brain.audio import say, listen
-from brain.memory import llama_query, DEFAULT_MODEL, DEFAULT_MODEL_HIGH
+from brain.memory.memory import llama_query, DEFAULT_MODEL, DEFAULT_MODEL_HIGH
 from commands.commands_dispatch_image import dispatch_image_command
 from jarvis_vision import describe_image
 

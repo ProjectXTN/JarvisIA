@@ -12,13 +12,13 @@ from commands.commands_multiples import multiple_commands
 from commands.commands_memorie import comandos_memoria
 from commands.commands_emotions import emotional_commands
 from commands.commands_reflection import comandos_reflexao
+from commands.commands_traduction import translation_commands
 from commands.commands_search import execute_search
 from commands.commands_avatar import generate_avatar
 from commands.commands_systeme import system_command, shutdown_command
-from commands.commands_traduction import translation_commands
-from brain.weatherAPI import handle_weather_query
+from brain.weatherAPI.weatherAPI import handle_weather_query
 from brain.storage.file_saver import save_response_to_file, should_save_to_file
-from brain.memory import llama_query
+from brain.memory.memory import llama_query
 from brain.utils.querySensitive import is_query_time_sensitive
 from brain.pipeline.super_jarvis import super_jarvis_query
 from core import config
@@ -69,7 +69,6 @@ BLOCKED_COMMANDS_API = [
 def process_command(query):
     query = query.lower().strip()
 
-    # Remove "jarvis" do começo
     query = re.sub(r"^jarvis[\s,]*", "", query)
     query = query.lstrip(", ").strip()
     query = query.rstrip(string.punctuation)
@@ -106,7 +105,7 @@ def process_command(query):
                         print(f"Error COMMAND_HANDLERS {e}")
                         return True
 
-    # 🔁 Fallback usando pipeline RAG+Web (super_jarvis_query)
+    # 🔁 Fallback pipeline RAG+Web (super_jarvis_query)
     if query in response_cache:
         response = response_cache[query]
     else:
@@ -203,18 +202,29 @@ def process_command_api(query):
     if weather_response and isinstance(weather_response, str):
         return weather_response
 
-    # Fallback para LLaMA3
+    # 🔁 Fallback pipeline RAG+Web (super_jarvis_query)
     if query in response_cache:
         response = response_cache[query]
     else:
         start_time = time.time()
-        response = llama_query(query, direct_mode=True, mode="site")
+        if is_query_time_sensitive(query):
+            print("[DEBUG] Query depends on current data. Using RAG+Web.")
+            response = super_jarvis_query(query)
+        else:
+            print("[DEBUG] Timeless query. Using only LLaMA memory.")
+            response = llama_query(query)
         end_time = time.time()
 
         generation_time = end_time - start_time
 
         if response:
-            print(f"\n[API] LLaMA generated (in {generation_time:.2f} seconds)")
+            print(f"\nJarvis generated (in {generation_time:.2f} seconds)")
+        else:
+            print(
+                f"LLaMA failed to generate a response after {generation_time:.2f} seconds."
+            )
+
+        if response:
             response_cache[query] = response
         else:
             print(f"[API] LLaMA failed after {generation_time:.2f} seconds.")

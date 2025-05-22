@@ -1,8 +1,7 @@
 import re
-import subprocess
 import time
 import os
-from brain.memory import llama_query, DEFAULT_MODEL
+from brain.memory.memory import llama_query, DEFAULT_MODEL
 
 def translate_subtitle_llm(input_path, output_path, target_lang="portuguese", model="llama3.2"):
     print(f"[DEBUG] START: {input_path=} {output_path=} {target_lang=}")

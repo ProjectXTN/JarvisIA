@@ -1,7 +1,7 @@
 import os
 import re
 from brain.audio import say
-from brain.traduction_file_srt.traduction import translate_subtitle_llm
+from brain.traduction.traductionFiles import translate_subtitle_llm
 
 def execute_subtitle_translation(query, speak=True):
     match = re.search(

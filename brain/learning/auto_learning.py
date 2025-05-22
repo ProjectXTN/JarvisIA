@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 from commands.commands_search import execute_search
 from brain.learning.insert_memory import insert_memory
-from brain.memory import llama_query, DEFAULT_MODEL
+from brain.memory.memory import llama_query, DEFAULT_MODEL
 from brain.learning.consult_memory import consultar_memoria
 
 auto_learning_enabled = False
