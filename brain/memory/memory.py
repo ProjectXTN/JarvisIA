@@ -66,7 +66,7 @@ def detect_reflection_request(prompt):
     return any(trigger in prompt_lower for trigger in TRIGGER_WORDS)
 
 
-def llama_query(prompt, model=DEFAULT_MODEL, direct_mode=False, mode=None):
+def llama_query(prompt, model=DEFAULT_MODEL, direct_mode=False, mode=None, lang="pt"):
     """Generate response using Ollama Server with different prompt styles based on the mode."""
 
     temperature = 1.1 if mode == "terminal" else 0.2
@@ -83,7 +83,13 @@ def llama_query(prompt, model=DEFAULT_MODEL, direct_mode=False, mode=None):
 
     try:
         if mode == "site":
-            final_prompt = f"{site_system_prompt}\nUsuário: {prompt}\nJarvis:"
+            language_instructions = {
+                "pt": "Sempre responda em português brasileiro.",
+                "fr": "Répondez toujours en français.",
+                "en": "Always reply in English.",
+            }
+            extra = language_instructions.get(lang, "")
+            final_prompt = f"{site_system_prompt}\n{extra}\nUsuário: {prompt}\nJarvis:"
         elif mode == "terminal":
             final_prompt = f"{terminal_prompt}\nUsuário: {prompt}\nJarvis:"
         elif direct_mode:

@@ -152,7 +152,7 @@ def process_command(query):
     return True
 
 
-def process_command_api(query):
+def process_command_api(query, lang="pt"):
     query = query.lower().strip()
     query = re.sub(r"^jarvis[\s,]*", "", query)
     query = query.lstrip(", ").strip()
@@ -212,7 +212,7 @@ def process_command_api(query):
             response = super_jarvis_query(query)
         else:
             print("[DEBUG] Timeless query. Using only LLaMA memory.")
-            response = llama_query(query)
+            response = llama_query(query, lang=lang, mode="site")
         end_time = time.time()
 
         generation_time = end_time - start_time
