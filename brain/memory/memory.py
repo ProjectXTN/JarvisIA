@@ -1,7 +1,10 @@
+import os
 import subprocess
 import requests
 from brain.utils.utils import clean_output
 from brain.learning.personal_responses import check_personal_answer
+
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 
 
 # === Contexto de memória para manter a conversação ===
@@ -101,7 +104,7 @@ def llama_query(prompt, model=DEFAULT_MODEL, direct_mode=False, mode=None, lang=
             final_prompt = f"{system_prompt}\n{history}\nUsuário: {prompt}\nJarvis:"
 
         response = session.post(
-            "http://localhost:11500/api/generate",
+            f"{OLLAMA_HOST}/api/generate",
             json={
                 "model": model,
                 "prompt": final_prompt,
