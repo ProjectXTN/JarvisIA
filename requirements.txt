@@ -52,9 +52,15 @@ unidecode
 jsbeautifier
 
 # === LLMs, RAG & EMBEDDINGS ===
+<<<<<<< HEAD
 #llama-index==0.10.40
 #llama-index-embeddings-ollama
 #ollama  # Client for Ollama local API
+=======
+# llama-index==0.10.40
+# llama-index-embeddings-ollama
+# ollama-py  # Client for Ollama local API
+>>>>>>> e36c36e6cc7febc1faf6d7542dbf6c2a9ccd936f
 
 # === TESTS ===
 #pytest
