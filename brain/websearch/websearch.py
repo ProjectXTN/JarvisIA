@@ -39,11 +39,32 @@ async def fetch_page(session, url):
                     for tag in main_content.find_all(["nav", "footer", "aside", "header", "script", "style"]):
                         tag.decompose()
 
-                    text = main_content.get_text(separator="\n", strip=True)
-                else:
-                    text = soup.get_text(separator="\n", strip=True)
+                # Coleta títulos e parágrafos
+                headlines = soup.find_all(['h1', 'h2', 'h3'])
+                paragraphs = soup.find_all('p')
 
-                return url, text
+                noticias = []
+                used_paragraphs = set()
+
+                for h in headlines:
+                    title = h.get_text(strip=True)
+                    # Busca o primeiro parágrafo relevante após o título
+                    for p in paragraphs:
+                        p_text = p.get_text(strip=True)
+                        if p_text and len(p_text) > 50 and p_text not in used_paragraphs:
+                            noticias.append(f"[TÍTULO] {title}\n[RESUMO] {p_text}\n[FONTE] {url}\n")
+                            used_paragraphs.add(p_text)
+                            break  # pega só o primeiro parágrafo relevante
+                    if len(noticias) >= 5:
+                        break  # limita por página
+
+                if noticias:
+                    return url, "\n\n".join(noticias)
+                else:
+                    # fallback se nada for encontrado
+                    full_text = main_content.get_text(separator="\n", strip=True) if main_content else soup.get_text(separator="\n", strip=True)
+                    return url, full_text
+
     except Exception as e:
         print(f"[ERRO] Falha ao buscar {url}: {e}")
         return url, None

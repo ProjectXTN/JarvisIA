@@ -13,8 +13,9 @@ def super_jarvis_query(user_prompt):
         f"Fontes web:\n{web_sources}\n\n"
         f"Informações de documentos internos:\n{local_context}\n\n"
         f"Pergunta do usuário: {user_prompt}\n"
-        "Responda de forma objetiva, usando as informações acima. "
-        "Se não houver resposta suficiente, diga que não foi possível encontrar."
+         "Responda com base nas informações mais recentes do dia de hoje. "
+         "Priorize notícias datadas ou com menção explícita ao dia atual. "
+         "Evite respostas genéricas. Seja específico e direto."
     )
 
     resposta = llama_query(prompt, model=DEFAULT_MODEL, direct_mode=True)
