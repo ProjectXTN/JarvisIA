@@ -1,8 +1,20 @@
 import re
 
+NEWS_KEYWORDS = [
+    "notícia", "noticias", "notícias", "hoje", "últimas", "atual", "agora", "manchete",
+    "news", "today", "latest", "now", "headline", "headlines", "current",
+    "actualité", "actualités", "nouvelles", "aujourd'hui", "dernières", "maintenant", "titrage", "à la une"
+]
+
 def is_query_time_sensitive(query):
     query = query.lower().strip()
 
+    # First, check NEWS_KEYWORDS (multilingual, no regex needed)
+    for word in NEWS_KEYWORDS:
+        if word in query:
+            return True
+
+    # Then, check for complex temporal/financial/politics/etc patterns
     patterns = [
         # PRESIDENT / GOVERNOR / LEADER (pt/en/fr)
         r"presidente|president|président",
