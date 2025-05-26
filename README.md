@@ -34,8 +34,6 @@ Internet connection (for searches and autonomous learning)
 
 👁 LLaMA 3.2 Vision 90B — For detailed image analysis and description
 
-🧠 Jarvis Copilot (VS Code) — Real-time code completion powered by Codestral, integrated via local Flask API and Ollama
-
 🌦️ Weather Forecast — Voice-based weather queries by city and country
 
 🔍 RAG + Autonomous Internet Search — Now hybrid: Combines local LLM, memory, and real-time web search for up-to-date answers!
@@ -110,28 +108,6 @@ To trigger Vision 90B model (for precise descriptions):
 "Quero uma análise precisa da imagem"
 
 Fallback to faster vision models if necessary.
-
-## 💻 Jarvis Copilot (VS Code Extension)
-
-A real-time code suggestion engine integrated with your local IDE. Powered by Codestral running on Ollama, Jarvis Copilot helps you write better code as you type.
-
-✅ VS Code extension in /JarvisCopilot
-
-🧠 Local integration via /suggest Flask API
-
-⏳ Suggests completions every 3 seconds
-
-✏️ Can be extended to use hover tips, snippets, ghost text, and more
-
-Usage:
-
-Start your Flask backend (Jarvis) with the /suggest endpoint running
-
-Open the JarvisCopilot project in VS Code
-
-Press F5 to launch the extension in Dev Mode
-
-Start coding and receive suggestions powered by Codestral
 
 ## 🧠 How RAG + Web Search Works
 Question Received:
