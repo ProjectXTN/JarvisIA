@@ -157,7 +157,8 @@ def process_command_api(query, lang="pt"):
     query = re.sub(r"^jarvis[\s,]*", "", query)
     query = query.lstrip(", ").strip()
     query = query.rstrip(string.punctuation)
-
+    
+    print(f"🟦 [DEBUG] LANG RECEBIDO PELO BACKEND: {lang}")
     print(f"[API] Phrase after cleaning: {query}")
 
     if shutdown_command(query) is False:
@@ -210,7 +211,7 @@ def process_command_api(query, lang="pt"):
         start_time = time.time()
         if is_query_time_sensitive(query):
             print("[DEBUG] Query depends on current data. Using RAG+Web.")
-            response = super_jarvis_query(query)
+            response = super_jarvis_query(query, lang=lang)
         else:
             print("[DEBUG] Timeless query. Using only LLaMA memory.")
             response = llama_query(query, lang=lang, mode="site")

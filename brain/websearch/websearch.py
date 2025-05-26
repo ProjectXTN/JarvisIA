@@ -21,50 +21,76 @@ def extract_readable_source(url):
         return base[0].capitalize() if base else domain
     except:
         return url
+    
+def parse_html_universal(html, url=None, max_blocks=10, min_block_length=80):
+    soup = BeautifulSoup(html, "html.parser")
+    
+    # Limpa elementos inúteis
+    for tag in soup(["nav", "footer", "aside", "header", "script", "style", "form", "noscript", "svg", "canvas", "iframe"]):
+        tag.decompose()
+    
+    blocks = []
+
+    # 1. Título da página
+    if soup.title and soup.title.string:
+        blocks.append(f"[TÍTULO] {soup.title.string.strip()}")
+
+    # 2. Subtítulos
+    for h in soup.find_all(['h1', 'h2', 'h3']):
+        txt = h.get_text(strip=True)
+        if txt and len(txt) >= min_block_length:
+            blocks.append(f"[SUBTÍTULO] {txt}")
+
+    # 3. Parágrafos grandes
+    for p in soup.find_all('p'):
+        txt = p.get_text(separator=" ", strip=True)
+        if txt and len(txt) >= min_block_length:
+            blocks.append(f"[PARÁGRAFO] {txt}")
+
+    # 4. Listas
+    for ul in soup.find_all(['ul', 'ol']):
+        items = [li.get_text(" ", strip=True) for li in ul.find_all('li')]
+        items = [i for i in items if len(i) >= 10]
+        if items and len(" ".join(items)) > min_block_length:
+            blocks.append(f"[LISTA]\n" + "\n".join(f"- {item}" for item in items))
+
+    # 5. Artigos/Seções
+    for tag in soup.find_all(['article', 'section']):
+        txt = tag.get_text(separator="\n", strip=True)
+        if txt and len(txt) > min_block_length:
+            blocks.append(f"[BLOCO] {txt[:500]}...")  # Amostra do conteúdo
+
+    # Remove duplicados e limita o número de blocos
+    seen = set()
+    final_blocks = []
+    for b in blocks:
+        if b not in seen:
+            final_blocks.append(b)
+            seen.add(b)
+        if len(final_blocks) >= max_blocks:
+            break
+
+    if not final_blocks:
+        # Fallback: pega tudo do <body>
+        body = soup.find('body')
+        if body:
+            txt = body.get_text(separator="\n", strip=True)
+            if txt and len(txt) > min_block_length:
+                final_blocks.append(f"[BODY] {txt[:1000]}...")
+
+    if url:
+        fonte = f"[FONTE] {url}"
+        final_blocks.append(fonte)
+
+    return "\n\n".join(final_blocks)
 
 async def fetch_page(session, url):
     try:
         async with session.get(url, timeout=5) as response:
             if response.status == 200:
                 html = await response.text()
-                soup = BeautifulSoup(html, "html.parser")
-
-                main_content = (
-                    soup.find('main') or
-                    soup.find('article') or
-                    soup.find('body')
-                )
-
-                if main_content:
-                    for tag in main_content.find_all(["nav", "footer", "aside", "header", "script", "style"]):
-                        tag.decompose()
-
-                # Coleta títulos e parágrafos
-                headlines = soup.find_all(['h1', 'h2', 'h3'])
-                paragraphs = soup.find_all('p')
-
-                noticias = []
-                used_paragraphs = set()
-
-                for h in headlines:
-                    title = h.get_text(strip=True)
-                    # Busca o primeiro parágrafo relevante após o título
-                    for p in paragraphs:
-                        p_text = p.get_text(strip=True)
-                        if p_text and len(p_text) > 50 and p_text not in used_paragraphs:
-                            noticias.append(f"[TÍTULO] {title}\n[RESUMO] {p_text}\n[FONTE] {url}\n")
-                            used_paragraphs.add(p_text)
-                            break  # pega só o primeiro parágrafo relevante
-                    if len(noticias) >= 5:
-                        break  # limita por página
-
-                if noticias:
-                    return url, "\n\n".join(noticias)
-                else:
-                    # fallback se nada for encontrado
-                    full_text = main_content.get_text(separator="\n", strip=True) if main_content else soup.get_text(separator="\n", strip=True)
-                    return url, full_text
-
+                parsed_text = parse_html_universal(html, url)
+                return url, parsed_text
     except Exception as e:
         print(f"[ERRO] Falha ao buscar {url}: {e}")
         return url, None
@@ -74,16 +100,12 @@ async def fetch_multiple_pages(links):
         tasks = [fetch_page(session, link) for link in links]
         return await asyncio.gather(*tasks)
 
-def search_web(query, min_length=300, total_limit=5000, max_links=10):
+def search_web(query, min_length=80, total_limit=5000, max_links=10):
     if not BRAVE_API_KEY:
         return "API KEY da Brave Search não encontrada.", "internet"
 
     try:
         print(f"[🔎] Pesquisando na internet sobre: {query}")
-
-        current_year = str(datetime.datetime.now().year)
-        previous_year = str(int(current_year) - 1)
-        next_year = str(int(current_year) + 1)
 
         url = f"https://api.search.brave.com/res/v1/web/search?q={query}"
         headers = {
@@ -108,15 +130,15 @@ def search_web(query, min_length=300, total_limit=5000, max_links=10):
                 continue 
 
             url, text = result
-            # Here: you can change the logic if you want to accept shorter/older texts
-            if text and any(year in text for year in [current_year, next_year, previous_year]) and len(text) > min_length:
+            # Aceita qualquer texto relevante, não depende mais do ano
+            if text and len(text) > min_length:
                 print(f"Conteúdo válido encontrado em: {url}")
                 links_with_text.append((url, text[:10000]))
             else:
-                print(f"Conteúdo ignorado (incompleto ou desatualizado): {url}")
+                print(f"Conteúdo ignorado (curto ou vazio): {url}")
 
         if not links_with_text:
-            return "Não consegui acessar nenhum conteúdo atualizado.", "internet"
+            return "Não consegui acessar nenhum conteúdo relevante.", "internet"
 
         # Set up web context
         combined_texts = ""
