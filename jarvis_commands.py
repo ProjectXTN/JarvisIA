@@ -51,7 +51,7 @@ COMMAND_HANDLERS = [
     comandos_memoria,
     comandos_reflexao,
     emotional_commands,
-    generate_avatar
+    generate_avatar,
 ]
 
 BLOCKED_COMMANDS_API = [
@@ -79,7 +79,7 @@ def process_command(query, lang="pt"):
 
     if shutdown_command(query) is False:
         return False
-    
+
     if handle_weather_query(query):
         return True
 
@@ -112,20 +112,20 @@ def process_command(query, lang="pt"):
         response = response_cache[query]
     else:
         start_time = time.time()
+        # CODE FOR MARKDOWN
+        #  if is_code_request(query):
+        #     print("[DEBUG] Pedido de código detectado: usando Codestral.")
+
+        #     lang_instruction = markdown_instruction.get(lang, markdown_instruction["en"])
+        #     prompt = f"{lang_instruction}\n{query}"
+        #     response = llama_query(prompt, model=DEFAULT_MODEL_CODE, lang=lang)
+
+        #     # Make sure markdown comes
+        #     if "```" not in response:
+        #         response = f"```python\n{response.strip()}\n```"
+
         if is_code_request(query):
-            print("[DEBUG] Pedido de código detectado: usando Codestral.")
-            markdown_instruction = {
-                "pt": "Quando mostrar código, sempre coloque em um bloco markdown usando crases triplas e especifique a linguagem. Mantenha a indentação perfeita.",
-                "en": "When displaying code, always put it in a markdown code block using triple backticks and specify the language. Keep the indentation perfect.",
-                "fr": "Lorsque vous affichez du code, placez-le toujours dans un bloc de code markdown avec des triples backticks et indiquez le langage. Gardez l'indentation parfaite."
-            }
-            lang_instruction = markdown_instruction.get(lang, markdown_instruction["en"])
-            # Aqui você garante que a LLM já receba a instrução logo no prompt
-            prompt = f"{lang_instruction}\n{query}"
-            response = llama_query(prompt, model=DEFAULT_MODEL_CODE, lang=lang)
-            # Garante que venha markdown
-            if "```" not in response:
-                response = f"```python\n{response.strip()}\n```"
+            response = llama_query(query, model=DEFAULT_MODEL_CODE, lang=lang)
         elif is_query_time_sensitive(query):
             print("[DEBUG] Query depends on current data. Using RAG+Web.")
             response = super_jarvis_query(query, lang=lang)
@@ -176,7 +176,7 @@ def process_command_api(query, lang="pt"):
 
     if shutdown_command(query) is False:
         return "Shutting down Jarvis..."
-    
+
     weather_response = handle_weather_query(query, lang=lang)
 
     for group in COMMAND_HANDLERS:
@@ -208,7 +208,6 @@ def process_command_api(query, lang="pt"):
                         print(f"[API Error COMMAND_HANDLERS] {e}")
                         return "There was an error executing the command."
 
-
     if weather_response and isinstance(weather_response, str):
         return weather_response
 
@@ -219,11 +218,13 @@ def process_command_api(query, lang="pt"):
         start_time = time.time()
         if is_code_request(query):
             print("[DEBUG] Pedido de código detectado: usando Codestral.")
-            
-            lang_instruction = markdown_instruction.get(lang, markdown_instruction["en"])
+
+            lang_instruction = markdown_instruction.get(
+                lang, markdown_instruction["en"]
+            )
             prompt = f"{lang_instruction}\n{query}"
             response = llama_query(prompt, model=DEFAULT_MODEL_CODE, lang=lang)
-            
+
             # Make sure markdown comes
             if "```" not in response:
                 response = f"```python\n{response.strip()}\n```"

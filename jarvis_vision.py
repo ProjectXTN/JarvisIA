@@ -9,11 +9,13 @@ PRECISION_TRIGGERS = [
     r"\bprecisão\b",
     r"\bcom\s+riqueza\b",
     r"\bem alta definição\b",
-    r"\bcom\s+detalhes\b"
+    r"\bcom\s+detalhes\b",
 ]
+
 
 def is_detailed_prompt(user_text):
     return any(re.search(p, user_text.lower()) for p in PRECISION_TRIGGERS)
+
 
 def describe_image(image_path, user_text=""):
     use_detailed_model = is_detailed_prompt(user_text)
@@ -21,12 +23,12 @@ def describe_image(image_path, user_text=""):
 
     model_prompt = (
         "Describe the image with rich detail, in Portuguese."
-        if use_detailed_model else
-        "Describe the image content clearly, in Portuguese."
+        if use_detailed_model
+        else "Describe the image content clearly, in Portuguese."
     )
 
     prompt_with_image = f"<image>{image_path}</image>\n{model_prompt}"
-    
+
     print(f"🔍 [VISION] Analisando imagem usando modelo: {chosen_model}")
 
     try:
@@ -36,7 +38,7 @@ def describe_image(image_path, user_text=""):
             capture_output=True,
             encoding="utf-8",
             text=True,
-            timeout=600 if use_detailed_model else 90
+            timeout=600 if use_detailed_model else 90,
         )
 
         if result.returncode != 0:

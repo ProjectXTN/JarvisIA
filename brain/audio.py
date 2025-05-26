@@ -83,7 +83,7 @@ async def speak_with_gui(text):
 
 # === Public speech function ===
 def say(text, lang="pt-BR", gender="MALE"):
-    
+
     clean_text = clean_output(text).strip()
     clean_text = re.sub(r"(^\s*\*\s*|\s+\*\s+)", " ", clean_text, flags=re.MULTILINE)
     clean_text = re.sub(r"-{3,}", " ", clean_text)
@@ -101,13 +101,9 @@ def say(text, lang="pt-BR", gender="MALE"):
         "voice": {
             "languageCode": "pt-BR",
             "name": "pt-BR-Wavenet-B",
-            "ssmlGender": gender
+            "ssmlGender": gender,
         },
-        "audioConfig": {
-            "audioEncoding": "MP3",
-            "speakingRate": 1.10,
-            "pitch": -2.0
-        }
+        "audioConfig": {"audioEncoding": "MP3", "speakingRate": 1.10, "pitch": -2.0},
     }
 
     print(f"\n🧠 Jarvis : {clean_text}")
@@ -122,17 +118,18 @@ def say(text, lang="pt-BR", gender="MALE"):
 
     if response.status_code == 200:
         audio_content = base64.b64decode(response.json()["audioContent"])
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as out:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as out:
             out.write(audio_content)
             out.flush()
-            subprocess.run(["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", out.name])
+            subprocess.run(
+                ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", out.name]
+            )
 
         os.remove(out.name)
 
     else:
         print(f"❌ Erro: {response.status_code}")
         print(response.text)
-
 
 
 # === Listening function with VAD + Fast-Whisper ===
@@ -212,10 +209,10 @@ def listen():
             with transcribe_lock:
                 segments, info = model.transcribe(
                     f.name,
-                    language="pt",      
-                    beam_size=5,         
-                    vad_filter=True,      
-                    vad_parameters={"threshold": 0.5} 
+                    language="pt",
+                    beam_size=5,
+                    vad_filter=True,
+                    vad_parameters={"threshold": 0.5},
                 )
 
             end_time = time.time()

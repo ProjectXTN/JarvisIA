@@ -17,7 +17,7 @@ def get_weather(city="Lexy", forecast=False, next_week=False, lang="pt"):
         return {
             "pt": "API KEY do serviço de previsão do tempo não configurada.",
             "en": "Weather service API KEY not configured.",
-            "fr": "Clé API du service météo non configurée."
+            "fr": "Clé API du service météo non configurée.",
         }.get(lang, "API KEY do serviço de previsão do tempo não configurada.")
 
     # Mapear lang para código reconhecido pela OpenWeather
@@ -37,14 +37,38 @@ def get_weather(city="Lexy", forecast=False, next_week=False, lang="pt"):
             return {
                 "pt": "Não consegui obter a previsão do tempo agora.",
                 "en": "Could not get the weather forecast right now.",
-                "fr": "Je n'ai pas pu obtenir la météo pour le moment."
+                "fr": "Je n'ai pas pu obtenir la météo pour le moment.",
             }.get(lang, "Não consegui obter a previsão do tempo agora.")
 
         # Nomes dos dias da semana nos três idiomas
         dias_semana = {
-            "pt": ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"],
-            "en": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-            "fr": ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
+            "pt": [
+                "Segunda",
+                "Terça",
+                "Quarta",
+                "Quinta",
+                "Sexta",
+                "Sábado",
+                "Domingo",
+            ],
+            "en": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday",
+            ],
+            "fr": [
+                "Lundi",
+                "Mardi",
+                "Mercredi",
+                "Jeudi",
+                "Vendredi",
+                "Samedi",
+                "Dimanche",
+            ],
         }
 
         if forecast:
@@ -52,7 +76,11 @@ def get_weather(city="Lexy", forecast=False, next_week=False, lang="pt"):
             for entry in data["list"]:
                 date_str = entry["dt_txt"].split(" ")[0]
                 date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-                day_of_week = dias_semana[lang][date_obj.weekday()] if lang in dias_semana else date_obj.strftime("%A")
+                day_of_week = (
+                    dias_semana[lang][date_obj.weekday()]
+                    if lang in dias_semana
+                    else date_obj.strftime("%A")
+                )
                 formatted_date = date_obj.strftime("%d-%m")
                 weather = entry["weather"][0]["description"].capitalize()
                 temp = entry["main"]["temp"]
@@ -85,7 +113,7 @@ def get_weather(city="Lexy", forecast=False, next_week=False, lang="pt"):
             intro = {
                 "pt": f"Previsão do tempo para {city} nos próximos dias:",
                 "en": f"Weather forecast for {city} for the next days:",
-                "fr": f"Prévisions météo pour {city} pour les prochains jours:"
+                "fr": f"Prévisions météo pour {city} pour les prochains jours:",
             }.get(lang, f"Weather forecast for {city}:")
 
             return intro + "\n" + "\n".join(final_forecast)
@@ -112,8 +140,11 @@ def get_weather(city="Lexy", forecast=False, next_week=False, lang="pt"):
                     f"À {city}, le temps est {weather} avec une température de {temp:.0f}°C, "
                     f"ressenti de {feels_like:.0f}°C, humidité de {humidity}%, "
                     f"et vents à {wind_speed:.0f} km/h."
-                )
-            }.get(lang, f"In {city}, the weather is {weather} with a temperature of {temp:.0f}°C.")
+                ),
+            }.get(
+                lang,
+                f"In {city}, the weather is {weather} with a temperature of {temp:.0f}°C.",
+            )
 
             return report
 
@@ -122,7 +153,7 @@ def get_weather(city="Lexy", forecast=False, next_week=False, lang="pt"):
         return {
             "pt": "Ocorreu um erro ao tentar buscar a previsão.",
             "en": "An error occurred while fetching the weather forecast.",
-            "fr": "Une erreur est survenue lors de la récupération de la météo."
+            "fr": "Une erreur est survenue lors de la récupération de la météo.",
         }.get(lang, "Ocorreu um erro ao tentar buscar a previsão.")
 
 
@@ -145,10 +176,8 @@ def is_weather_request(query):
     padroes = [
         r"\b(previs[aã]o|previsando|clima|clime|meteorologia|meteo|meteor|tempo)\b",
         r"\b(como est[aá] o tempo|como est[aá] o clima|vai chover|temperatura|como esta o dia|qual a meteo( de| para)? amanh[aã]|qual a meteor( de| para)? amanh[aã])\b",
-        
         # Frances
         r"\b(m[ée]t[ée]o|meteo|pr[ée]vision|pr[ée]visions|temps|temp[ée]rature|il va pleuvoir|va-t-il pleuvoir|pleuvra-t-il|quelle m[ée]t[ée]o|quelle temp[ée]rature|quel temps|m[ée]t[ée]o (du jour|demain|aujourd'hui))\b",
-
         # INGLÊS
         r"\b(weather|forecast|temperature|climate|is it going to rain|will it rain|is it raining|what'?s the weather|how'?s the weather|weather (today|tomorrow|now)|current weather|weather forecast|rain forecast)\b",
     ]
@@ -182,17 +211,62 @@ def extract_city(query):
 
     # Keywords de localização
     location_keywords = [
-        "para", "em", "de", "da", "do", "na", "no",      # pt
-        "in", "at", "for", "from",                       # en
-        "a", "au", "en", "pour", "dans", "du", "à"       # fr/pt
+        "para",
+        "em",
+        "de",
+        "da",
+        "do",
+        "na",
+        "no",  # pt
+        "in",
+        "at",
+        "for",
+        "from",  # en
+        "a",
+        "au",
+        "en",
+        "pour",
+        "dans",
+        "du",
+        "à",  # fr/pt
     ]
     stop_keywords = [
         # PT
-        "para", "os", "as", "nos", "nas", "proximos", "proximas", "amanha", "semana", "semana que vem", "dias", "hoje",
+        "para",
+        "os",
+        "as",
+        "nos",
+        "nas",
+        "proximos",
+        "proximas",
+        "amanha",
+        "semana",
+        "semana que vem",
+        "dias",
+        "hoje",
         # EN
-        "for", "in", "at", "of", "tomorrow", "next week", "days", "today", "week", "after tomorrow",
+        "for",
+        "in",
+        "at",
+        "of",
+        "tomorrow",
+        "next week",
+        "days",
+        "today",
+        "week",
+        "after tomorrow",
         # FR
-        "pour", "a", "au", "aux", "demain", "semaine", "prochains", "prochaines", "aujourdhui", "jours", "apres-demain"
+        "pour",
+        "a",
+        "au",
+        "aux",
+        "demain",
+        "semaine",
+        "prochains",
+        "prochaines",
+        "aujourdhui",
+        "jours",
+        "apres-demain",
     ]
 
     regex = r"(?:{})(?:\s+|['’])([a-zA-Zà-ÿ\-']+)".format("|".join(location_keywords))
@@ -212,14 +286,32 @@ def extract_city(query):
 
     city = city.strip(",.?! ").title()
     invalid_cities = [
-        "Tempo", "Clima", "Previsao", "Meteorologia", "Meteo", "Meteor",
-        "Weather", "Forecast", "Temperature", "Climate", "Prevision", "Temps",
-        "Aujourd", "Hui", "Demain", "Semaine", "Jours", "Tomorrow", "Week", "Days"
+        "Tempo",
+        "Clima",
+        "Previsao",
+        "Meteorologia",
+        "Meteo",
+        "Meteor",
+        "Weather",
+        "Forecast",
+        "Temperature",
+        "Climate",
+        "Prevision",
+        "Temps",
+        "Aujourd",
+        "Hui",
+        "Demain",
+        "Semaine",
+        "Jours",
+        "Tomorrow",
+        "Week",
+        "Days",
     ]
     if city in invalid_cities or not city:
         return None
 
     return city
+
 
 def normalize_country(country):
     """Normaliza nomes de países para formato aceito pela API."""
@@ -242,15 +334,28 @@ def detect_forecast_request(query):
     query = query.lower()
 
     next_week_keywords = [
-        "semana que vem", "próxima semana",     # pt
-        "next week",                            # en
-        "semaine prochaine", "la semaine prochaine"  # fr
+        "semana que vem",
+        "próxima semana",  # pt
+        "next week",  # en
+        "semaine prochaine",
+        "la semaine prochaine",  # fr
     ]
 
     forecast_keywords = [
-        "semana", "próximos dias", "amanhã", "depois de amanhã",   # pt
-        "week", "days", "tomorrow", "today", "after tomorrow",     # en
-        "semaine", "jours", "demain", "après-demain", "aujourd'hui"  # fr
+        "semana",
+        "próximos dias",
+        "amanhã",
+        "depois de amanhã",  # pt
+        "week",
+        "days",
+        "tomorrow",
+        "today",
+        "after tomorrow",  # en
+        "semaine",
+        "jours",
+        "demain",
+        "après-demain",
+        "aujourd'hui",  # fr
     ]
 
     # Next week?
@@ -261,7 +366,6 @@ def detect_forecast_request(query):
         if k in query:
             return True, False
     return False, False
-
 
 
 def handle_weather_query(query, lang="pt"):
@@ -291,20 +395,24 @@ def handle_weather_query(query, lang="pt"):
         location if location else "Lexy",  # fallback
         forecast=forecast,
         next_week=next_week,
-        lang=lang
+        lang=lang,
     )
 
     # Se não deu certo, tenta repetir no modo CLI
     if not weather_report or "Não consegui obter" in weather_report:
         if not config.IS_API_REQUEST:
-            say("Desculpe, não entendi o nome da cidade. Pode repetir o nome da cidade, por favor?")
+            say(
+                "Desculpe, não entendi o nome da cidade. Pode repetir o nome da cidade, por favor?"
+            )
             city_retry = listen().lower().strip().title()
             if city_retry:
                 say("E o país?")
                 country_retry = listen().lower().strip()
                 normalized_country = normalize_country(country_retry)
                 location = f"{city_retry},{normalized_country}"
-                weather_report = get_weather(location, forecast=forecast, next_week=next_week)
+                weather_report = get_weather(
+                    location, forecast=forecast, next_week=next_week
+                )
             else:
                 weather_report = "Não foi possível obter a previsão do tempo."
 

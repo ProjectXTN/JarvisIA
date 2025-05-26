@@ -14,7 +14,7 @@ MAX_CONTEXT = 5
 # === Available models ===
 DEFAULT_MODEL = "llama3.2"
 DEFAULT_MODEL_HIGH = "llama3.3"
-DEFAULT_MODEL_CODE= "codestral"
+DEFAULT_MODEL_CODE = "codestral"
 
 # === HTTP session for active Ollama Server ===
 session = requests.Session()

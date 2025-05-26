@@ -11,24 +11,40 @@ from dotenv import load_dotenv
 load_dotenv()
 BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")
 
+
 def extract_readable_source(url):
     try:
         domain = urlparse(url).netloc
-        parts = domain.split('.')
+        parts = domain.split(".")
         if "www" in parts:
             parts.remove("www")
-        base = [p for p in parts if p not in ['com', 'org', 'net', 'br']]
+        base = [p for p in parts if p not in ["com", "org", "net", "br"]]
         return base[0].capitalize() if base else domain
     except:
         return url
-    
+
+
 def parse_html_universal(html, url=None, max_blocks=10, min_block_length=80):
     soup = BeautifulSoup(html, "html.parser")
-    
+
     # Limpa elementos inúteis
-    for tag in soup(["nav", "footer", "aside", "header", "script", "style", "form", "noscript", "svg", "canvas", "iframe"]):
+    for tag in soup(
+        [
+            "nav",
+            "footer",
+            "aside",
+            "header",
+            "script",
+            "style",
+            "form",
+            "noscript",
+            "svg",
+            "canvas",
+            "iframe",
+        ]
+    ):
         tag.decompose()
-    
+
     blocks = []
 
     # 1. Título da página
@@ -36,26 +52,26 @@ def parse_html_universal(html, url=None, max_blocks=10, min_block_length=80):
         blocks.append(f"[TÍTULO] {soup.title.string.strip()}")
 
     # 2. Subtítulos
-    for h in soup.find_all(['h1', 'h2', 'h3']):
+    for h in soup.find_all(["h1", "h2", "h3"]):
         txt = h.get_text(strip=True)
         if txt and len(txt) >= min_block_length:
             blocks.append(f"[SUBTÍTULO] {txt}")
 
     # 3. Parágrafos grandes
-    for p in soup.find_all('p'):
+    for p in soup.find_all("p"):
         txt = p.get_text(separator=" ", strip=True)
         if txt and len(txt) >= min_block_length:
             blocks.append(f"[PARÁGRAFO] {txt}")
 
     # 4. Listas
-    for ul in soup.find_all(['ul', 'ol']):
-        items = [li.get_text(" ", strip=True) for li in ul.find_all('li')]
+    for ul in soup.find_all(["ul", "ol"]):
+        items = [li.get_text(" ", strip=True) for li in ul.find_all("li")]
         items = [i for i in items if len(i) >= 10]
         if items and len(" ".join(items)) > min_block_length:
             blocks.append(f"[LISTA]\n" + "\n".join(f"- {item}" for item in items))
 
     # 5. Artigos/Seções
-    for tag in soup.find_all(['article', 'section']):
+    for tag in soup.find_all(["article", "section"]):
         txt = tag.get_text(separator="\n", strip=True)
         if txt and len(txt) > min_block_length:
             blocks.append(f"[BLOCO] {txt[:500]}...")  # Amostra do conteúdo
@@ -72,7 +88,7 @@ def parse_html_universal(html, url=None, max_blocks=10, min_block_length=80):
 
     if not final_blocks:
         # Fallback: pega tudo do <body>
-        body = soup.find('body')
+        body = soup.find("body")
         if body:
             txt = body.get_text(separator="\n", strip=True)
             if txt and len(txt) > min_block_length:
@@ -83,6 +99,7 @@ def parse_html_universal(html, url=None, max_blocks=10, min_block_length=80):
         final_blocks.append(fonte)
 
     return "\n\n".join(final_blocks)
+
 
 async def fetch_page(session, url):
     try:
@@ -95,10 +112,12 @@ async def fetch_page(session, url):
         print(f"[ERRO] Falha ao buscar {url}: {e}")
         return url, None
 
+
 async def fetch_multiple_pages(links):
     async with aiohttp.ClientSession() as session:
         tasks = [fetch_page(session, link) for link in links]
         return await asyncio.gather(*tasks)
+
 
 def search_web(query, min_length=80, total_limit=5000, max_links=10):
     if not BRAVE_API_KEY:
@@ -108,10 +127,7 @@ def search_web(query, min_length=80, total_limit=5000, max_links=10):
         print(f"[🔎] Pesquisando na internet sobre: {query}")
 
         url = f"https://api.search.brave.com/res/v1/web/search?q={query}"
-        headers = {
-            "Accept": "application/json",
-            "X-Subscription-Token": BRAVE_API_KEY
-        }
+        headers = {"Accept": "application/json", "X-Subscription-Token": BRAVE_API_KEY}
         response = requests.get(url, headers=headers, timeout=10)
         data = response.json()
         results = data.get("web", {}).get("results", [])
@@ -127,7 +143,7 @@ def search_web(query, min_length=80, total_limit=5000, max_links=10):
         links_with_text = []
         for result in pages_data:
             if not result:
-                continue 
+                continue
 
             url, text = result
             # Aceita qualquer texto relevante, não depende mais do ano
@@ -144,12 +160,18 @@ def search_web(query, min_length=80, total_limit=5000, max_links=10):
         combined_texts = ""
         for _, text in links_with_text:
             if len(combined_texts) + len(text) > total_limit:
-                combined_texts += text[:total_limit - len(combined_texts)]
+                combined_texts += text[: total_limit - len(combined_texts)]
                 break
             combined_texts += text + "\n\n---\n\n"
 
-        sources = "\n".join([f"{extract_readable_source(link)}" for link, _ in links_with_text])
-        main_source = extract_readable_source(links_with_text[0][0]) if links_with_text else "internet"
+        sources = "\n".join(
+            [f"{extract_readable_source(link)}" for link, _ in links_with_text]
+        )
+        main_source = (
+            extract_readable_source(links_with_text[0][0])
+            if links_with_text
+            else "internet"
+        )
 
         return combined_texts.strip(), sources
 

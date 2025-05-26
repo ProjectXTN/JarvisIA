@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 
+
 def get_location():
     try:
         # Get location based on IP
