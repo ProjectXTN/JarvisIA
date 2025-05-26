@@ -23,7 +23,7 @@ def save_response_to_file(question, response):
         documents_folder = os.path.join(os.path.expanduser("~"), "Documents")
 
         if not os.path.exists(documents_folder):
-            print("❌ Pasta 'Documentos' não encontrada.")
+            print("Pasta 'Documentos' não encontrada.")
             return
 
         # Limpa o título do arquivo
@@ -36,11 +36,11 @@ def save_response_to_file(question, response):
             f.write(f"Pergunta: {question}\n\n")
             f.write(f"Resposta do Jarvis:\n{response}")
         
-        print(f"📄 Resposta salva com sucesso em: {file_path}")
+        print(f"Resposta salva com sucesso em: {file_path}")
         say(f"Resposta salva na pasta Documentos como {file_title}.txt")
 
     except Exception as e:
-        print(f"❌ Erro ao salvar a resposta: {e}")
+        print(f"Erro ao salvar a resposta: {e}")
 
 
 ##SERVICE NOT ACTIVATE
@@ -48,7 +48,7 @@ def list_recent_files(limit=5, last_24h_only=False):
     documents_folder = os.path.join(os.path.expanduser("~"), "Documents")
 
     if not os.path.exists(documents_folder):
-        print("📂 Nenhuma pasta 'Documentos' encontrada.")
+        print("Nenhuma pasta 'Documentos' encontrada.")
         return
 
     files = [
@@ -58,7 +58,7 @@ def list_recent_files(limit=5, last_24h_only=False):
     ]
 
     if not files:
-        print("📂 Nenhum arquivo .txt encontrado na pasta Documentos.")
+        print("Nenhum arquivo .txt encontrado na pasta Documentos.")
         return
 
     filtered_files = []
@@ -75,10 +75,10 @@ def list_recent_files(limit=5, last_24h_only=False):
                     else:
                         filtered_files.append(file)
         except Exception as e:
-            print(f"❌ Erro ao ler o arquivo {file}: {e}")
+            print(f"Erro ao ler o arquivo {file}: {e}")
 
     if not filtered_files:
-        print("📂 Nenhum arquivo relevante encontrado.")
+        print("Nenhum arquivo relevante encontrado.")
         return
 
     # Sort by modified time (newest first)

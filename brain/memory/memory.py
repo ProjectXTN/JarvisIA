@@ -14,6 +14,7 @@ MAX_CONTEXT = 5
 # === Available models ===
 DEFAULT_MODEL = "llama3.2"
 DEFAULT_MODEL_HIGH = "llama3.3"
+DEFAULT_MODEL_CODE= "codestral"
 
 # === HTTP session for active Ollama Server ===
 session = requests.Session()
@@ -69,7 +70,7 @@ def detect_reflection_request(prompt):
     return any(trigger in prompt_lower for trigger in TRIGGER_WORDS)
 
 
-def llama_query(prompt, model=DEFAULT_MODEL, direct_mode=False, mode=None, lang="pt"):
+def llama_query(prompt, model=None, direct_mode=False, mode=None, lang="pt"):
     """Generate response using Ollama Server with different prompt styles based on the mode."""
 
     temperature = 1.1 if mode == "terminal" else 0.2
@@ -79,10 +80,12 @@ def llama_query(prompt, model=DEFAULT_MODEL, direct_mode=False, mode=None, lang=
         print("[🧠 PERSONAL] Resposta interceptada:", personal_answer)
         return personal_answer
 
-    if detect_reflection_request(prompt):
-        model = DEFAULT_MODEL_HIGH
-    else:
-        model = DEFAULT_MODEL
+    # Só define o model se NÃO foi explicitamente passado:
+    if model is None:
+        if detect_reflection_request(prompt):
+            model = DEFAULT_MODEL_HIGH
+        else:
+            model = DEFAULT_MODEL
 
     try:
         if mode == "site":
@@ -113,7 +116,12 @@ def llama_query(prompt, model=DEFAULT_MODEL, direct_mode=False, mode=None, lang=
             },
         )
 
-        output = clean_output(response.json()["response"])
+        raw_response = response.json()["response"]
+
+        if model == DEFAULT_MODEL_CODE or mode == "code":
+            output = raw_response
+        else:
+            output = clean_output(raw_response)
 
         if not direct_mode and mode != "site":
             memory_context.append((prompt, output))

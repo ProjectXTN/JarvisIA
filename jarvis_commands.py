@@ -18,9 +18,11 @@ from commands.commands_avatar import generate_avatar
 from commands.commands_systeme import system_command, shutdown_command
 from brain.weatherAPI.weatherAPI import handle_weather_query
 from brain.storage.file_saver import save_response_to_file, should_save_to_file
-from brain.memory.memory import llama_query
-from brain.utils.querySensitive import is_query_time_sensitive
+from brain.memory.memory import llama_query, DEFAULT_MODEL_CODE
 from brain.pipeline.super_jarvis import super_jarvis_query
+from brain.utils.querySensitive import is_query_time_sensitive
+from brain.utils.utils import is_code_request
+from brain.utils.inputs import markdown_instruction
 from core import config
 
 from brain.audio import say
@@ -66,7 +68,7 @@ BLOCKED_COMMANDS_API = [
 ]
 
 
-def process_command(query):
+def process_command(query, lang="pt"):
     query = query.lower().strip()
 
     query = re.sub(r"^jarvis[\s,]*", "", query)
@@ -110,12 +112,26 @@ def process_command(query):
         response = response_cache[query]
     else:
         start_time = time.time()
-        if is_query_time_sensitive(query):
+        if is_code_request(query):
+            print("[DEBUG] Pedido de código detectado: usando Codestral.")
+            markdown_instruction = {
+                "pt": "Quando mostrar código, sempre coloque em um bloco markdown usando crases triplas e especifique a linguagem. Mantenha a indentação perfeita.",
+                "en": "When displaying code, always put it in a markdown code block using triple backticks and specify the language. Keep the indentation perfect.",
+                "fr": "Lorsque vous affichez du code, placez-le toujours dans un bloc de code markdown avec des triples backticks et indiquez le langage. Gardez l'indentation parfaite."
+            }
+            lang_instruction = markdown_instruction.get(lang, markdown_instruction["en"])
+            # Aqui você garante que a LLM já receba a instrução logo no prompt
+            prompt = f"{lang_instruction}\n{query}"
+            response = llama_query(prompt, model=DEFAULT_MODEL_CODE, lang=lang)
+            # Garante que venha markdown
+            if "```" not in response:
+                response = f"```python\n{response.strip()}\n```"
+        elif is_query_time_sensitive(query):
             print("[DEBUG] Query depends on current data. Using RAG+Web.")
-            response = super_jarvis_query(query)
+            response = super_jarvis_query(query, lang=lang)
         else:
             print("[DEBUG] Timeless query. Using only LLaMA memory.")
-            response = llama_query(query)
+            response = llama_query(query, lang=lang, mode="site")
         end_time = time.time()
 
         generation_time = end_time - start_time
@@ -133,11 +149,11 @@ def process_command(query):
     if response:
         log_interaction(query, response)
 
-        if "```" in response:
-            print(
-                "[SAVING] Código detectado na resposta, chamando extract_and_save_code()..."
-            )
-            extract_and_save_code(response, title=query)
+        # if "```" in response:
+        #     print(
+        #         "[SAVING] Código detectado na resposta, chamando extract_and_save_code()..."
+        #     )
+        #     extract_and_save_code(response, title=query)
 
         say(response)
 
@@ -157,17 +173,9 @@ def process_command_api(query, lang="pt"):
     query = re.sub(r"^jarvis[\s,]*", "", query)
     query = query.lstrip(", ").strip()
     query = query.rstrip(string.punctuation)
-    
-    print(f"🟦 [DEBUG] LANG RECEBIDO PELO BACKEND: {lang}")
-    print(f"[API] Phrase after cleaning: {query}")
 
     if shutdown_command(query) is False:
         return "Shutting down Jarvis..."
-
-    # DESACTIVATE FOR WEBSITE
-    # if re.search(r"\b(pesquise|procure|busque)\s+(na\s+)?(internet|web)\b", query):
-    #     if execute_search(query):
-    #         return "Searching the internet..."
     
     weather_response = handle_weather_query(query, lang=lang)
 
@@ -209,7 +217,17 @@ def process_command_api(query, lang="pt"):
         response = response_cache[query]
     else:
         start_time = time.time()
-        if is_query_time_sensitive(query):
+        if is_code_request(query):
+            print("[DEBUG] Pedido de código detectado: usando Codestral.")
+            
+            lang_instruction = markdown_instruction.get(lang, markdown_instruction["en"])
+            prompt = f"{lang_instruction}\n{query}"
+            response = llama_query(prompt, model=DEFAULT_MODEL_CODE, lang=lang)
+            
+            # Make sure markdown comes
+            if "```" not in response:
+                response = f"```python\n{response.strip()}\n```"
+        elif is_query_time_sensitive(query):
             print("[DEBUG] Query depends on current data. Using RAG+Web.")
             response = super_jarvis_query(query, lang=lang)
         else:

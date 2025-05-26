@@ -104,3 +104,33 @@ def sounds_like_jarvis(text):
         return True, best_word
     else:
         return False, None
+
+def is_code_request(query):
+    code_patterns = [
+        # Generic words
+        r"\bcódigo\b", r"\bcode\b", r"\bscript\b", r"\bclasse\b", r"\bclass\b",
+        r"\bfunção\b", r"\bfunction\b", r"\bmétodo\b", r"\bmethod\b", r"\bprocédure\b", r"\bprocédure\b",
+        r"\bexample\b", r"\bexemplo\b", r"\bsnippet\b", r"\btutoriel\b", r"\btutorial\b", r"\bimplémentation\b",
+        r"\bimplementação\b", r"\bimplémentation\b", r"\bextrait\b", r"\bfragmento\b", r"\bfragment\b",
+        # Requests like "show me", "generate", "example"
+        r"me mostre.*(código|code|script|função|classe|exemplo|example|snippet)",
+        r"gera( um| uma| o)?(.*)?(código|code|script|classe|class|function|função|example|exemplo)",
+        r"faça( um| uma| o)?(.*)?(código|code|script|classe|class|function|função|example|exemplo)",
+        r"escreva( um| uma| o)?(.*)?(código|code|script|classe|class|function|função|example|exemplo)",
+        r"show( me| us)?(.*)?(code|snippet|example|class|function|script)",
+        r"how (to|do i|do you).*(code|script|program|função|classe|exemplo|example|snippet)",
+        # Language specification - PT/EN/FR
+        r"\bem\s+([a-z#\+\d]+)\b",      # ex: em python, em c++, em c#
+        r"\bin\s+([a-z#\+\d]+)\b",      # ex: in python, in c++
+        r"\ben\s+([a-z#\+\d]+)\b",      # ex: en python (FR)
+        r"\bpar\s+exemple\s+en\s+([a-z#\+\d]+)\b",  # ex: par exemple en python (FR)
+        r"utilisant\s+([a-z#\+\d]+)\b", # ex: utilisant python (FR)
+        # Popular formats (PT/EN/FR)
+        r"\b(expressão regular|regex|regexp)\b",
+        r"\bhtml\b", r"\bcss\b", r"\bjavascript\b", r"\btypescript\b", r"\bjsx\b", r"\btsx\b",
+        r"\bpython\b", r"\bjava\b", r"\bc\+\+\b", r"\bc#\b", r"\bc\b", r"\bphp\b", r"\bruby\b", r"\bgo\b", r"\brust\b",
+        r"\bkotlin\b", r"\bscala\b", r"\bswift\b", r"\bperl\b", r"\blua\b", r"\bsql\b", r"\bash\b", r"\bpowershell\b",
+        r"\bmatlab\b", r"\br\b", r"\bdart\b", r"\bflutter\b", r"\bvue\b", r"\bangular\b", r"\breact\b", r"\bnode\b",
+    ]
+    query_lower = query.lower()
+    return any(re.search(pattern, query_lower) for pattern in code_patterns)
