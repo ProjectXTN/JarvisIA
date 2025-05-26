@@ -10,7 +10,7 @@ Python 3.10 or higher
 
 CUDA-compatible GPU (recommended for Whisper and LLaMA)
 
-Ollama for LLaMA 3.3 and LLaMA 3.2 Vision models
+Ollama for LLaMA 3.3, LLaMA 3.2 Vision models and Codestral(For extension Copilot)
 
 ffmpeg, git, git-lfs
 
@@ -33,6 +33,8 @@ Internet connection (for searches and autonomous learning)
 🧠 LLaMA 3.3 — For deep contextual conversations and memory-based learning
 
 👁 LLaMA 3.2 Vision 90B — For detailed image analysis and description
+
+🧠 Jarvis Copilot (VS Code) — Real-time code completion powered by Codestral, integrated via local Flask API and Ollama
 
 🌦️ Weather Forecast — Voice-based weather queries by city and country
 
