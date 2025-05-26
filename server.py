@@ -42,27 +42,6 @@ def ask_jarvis():
     else:
         config.IS_API_REQUEST = False
         return jsonify({"error": "No question provided"}), 400
-    
-
-@app.route("/suggest", methods=["POST"])
-def suggest_from_vscode():
-    data = request.get_json()
-    code = data.get("code", "")
-
-    prompt = f"Continue or improve this code snippet:\n{code.strip()}\n\n# Continuation:"
-
-    try:
-        res = requests.post("http://localhost:11500/api/generate", json={
-            "model": "codestral",
-            "prompt": prompt,
-            "stream": False
-        })
-
-        suggestion = res.json().get("response", "").strip()
-        return jsonify({ "suggestion": suggestion })
-
-    except Exception as e:
-        return jsonify({ "suggestion": f"# Error generating suggestion: {str(e)}" })
 
     
 if __name__ == "__main__":
