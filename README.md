@@ -109,19 +109,27 @@ To trigger Vision 90B model (for precise descriptions):
 
 Fallback to faster vision models if necessary.
 
-🚀 What's New: RAG + Web Search (Hybrid Intelligence)
-Smart Decision Making:
-Jarvis analyzes every question and decides:
+## 💻 Jarvis Copilot (VS Code Extension)
 
-If it’s time-sensitive or about current events, it automatically performs a live web search, parses results, and feeds context to the LLM before answering.
+A real-time code suggestion engine integrated with your local IDE. Powered by Codestral running on Ollama, Jarvis Copilot helps you write better code as you type.
 
-If the answer is timeless (history, science, definitions), it responds instantly using its own knowledge.
+✅ VS Code extension in /JarvisCopilot
 
-Languages Supported:
-Regex and heuristics are multi-lingual, so Jarvis intelligently detects queries in Portuguese, English, or French and fetches real-time answers when needed.
+🧠 Local integration via /suggest Flask API
 
-No more “Biden em 2025”!
-If you ask “Who is the president of the USA?” Jarvis will always give you the most current answer, not just what’s in its model.
+⏳ Suggests completions every 3 seconds
+
+✏️ Can be extended to use hover tips, snippets, ghost text, and more
+
+Usage:
+
+Start your Flask backend (Jarvis) with the /suggest endpoint running
+
+Open the JarvisCopilot project in VS Code
+
+Press F5 to launch the extension in Dev Mode
+
+Start coding and receive suggestions powered by Codestral
 
 ## 🧠 How RAG + Web Search Works
 Question Received:
@@ -137,6 +145,20 @@ Timeless? → Responds instantly from LLaMA’s memory.
 Current/Time-sensitive? → Runs real-time Brave Search, parses the web, summarizes context, then LLaMA 3.3 generates a rich answer with references.
 
 Conversation stays fast, relevant, and never obsolete!
+
+🚀 What's New: RAG + Web Search (Hybrid Intelligence)
+Smart Decision Making:
+Jarvis analyzes every question and decides:
+
+If it’s time-sensitive or about current events, it automatically performs a live web search, parses results, and feeds context to the LLM before answering.
+
+If the answer is timeless (history, science, definitions), it responds instantly using its own knowledge.
+
+Languages Supported:
+Regex and heuristics are multi-lingual, so Jarvis intelligently detects queries in Portuguese, English, or French and fetches real-time answers when needed.
+
+No more “Biden em 2025”!
+If you ask “Who is the president of the USA?” Jarvis will always give you the most current answer, not just what’s in its model.
 
 ## 🌐 Example Queries
 "Quem é o presidente dos Estados Unidos?"
