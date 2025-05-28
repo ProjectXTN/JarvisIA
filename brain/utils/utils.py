@@ -106,31 +106,52 @@ def sounds_like_jarvis(text):
         return False, None
 
 def is_code_request(query):
-    code_patterns = [
-        # Generic words
-        r"\bcódigo\b", r"\bcode\b", r"\bscript\b", r"\bclasse\b", r"\bclass\b",
-        r"\bfunção\b", r"\bfunction\b", r"\bmétodo\b", r"\bmethod\b", r"\bprocédure\b", r"\bprocédure\b",
-        r"\bexample\b", r"\bexemplo\b", r"\bsnippet\b", r"\btutoriel\b", r"\btutorial\b", r"\bimplémentation\b",
-        r"\bimplementação\b", r"\bimplémentation\b", r"\bextrait\b", r"\bfragmento\b", r"\bfragment\b",
-        # Requests like "show me", "generate", "example"
-        r"me mostre.*(código|code|script|função|classe|exemplo|example|snippet)",
-        r"gera( um| uma| o)?(.*)?(código|code|script|classe|class|function|função|example|exemplo)",
-        r"faça( um| uma| o)?(.*)?(código|code|script|classe|class|function|função|example|exemplo)",
-        r"escreva( um| uma| o)?(.*)?(código|code|script|classe|class|function|função|example|exemplo)",
-        r"show( me| us)?(.*)?(code|snippet|example|class|function|script)",
-        r"how (to|do i|do you).*(code|script|program|função|classe|exemplo|example|snippet)",
-        # Language specification - PT/EN/FR
-        r"\bem\s+([a-z#\+\d]+)\b",      # ex: em python, em c++, em c#
-        r"\bin\s+([a-z#\+\d]+)\b",      # ex: in python, in c++
-        r"\ben\s+([a-z#\+\d]+)\b",      # ex: en python (FR)
-        r"\bpar\s+exemple\s+en\s+([a-z#\+\d]+)\b",  # ex: par exemple en python (FR)
-        r"utilisant\s+([a-z#\+\d]+)\b", # ex: utilisant python (FR)
-        # Popular formats (PT/EN/FR)
-        r"\b(expressão regular|regex|regexp)\b",
-        r"\bhtml\b", r"\bcss\b", r"\bjavascript\b", r"\btypescript\b", r"\bjsx\b", r"\btsx\b",
-        r"\bpython\b", r"\bjava\b", r"\bc\+\+\b", r"\bc#\b", r"\bc\b", r"\bphp\b", r"\bruby\b", r"\bgo\b", r"\brust\b",
-        r"\bkotlin\b", r"\bscala\b", r"\bswift\b", r"\bperl\b", r"\blua\b", r"\bsql\b", r"\bash\b", r"\bpowershell\b",
-        r"\bmatlab\b", r"\br\b", r"\bdart\b", r"\bflutter\b", r"\bvue\b", r"\bangular\b", r"\breact\b", r"\bnode\b",
+    query_lower = query.lower().strip()
+
+    false_positives = [
+        "mapa de conhecimento",
+        "knowledge map",
+        "knowledge graph",
     ]
-    query_lower = query.lower()
+
+    if any(p in query_lower for p in false_positives):
+        return False 
+
+    code_patterns = [
+        # PT
+        r"\bcódigo\b", r"\bscript\b", r"\bclasse\b", r"\bfunção\b", r"\bmétodo\b", r"\bimplementação\b", r"\bexemplo\b",
+        # EN
+        r"\bcode\b", r"\bscript\b", r"\bclass\b", r"\bfunction\b", r"\bmethod\b", r"\bimplementation\b", r"\bexample\b",
+        # FR
+        r"\bcode\b", r"\bscript\b", r"\bclasse\b", r"\bfonction\b", r"\bméthode\b", r"\bimplémentation\b", r"\bexemple\b",
+
+        # PT
+        r"me mostre.*(código|script|função|classe|exemplo)",
+        r"gera\s+(um|uma|o)?\s*(código|code|script|classe|function|função|exemplo)",
+        r"escreva\s+(um|uma|o)?\s*(código|code|script|classe|function|função|exemplo)",
+        # EN
+        r"show( me| us)?.*(code|script|example|class|function|snippet)",
+        r"generate\s+(a|the)?\s*(code|script|function|example|snippet)",
+        r"write\s+(a|the)?\s*(code|script|function|example)",
+        r"how (to|do i|do you).*(code|script|program|function|class|example)",
+        # FR
+        r"montre( moi| nous)?\s*(le|la)?\s*(code|script|exemple|classe|fonction)",
+        r"génère( un| une| le| la)?\s*(code|script|exemple|classe|fonction)",
+        r"écris( un| une| le| la)?\s*(code|script|fonction|exemple|classe)",
+        r"comment\s+(faire|écrire|coder).*(code|script|fonction|classe|exemple)",
+
+        # PT
+        r"\bem\s+(python|javascript|typescript|c\+\+|c#|java|php|go|rust)\b",
+        # EN
+        r"\bin\s+(python|javascript|typescript|c\+\+|c#|java|php|go|rust)\b",
+        # FR
+        r"\ben\s+(python|javascript|typescript|c\+\+|c#|java|php|go|rust)\b",
+        r"\bpar\s+exemple\s+en\s+(python|javascript|typescript|c\+\+|c#|java|php|go|rust)\b",
+        r"utilisant\s+(python|javascript|typescript|c\+\+|c#|java|php|go|rust)\b",
+
+        r"\bregex\b", r"\bexpressão regular\b", r"\bexpression régulière\b",
+        r"\bhtml\b", r"\bcss\b", r"\bjavascript\b", r"\btypescript\b", r"\bjsx\b", r"\btsx\b",
+    ]
+
+
     return any(re.search(pattern, query_lower) for pattern in code_patterns)

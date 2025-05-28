@@ -216,6 +216,7 @@ def process_command_api(query, lang="pt"):
         response = response_cache[query]
     else:
         start_time = time.time()
+        print(f"[DEBUG] Query API, {query}")
         if is_code_request(query):
             print("[DEBUG] Pedido de código detectado: usando Codestral.")
 
