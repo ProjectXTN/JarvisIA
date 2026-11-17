@@ -12,10 +12,11 @@
 <body>
 <canvas id="c"></canvas>
 <script>
-/* Avatar holográfico do Jarvis.
-   Cabeça 3D gerada por fórmulas (sem bibliotecas nem imagens), desenhada em
-   linhas de luz. A boca segue o volume real da voz, enviado pelo Jarvis em
-   /events. Abrir com ?demo=1 mostra um ciclo de demonstração sem o Jarvis. */
+/* Núcleo neural do Jarvis.
+   Uma esfera de partículas ligadas como neurônios. Respira em repouso, se
+   contrai e recebe ondas quando ouve, acende sinapses e acelera quando pensa,
+   e a superfície vibra no volume real da voz quando fala.
+   Eventos chegam do Jarvis por /events. ?demo=1 mostra uma demonstração. */
 (() => {
 'use strict';
 
@@ -23,445 +24,302 @@ const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
 const bloom = document.createElement('canvas');
 const bctx = bloom.getContext('2d');
-let W = 0, H = 0, DPR = 1, bg = null;
+let W = 0, H = 0, DPR = 1, bg = null, R = 200, cx = 0, cy = 0;
 
 const params = new URLSearchParams(location.search);
 const DEMO = params.has('demo') || location.protocol === 'file:';
 const FREEZE = params.get('freeze');
 
-const LABELS = {
-  idle: 'ONLINE', listening: 'OUVINDO', thinking: 'PROCESSANDO',
-  speaking: 'FALANDO', offline: 'SEM CONEXÃO',
-};
+const LABELS = { idle: 'ONLINE', listening: 'OUVINDO', thinking: 'PROCESSANDO', speaking: 'FALANDO', offline: 'SEM CONEXÃO' };
 
 const state = {
   mode: DEMO ? 'idle' : 'offline',
-  level: 0,            // abertura da boca suavizada, 0 a 1
-  envelope: null,      // volumes da fala atual, 0 a 1
-  frameMs: 40,
-  speakStart: 0,
-  text: '',
-  hidden: false,
+  level: 0, envelope: null, frameMs: 40, speakStart: 0, text: '', hidden: false,
 };
+// intensidades suavizadas de cada modo (0 a 1), para transições sem saltos
+const mix = { listening: 0, thinking: 0, speaking: 0, offline: DEMO ? 0 : 1 };
 
-// ---------------------------------------------------------------- geometria
 const smooth = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
-const bump = (v, c, w) => { const d = (v - c) / w; return Math.exp(-d * d); };
-const ellipseR = (a, b, phi) => {
-  const s = Math.sin(phi) / a, c = Math.cos(phi) / b;
-  return 1 / Math.sqrt(s * s + c * c);
-};
+function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
+const rand = rng(20261117);
 
-/* Perfil do crânio por altura y (1 = topo, -1 = base do queixo), interpolado
-   entre pontos de controle medidos em proporções de uma cabeça humana:
-   a = meia largura, bf = profundidade da face, bb = profundidade da nuca. */
-const PROFILE_Y  = [1.00, 0.92, 0.80, 0.60, 0.40, 0.22, 0.05, -0.12, -0.30, -0.48, -0.62, -0.76, -0.88, -0.96, -1.00];
-const PROFILE_A  = [0.00, 0.36, 0.53, 0.645, 0.685, 0.695, 0.685, 0.665, 0.625, 0.560, 0.480, 0.360, 0.230, 0.110, 0.00];
-const PROFILE_BF = [0.00, 0.40, 0.62, 0.780, 0.840, 0.860, 0.830, 0.850, 0.840, 0.820, 0.800, 0.770, 0.700, 0.460, 0.00];
-const PROFILE_BB = [0.00, 0.48, 0.70, 0.840, 0.880, 0.860, 0.800, 0.690, 0.560, 0.450, 0.380, 0.340, 0.310, 0.280, 0.00];
-
-function profile(table, y) {
-  if (y >= PROFILE_Y[0] || y <= PROFILE_Y[PROFILE_Y.length - 1]) return 0;
-  let i = 0;
-  while (PROFILE_Y[i + 1] > y) i++;
-  const t = (PROFILE_Y[i] - y) / (PROFILE_Y[i] - PROFILE_Y[i + 1]);
-  const p0 = table[Math.max(0, i - 1)], p1 = table[i], p2 = table[i + 1], p3 = table[Math.min(table.length - 1, i + 2)];
-  const v = 0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
-  return Math.max(0, v);
+// ------------------------------------------------------------- partículas
+const N = 1500;
+const BX = new Float32Array(N), BY = new Float32Array(N), BZ = new Float32Array(N);   // direção na esfera
+const SX = new Float32Array(N), SY = new Float32Array(N), SZ = new Float32Array(N), SP = new Float32Array(N);
+const SIZE = new Float32Array(N), PHASE = new Float32Array(N);
+const golden = Math.PI * (3 - Math.sqrt(5));
+for (let i = 0; i < N; i++) {
+  const y = 1 - (i + 0.5) / N * 2, r = Math.sqrt(1 - y * y), th = golden * i;
+  // leve desordem para não parecer uma grade perfeita
+  let x = Math.cos(th) * r + (rand() - 0.5) * 0.05, z = Math.sin(th) * r + (rand() - 0.5) * 0.05, yy = y + (rand() - 0.5) * 0.05;
+  const l = Math.hypot(x, yy, z);
+  BX[i] = x / l; BY[i] = yy / l; BZ[i] = z / l;
+  SIZE[i] = 0.6 + rand() * 1.1;
+  PHASE[i] = rand() * Math.PI * 2;
 }
 
-/* Superelipse: n > 2 achata a frente do rosto (rostos não são esferas). */
-function superR(a, b, phi, n) {
-  const s = Math.abs(Math.sin(phi)) / a, c = Math.abs(Math.cos(phi)) / b;
-  return Math.pow(Math.pow(s, n) + Math.pow(c, n), -1 / n);
-}
-
-const EYE_Y = 0.07, EYE_PHI = 0.33, MOUTH_Y = -0.435;
-
-/* Linha do cabelo: na testa fica em y≈0.50, desce nas têmporas e contorna as orelhas. */
-function hairline(phi) {
-  const ap = Math.abs(phi);
-  if (ap > 2.0) return -0.30;                       // nuca
-  return 0.50 - 0.20 * smooth((ap - 0.55) / 0.55) - 0.28 * smooth((ap - 1.25) / 0.6);
-}
-
-/* Raio da superfície na altura y e no ângulo phi (0 = frente). */
-function surface(y, phi) {
-  let rHead = 0, hair = 0;
-  const a = profile(PROFILE_A, y);
-  if (a > 0.004) {
-    const front = Math.cos(phi) >= 0;
-    const b = front ? profile(PROFILE_BF, y) : profile(PROFILE_BB, y);
-    if (b > 0.004) {
-      const ap = Math.abs(phi);
-      rHead = superR(a, b, phi, front ? 2.45 : 2.1);
-
-      // --- testa e olhos
-      rHead += 0.050 * bump(y, 0.19, 0.06) * bump(phi, 0, 0.85);                  // arco das sobrancelhas
-      rHead -= 0.030 * bump(y, 0.30, 0.10) * bump(ap, 1.05, 0.22);                // têmporas
-      rHead -= 0.095 * bump(y, EYE_Y, 0.075) * bump(ap, EYE_PHI, 0.17);           // órbitas
-      rHead += 0.055 * bump(y, EYE_Y, 0.040) * bump(ap, EYE_PHI, 0.095);          // globo ocular
-
-      // --- nariz: dorso cresce até a ponta, depois some rápido
-      const tip = -0.175;
-      let nose = 0;
-      if (y > tip) nose = 0.205 * Math.pow(smooth((0.17 - y) / (0.17 - tip)), 1.25);
-      else nose = 0.205 * Math.exp(-Math.pow((y - tip) / 0.045, 2));
-      const noseW = 0.065 + 0.055 * smooth((0.05 - y) / 0.2);
-      rHead += nose * bump(phi, 0, noseW);
-      rHead += 0.060 * bump(y, -0.195, 0.040) * bump(ap, 0.115, 0.050);          // asas do nariz
-      rHead -= 0.040 * bump(y, -0.225, 0.025) * bump(ap, 0.06, 0.05);            // narinas
-
-      // --- boca e queixo
-      rHead += 0.012 * bump(y, -0.31, 0.06) * bump(phi, 0, 0.05);                // filtro labial
-      rHead += 0.050 * bump(y, MOUTH_Y + 0.030, 0.030) * bump(phi, 0, 0.24);     // lábio superior
-      rHead += 0.048 * bump(y, MOUTH_Y - 0.035, 0.032) * bump(phi, 0, 0.21);     // lábio inferior
-      rHead -= 0.022 * bump(y, MOUTH_Y, 0.010) * bump(phi, 0, 0.23);             // fenda da boca
-      rHead -= 0.032 * bump(y, -0.56, 0.035) * bump(phi, 0, 0.25);               // sulco do queixo
-      rHead += 0.060 * bump(y, -0.72, 0.085) * bump(phi, 0, 0.30);               // queixo
-
-      // --- maçãs, bochechas e maxilar
-      rHead += 0.050 * bump(y, -0.03, 0.10) * bump(ap, 0.78, 0.24);              // maçãs do rosto
-      rHead -= 0.035 * bump(y, -0.33, 0.12) * bump(ap, 0.72, 0.20);              // bochecha encovada
-      rHead += 0.060 * bump(y, -0.58, 0.10) * bump(ap, 1.22, 0.24);              // ângulo do maxilar
-      rHead += 0.030 * bump(y, -0.40, 0.25) * bump(ap, 1.50, 0.25);              // músculo masseter
-
-      // --- orelhas
-      rHead += 0.085 * bump(y, -0.03, 0.15) * bump(ap, 1.62, 0.09);
-
-      // --- cabelo: volume acima da linha do cabelo, topete na frente
-      const hl = hairline(phi);
-      const inHair = smooth((y - hl) / 0.06);
-      const thick = 0.045 + 0.075 * bump(y, 0.78, 0.16) * bump(phi, 0.05, 0.55);   // topete
-      hair = inHair * thick * (y > -0.55 ? 1 : 0);
-      rHead += hair;
+// conexões: cada partícula se liga às duas vizinhas mais próximas
+const edges = [];
+{
+  const cell = 0.12, grid = new Map(), key = (a, b, c) => `${a},${b},${c}`;
+  for (let i = 0; i < N; i++) {
+    const k = key(Math.floor(BX[i] / cell), Math.floor(BY[i] / cell), Math.floor(BZ[i] / cell));
+    if (!grid.has(k)) grid.set(k, []);
+    grid.get(k).push(i);
+  }
+  const seen = new Set();
+  for (let i = 0; i < N; i++) {
+    const gx = Math.floor(BX[i] / cell), gy = Math.floor(BY[i] / cell), gz = Math.floor(BZ[i] / cell);
+    const near = [];
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (let c = -1; c <= 1; c++) {
+      const list = grid.get(key(gx + a, gy + b, gz + c));
+      if (!list) continue;
+      for (const j of list) if (j !== i) {
+        const d = (BX[i] - BX[j]) ** 2 + (BY[i] - BY[j]) ** 2 + (BZ[i] - BZ[j]) ** 2;
+        near.push([d, j]);
+      }
+    }
+    near.sort((p, q) => p[0] - q[0]);
+    for (let n = 0; n < Math.min(2, near.length); n++) {
+      const j = near[n][1], id = i < j ? i * N + j : j * N + i;
+      if (!seen.has(id)) { seen.add(id); edges.push(i, j); }
     }
   }
-  let rBody = 0;
-  if (y < -0.55) {
-    // pescoço: começa atrás do maxilar, mais largo na base
-    const neck = smooth((-0.55 - y) / 0.20);
-    const wide = smooth((-1.0 - y) / 0.35);
-    rBody = ellipseR(0.30 + 0.06 * wide, 0.32 + 0.03 * wide, phi) * neck;
-    rBody += 0.035 * bump(y, -1.0, 0.18) * bump(phi, 0, 0.35);                   // pomo de adão / clavícula
-    if (y < -1.15) {
-      // trapézio desce do pescoço até os ombros, depois o peito
-      const t = smooth((-1.15 - y) / 0.75);
-      rBody = Math.max(rBody, ellipseR(0.38 + 1.25 * t, 0.36 + 0.22 * t, phi));
-    }
-  }
-  return rHead >= rBody ? { r: rHead, head: true, hair } : { r: rBody, head: false, hair: 0 };
 }
+const E = edges.length / 2;
 
-const SEG = 144;
-const ringY = [];
-for (let y = 0.962; y > -1.0; y -= 0.028) ringY.push(y);
-for (let y = -1.03; y > -2.2; y -= 0.05) ringY.push(y);
-const RINGS = ringY.length, N = RINGS * SEG;
+// filamentos internos: arcos que cruzam o núcleo (o "pensamento")
+const FIL = 46;
+const filaments = Array.from({ length: FIL }, () => {
+  const a = Math.floor(rand() * N), b = Math.floor(rand() * N);
+  return { a, b, bend: 0.15 + rand() * 0.45, speed: 0.4 + rand() * 1.2, offset: rand() * 10 };
+});
 
-const PX = new Float32Array(N), PY = new Float32Array(N), PZ = new Float32Array(N);
-const NX = new Float32Array(N), NY = new Float32Array(N), NZ = new Float32Array(N);
-const JAW = new Float32Array(N), ROT = new Float32Array(N), FADE = new Float32Array(N), HAIR = new Float32Array(N);
-const SX = new Float32Array(N), SY = new Float32Array(N), BR = new Float32Array(N);
+// sinapses: pulsos que correm pelas conexões
+const pulses = [];
+function spawnPulse() { pulses.push({ e: Math.floor(rand() * E), t: 0, speed: 0.025 + rand() * 0.05, flip: rand() < 0.5 }); }
 
-for (let i = 0; i < RINGS; i++) {
-  const y = ringY[i];
-  for (let j = 0; j < SEG; j++) {
-    const phi = -Math.PI + 2 * Math.PI * j / SEG;
-    const s = surface(y, phi), k = i * SEG + j;
-    PX[k] = s.r * Math.sin(phi); PY[k] = y; PZ[k] = s.r * Math.cos(phi);
-    // quanto o ponto acompanha o maxilar ao abrir a boca
-    JAW[k] = s.head ? smooth((MOUTH_Y - 0.01 - y) / 0.12) * (0.35 + 0.65 * Math.max(0, Math.cos(phi))) : 0;
-    HAIR[k] = s.hair > 0.01 ? 1 : 0;
-    // pescoço atrás do rosto: o deslocamento entra aos poucos para não criar degrau sob o queixo
-    if (!s.head) PZ[k] -= 0.13 * smooth((-0.62 - y) / 0.45) * smooth((y + 1.75) / 0.6);
-    // quanto o ponto gira junto com a cabeça (o tronco fica parado)
-    ROT[k] = s.head ? 1 : smooth((y + 1.5) / 0.7);
-    FADE[k] = smooth((y + 2.25) / 0.75);
-  }
-}
-for (let i = 0; i < RINGS; i++) {
-  const iu = Math.max(0, i - 1), id = Math.min(RINGS - 1, i + 1);
-  for (let j = 0; j < SEG; j++) {
-    const k = i * SEG + j, a = i * SEG + (j + 1) % SEG, b = i * SEG + (j + SEG - 1) % SEG;
-    const u = iu * SEG + j, d = id * SEG + j;
-    const tx = PX[a] - PX[b], ty = PY[a] - PY[b], tz = PZ[a] - PZ[b];
-    const mx = PX[d] - PX[u], my = PY[d] - PY[u], mz = PZ[d] - PZ[u];
-    let nx = ty * mz - tz * my, ny = tz * mx - tx * mz, nz = tx * my - ty * mx;
-    const len = Math.hypot(nx, ny, nz) || 1;
-    nx /= len; ny /= len; nz /= len;
-    if (nx * PX[k] + nz * PZ[k] < 0) { nx = -nx; ny = -ny; nz = -nz; }
-    NX[k] = nx; NY[k] = ny; NZ[k] = nz;
-  }
-}
+// anéis em órbita
+const rings = [
+  { tilt: 1.15, roll: 0.3, r: 1.42, n: 150, speed: 0.22, dash: 5 },
+  { tilt: 1.75, roll: -0.6, r: 1.58, n: 180, speed: -0.15, dash: 9 },
+  { tilt: 0.55, roll: 1.2, r: 1.30, n: 120, speed: 0.35, dash: 3 },
+];
 
-// ------------------------------------------------------------------ câmera
-const CAM = 5.2, PIVOT_Y = -0.85, CENTER_Y = -0.42;
-let S = 200, cx = 0, cy = 0;
-const JAW_MAX = 0.085;
-let yaw = 0, pitch = 0, jawOpen = 0;
-let cyw = 1, syw = 0, cpt = 1, spt = 0;
-
-function setPose() { cyw = Math.cos(yaw); syw = Math.sin(yaw); cpt = Math.cos(pitch); spt = Math.sin(pitch); }
-
-/* Ponto do modelo -> tela. w: 0 = tronco parado, 1 = gira com a cabeça. */
-function project(x, y, z, w, out) {
-  let rx = x, ry = y, rz = z;
-  if (w > 0) {
-    const yy = y - PIVOT_Y;
-    const x1 = x * cyw + z * syw, z1 = -x * syw + z * cyw;
-    const y2 = yy * cpt - z1 * spt, z2 = yy * spt + z1 * cpt;
-    rx = x + (x1 - x) * w; ry = y + (y2 + PIVOT_Y - y) * w; rz = z + (z2 - z) * w;
-  }
-  const p = CAM / (CAM - rz);
-  out.x = cx + rx * S * p; out.y = cy - (ry - CENTER_Y) * S * p; out.z = rz; out.p = p;
-  return out;
-}
-function rotNormalZ(nx, ny, nz, w) {
-  if (w < 0.5) return { x: nx, y: ny, z: nz };
-  const x1 = nx * cyw + nz * syw, z1 = -nx * syw + nz * cyw;
-  return { x: x1, y: ny * cpt - z1 * spt, z: ny * spt + z1 * cpt };
-}
-
-// ------------------------------------------------------------------- fundo
+// ------------------------------------------------------------------ fundo
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
   W = window.innerWidth; H = window.innerHeight;
   cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
   bloom.width = Math.ceil(W / 3); bloom.height = Math.ceil(H / 3);
-  S = Math.min(W * 0.36, H * 0.25);
-  cx = W / 2; cy = H * 0.47;
+  R = Math.min(W, H) * 0.27; cx = W / 2; cy = H * 0.46;
   buildBackground();
 }
-
-function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
 
 function buildBackground() {
   bg = document.createElement('canvas');
   bg.width = Math.round(W * DPR); bg.height = Math.round(H * DPR);
   const g = bg.getContext('2d');
   g.scale(DPR, DPR);
-  const grad = g.createRadialGradient(cx, cy - S * 0.2, 0, cx, cy, Math.max(W, H) * 0.8);
-  grad.addColorStop(0, '#0b2f63'); grad.addColorStop(0.45, '#051a3a'); grad.addColorStop(1, '#01050d');
+  const grad = g.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.8);
+  grad.addColorStop(0, '#08254f'); grad.addColorStop(0.45, '#04142e'); grad.addColorStop(1, '#01040b');
   g.fillStyle = grad; g.fillRect(0, 0, W, H);
-
-  g.strokeStyle = 'rgba(70,150,255,0.055)'; g.lineWidth = 1; g.beginPath();
+  g.strokeStyle = 'rgba(70,150,255,0.05)'; g.lineWidth = 1; g.beginPath();
   for (let x = (W / 2) % 36; x < W; x += 36) { g.moveTo(x, 0); g.lineTo(x, H); }
   for (let y = 0; y < H; y += 36) { g.moveTo(0, y); g.lineTo(W, y); }
   g.stroke();
-
-  // painéis de "dados" nas laterais
-  const rnd = rng(7);
-  for (let i = 0; i < 14; i++) {
-    const left = i % 2 === 0;
-    const pw = 60 + rnd() * 70, ph = 34 + rnd() * 60;
-    const px = left ? 10 + rnd() * W * 0.14 : W - 10 - pw - rnd() * W * 0.14;
-    const py = 20 + rnd() * (H - 80);
-    g.strokeStyle = 'rgba(90,170,255,0.16)'; g.strokeRect(px, py, pw, ph);
-    g.fillStyle = 'rgba(90,170,255,0.035)'; g.fillRect(px, py, pw, ph);
-    g.fillStyle = 'rgba(120,200,255,0.16)';
-    for (let l = 0; l < ph / 7 - 1; l++) g.fillRect(px + 5, py + 6 + l * 7, (pw - 10) * (0.3 + rnd() * 0.7), 2);
+  const r2 = rng(7);
+  for (let i = 0; i < 12; i++) {
+    const left = i % 2 === 0, pw = 60 + r2() * 70, ph = 34 + r2() * 60;
+    const px = left ? 10 + r2() * W * 0.12 : W - 10 - pw - r2() * W * 0.12, py = 20 + r2() * (H - 80);
+    g.strokeStyle = 'rgba(90,170,255,0.13)'; g.strokeRect(px, py, pw, ph);
+    g.fillStyle = 'rgba(120,200,255,0.13)';
+    for (let l = 0; l < ph / 7 - 1; l++) g.fillRect(px + 5, py + 6 + l * 7, (pw - 10) * (0.3 + r2() * 0.7), 2);
   }
-  // trilhas de circuito
-  g.strokeStyle = 'rgba(80,160,255,0.10)';
-  for (let i = 0; i < 16; i++) {
-    let x = rnd() * W, y = rnd() * H;
-    g.beginPath(); g.moveTo(x, y);
-    for (let s = 0; s < 4; s++) { if (s % 2) y += (rnd() - 0.5) * 120; else x += (rnd() - 0.5) * 160; g.lineTo(x, y); }
-    g.stroke();
-    g.fillStyle = 'rgba(120,200,255,0.25)'; g.fillRect(x - 1.5, y - 1.5, 3, 3);
-  }
-  const vig = g.createRadialGradient(cx, cy, Math.min(W, H) * 0.35, cx, cy, Math.max(W, H) * 0.75);
+  const vig = g.createRadialGradient(cx, cy, Math.min(W, H) * 0.3, cx, cy, Math.max(W, H) * 0.75);
   vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,2,8,0.75)');
   g.fillStyle = vig; g.fillRect(0, 0, W, H);
 }
 
-// ------------------------------------------------------------- malha de luz
-const NB = 8;
-const buckets = Array.from({ length: NB }, () => []);
-const LIGHT = (() => { const v = [-0.45, 0.5, 0.74], l = Math.hypot(...v); return v.map(c => c / l); })();
-const tmp = { x: 0, y: 0, z: 0, p: 1 };
+// --------------------------------------------------------------- simulação
+let rotY = 0, rotX = 0.35, spin = 0;
 
-function drawHead(t, flicker) {
-  const scanY = cy - S * 1.6 + ((t * 0.00022) % 1) * S * 3.4;
-  for (let k = 0; k < N; k++) {
-    const jw = JAW[k] * jawOpen;
-    project(PX[k], PY[k] - jw, PZ[k] - jw * 0.35, ROT[k], tmp);
-    SX[k] = tmp.x; SY[k] = tmp.y;
-    const n = rotNormalZ(NX[k], NY[k], NZ[k], ROT[k]);
-    let b;
-    if (n.z < -0.08) {
-      b = 0.03;                                    // lado de trás, quase invisível
-    } else {
-      const fres = Math.pow(1 - Math.max(0, n.z), 2);          // borda acesa
-      const lam = Math.max(0, n.x * LIGHT[0] + n.y * LIGHT[1] + n.z * LIGHT[2]);
-      b = 0.04 + 0.50 * fres + 0.50 * lam * lam;
-      if (HAIR[k]) b = b * 0.75 + 0.10 * (0.5 + 0.5 * Math.sin(k * 0.61 + PX[k] * 9));   // mechas
-      const ds = Math.abs(tmp.y - scanY);
-      if (ds < 16) b += 0.4 * (1 - ds / 16);                    // faixa de varredura
-    }
-    BR[k] = b * FADE[k] * flicker;
+function field(x, y, z, t) {
+  // "ruído" barato e contínuo: soma de ondas em 3D
+  return Math.sin(3.1 * x + t * 0.9) * Math.sin(2.7 * y - t * 0.7) * Math.sin(2.9 * z + t * 0.6)
+       + 0.5 * Math.sin(5.3 * x - 4.1 * z + t * 1.7) * Math.sin(4.7 * y + t * 1.3);
+}
+
+function update(now, dt) {
+  const t = now * 0.001;
+  for (const m of Object.keys(mix)) {
+    const target = state.mode === m ? 1 : 0;
+    mix[m] += (target - mix[m]) * Math.min(1, dt * 0.004);
   }
+  spin += dt * 0.001 * (0.12 + 0.9 * mix.thinking + 0.25 * mix.speaking);
+  rotY = spin;
+  rotX = 0.35 + 0.12 * Math.sin(t * 0.3);
+  const cyR = Math.cos(rotY), syR = Math.sin(rotY), cxR = Math.cos(rotX), sxR = Math.sin(rotX);
+
+  const breath = 1 + 0.025 * Math.sin(t * 1.4);
+  const lvl = state.level;
+  const amp = 0.05 + 0.04 * mix.thinking + 0.30 * lvl * mix.speaking;
+  const shrink = 1 - 0.07 * mix.listening;
+
+  for (let i = 0; i < N; i++) {
+    const x = BX[i], y = BY[i], z = BZ[i];
+    let d = amp * field(x, y, z, t * (1 + mix.thinking * 1.5));
+    // fala: anéis de onda saindo do equador
+    d += 0.18 * lvl * mix.speaking * Math.sin(10 * Math.abs(y) - t * 14);
+    // ouvir: ondas vindo de fora para dentro
+    d += 0.05 * mix.listening * Math.sin(12 * Math.abs(y) + t * 9);
+    const r = (breath + d) * shrink;
+    // rotação
+    const x1 = x * cyR + z * syR, z1 = -x * syR + z * cyR;
+    const y2 = y * cxR - z1 * sxR, z2 = y * sxR + z1 * cxR;
+    const px = x1 * r, py = y2 * r, pz = z2 * r;
+    const p = 4.2 / (4.2 - pz);
+    SX[i] = cx + px * R * p; SY[i] = cy + py * R * p; SZ[i] = pz; SP[i] = p;
+  }
+
+  const rate = 0.15 + 2.5 * mix.thinking + 1.2 * lvl * mix.speaking + 0.4 * mix.listening;
+  for (let k = 0; k < rate * dt / 16; k++) if (pulses.length < 400) spawnPulse();
+  for (let k = pulses.length - 1; k >= 0; k--) {
+    pulses[k].t += pulses[k].speed * dt / 16;
+    if (pulses[k].t >= 1) pulses.splice(k, 1);
+  }
+}
+
+// ---------------------------------------------------------------- desenho
+const NB = 6;
+const buckets = Array.from({ length: NB }, () => []);
+
+function depthAlpha(z) { return smooth((z + 1.25) / 2.5); }   // trás apagado, frente acesa
+
+function drawEdges(glow) {
   for (const b of buckets) b.length = 0;
-  const push = (a, c, gain) => {
-    const v = (BR[a] + BR[c]) * 0.5 * gain;
-    const q = Math.min(NB - 1, Math.floor(v * NB));
-    buckets[q].push(SX[a], SY[a], SX[c], SY[c]);
-  };
-  for (let i = 0; i < RINGS; i++) {
-    const o = i * SEG;
-    for (let j = 0; j < SEG; j++) push(o + j, o + (j + 1) % SEG, 1);
+  for (let k = 0; k < E; k++) {
+    const i = edges[2 * k], j = edges[2 * k + 1];
+    const a = depthAlpha((SZ[i] + SZ[j]) / 2);
+    const q = Math.min(NB - 1, Math.floor(a * NB));
+    buckets[q].push(SX[i], SY[i], SX[j], SY[j]);
   }
-  for (let i = 0; i < RINGS - 1; i++) {
-    const o = i * SEG;
-    for (let j = 0; j < SEG; j += 3) push(o + j, o + SEG + j, 0.7);
-    for (let j = 1; j < SEG; j += 3) if (HAIR[o + j] && HAIR[o + SEG + j]) push(o + j, o + SEG + j, 0.55);
-  }
-  ctx.lineWidth = 1.05;
+  ctx.lineWidth = 0.8;
   for (let q = 0; q < NB; q++) {
-    const b = buckets[q];
-    if (!b.length) continue;
+    const b = buckets[q]; if (!b.length) continue;
     const u = q / (NB - 1);
-    ctx.strokeStyle = `rgba(${Math.round(40 + 140 * u)},${Math.round(130 + 110 * u)},255,${(0.05 + 0.85 * u).toFixed(3)})`;
+    ctx.strokeStyle = `rgba(${60 + 80 * u | 0},${150 + 80 * u | 0},255,${((0.04 + 0.30 * u) * glow).toFixed(3)})`;
     ctx.beginPath();
     for (let i = 0; i < b.length; i += 4) { ctx.moveTo(b[i], b[i + 1]); ctx.lineTo(b[i + 2], b[i + 3]); }
     ctx.stroke();
   }
 }
 
-function drawEyes(t, glow) {
-  const blinkPhase = (t % 4300) / 140;
-  const blink = blinkPhase < 1 ? Math.abs(1 - blinkPhase * 2) : 1;      // pisca a cada ~4 s
-  for (const side of [-1, 1]) {
-    const phi = side * EYE_PHI, y = EYE_Y;
-    const r = surface(y, phi).r + 0.010;
-    const x = r * Math.sin(phi), z = r * Math.cos(phi);
-    project(x, y, z, 1, tmp);
-    const n = rotNormalZ(Math.sin(phi), 0, Math.cos(phi), 1);
-    if (n.z < 0.12) continue;
-    const rx = S * 0.070 * tmp.p * Math.max(0.3, n.z), ry = S * 0.030 * tmp.p * (0.15 + 0.85 * blink);
-    ctx.save();
-    ctx.translate(tmp.x, tmp.y);
-    const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, rx * 2.6);
-    halo.addColorStop(0, `rgba(120,220,255,${0.55 * glow})`); halo.addColorStop(1, 'rgba(60,150,255,0)');
-    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(0, 0, rx * 2.6, 0, 7); ctx.fill();
-    ctx.scale(1, ry / rx);
-    const core = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
-    core.addColorStop(0, `rgba(255,255,255,${glow})`);
-    core.addColorStop(0.45, `rgba(150,230,255,${0.95 * glow})`);
-    core.addColorStop(1, 'rgba(60,160,255,0)');
-    ctx.fillStyle = core; ctx.beginPath(); ctx.arc(0, 0, rx, 0, 7); ctx.fill();
-    ctx.restore();
+function drawParticles(now, glow) {
+  for (let i = 0; i < N; i++) {
+    const a = depthAlpha(SZ[i]);
+    const tw = 0.65 + 0.35 * Math.sin(now * 0.003 + PHASE[i]);
+    const al = (0.10 + 0.85 * a) * tw * glow;
+    if (al < 0.03) continue;
+    const s = SIZE[i] * SP[i] * (0.8 + 0.6 * a);
+    ctx.fillStyle = `rgba(${150 + 105 * a | 0},${215 + 40 * a | 0},255,${al.toFixed(3)})`;
+    ctx.fillRect(SX[i] - s / 2, SY[i] - s / 2, s, s);
   }
 }
 
-/* Linha de luz sobre a superfície do rosto (y e phi em função de u, 0 a 1). */
-function featureLine(fn, steps, width, alpha) {
-  ctx.beginPath();
-  let started = false;
-  for (let i = 0; i <= steps; i++) {
-    const q = fn(i / steps);
-    const r = surface(q.y, q.phi).r + 0.008;
-    const n = rotNormalZ(Math.sin(q.phi), 0, Math.cos(q.phi), 1);
-    if (n.z < 0.05) { started = false; continue; }
-    project(r * Math.sin(q.phi), q.y, r * Math.cos(q.phi), 1, tmp);
-    if (started) ctx.lineTo(tmp.x, tmp.y); else { ctx.moveTo(tmp.x, tmp.y); started = true; }
+function drawFilaments(now, glow) {
+  const t = now * 0.001, strength = 0.12 + 0.75 * mix.thinking + 0.4 * state.level * mix.speaking;
+  ctx.lineWidth = 1.1;
+  for (const f of filaments) {
+    const flick = 0.5 + 0.5 * Math.sin(t * f.speed * 3 + f.offset);
+    const al = strength * flick * glow * 0.55;
+    if (al < 0.02) continue;
+    const ax = SX[f.a], ay = SY[f.a], bx = SX[f.b], by = SY[f.b];
+    // ponto de controle puxado para o centro: o arco atravessa o núcleo
+    const mx = (ax + bx) / 2, my = (ay + by) / 2;
+    const qx = mx + (cx - mx) * (1 - f.bend), qy = my + (cy - my) * (1 - f.bend);
+    ctx.strokeStyle = `rgba(140,220,255,${al.toFixed(3)})`;
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo(qx, qy, bx, by); ctx.stroke();
   }
-  ctx.lineWidth = width; ctx.strokeStyle = `rgba(170,235,255,${alpha})`; ctx.stroke();
 }
 
-function drawFeatures(glow) {
-  const a = 0.75 * glow;
-  for (const side of [-1, 1]) {
-    featureLine(u => ({ phi: side * (0.13 + 0.48 * u), y: 0.205 + 0.03 * Math.sin(u * Math.PI * 0.9) - 0.035 * u * u }), 14, 2.4, a);   // sobrancelha
-    featureLine(u => ({ phi: side * (0.20 + 0.27 * u), y: EYE_Y + 0.030 + 0.020 * Math.sin(u * Math.PI) }), 12, 1.5, a * 0.95);           // pálpebra superior
-    featureLine(u => ({ phi: side * (0.21 + 0.25 * u), y: EYE_Y - 0.028 - 0.010 * Math.sin(u * Math.PI) }), 12, 1.0, a * 0.55);           // pálpebra inferior
-    featureLine(u => ({ phi: side * (0.21 + 0.27 * u), y: EYE_Y + 0.062 + 0.012 * Math.sin(u * Math.PI) }), 12, 0.9, a * 0.35);           // vinco da pálpebra
-    featureLine(u => ({ phi: side * (0.055 + 0.085 * Math.sin(u * Math.PI * 0.85)), y: -0.17 - 0.06 * u }), 10, 1.3, a * 0.8);            // asa do nariz
-    featureLine(u => ({ phi: side * (0.17 + 0.13 * u), y: -0.20 - 0.21 * u }), 12, 1.1, a * 0.45);                                        // sulco nasolabial
-    featureLine(u => ({ phi: side * (0.30 + 1.0 * u), y: -0.80 + 0.30 * Math.pow(u, 1.6) }), 18, 1.4, a * 0.6);                            // maxilar
+function drawPulses(glow) {
+  for (const p of pulses) {
+    let i = edges[2 * p.e], j = edges[2 * p.e + 1];
+    if (p.flip) { const tmp = i; i = j; j = tmp; }
+    const x = SX[i] + (SX[j] - SX[i]) * p.t, y = SY[i] + (SY[j] - SY[i]) * p.t;
+    const a = depthAlpha((SZ[i] + SZ[j]) / 2), fade = Math.sin(p.t * Math.PI);
+    const r = 2.6 * a + 0.8;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r * 3);
+    g.addColorStop(0, `rgba(255,255,255,${(0.95 * a * fade * glow).toFixed(3)})`);
+    g.addColorStop(1, 'rgba(80,190,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(x - r * 3, y - r * 3, r * 6, r * 6);
   }
-  featureLine(u => ({ phi: 0.012, y: 0.13 - 0.30 * u }), 10, 1.4, a * 0.85);
-  for (const side of [-1, 1]) featureLine(u => ({ phi: side * (1.54 + 0.12 * Math.sin(u * Math.PI)), y: 0.10 - 0.30 * u }), 12, 1.4, a * 0.7);   // orelha                                                               // dorso do nariz
-  featureLine(u => ({ phi: (u - 0.5) * 0.22, y: -0.755 - 0.02 * Math.sin(u * Math.PI) }), 10, 1.1, a * 0.45);                             // queixo
 }
 
-function drawMouth(glow) {
-  const STEPS = 16, HALF = 0.185;
-  const upper = [], lower = [];
-  for (let i = 0; i <= STEPS; i++) {
-    const u = i / STEPS * 2 - 1, phi = u * HALF;
-    const pin = Math.pow(1 - u * u, 0.7);                   // cantos presos, boca mais reta
-    let y = MOUTH_Y + 0.010 + 0.010 * pin - 0.009 * bump(u, 0, 0.22); // arco do cupido
-    let r = surface(y, phi).r + 0.006;
-    project(r * Math.sin(phi), y, r * Math.cos(phi), 1, tmp);
-    upper.push(tmp.x, tmp.y);
-    y = MOUTH_Y - 0.006 - 0.012 * pin;
-    r = surface(y, phi).r + 0.006;
-    const drop = jawOpen * pin;
-    project(r * Math.sin(phi), y - drop, r * Math.cos(phi) - drop * 0.35, 1, tmp);
-    lower.push(tmp.x, tmp.y);
-  }
-  const open = Math.min(1, jawOpen / JAW_MAX);
-  const path = () => {
-    ctx.beginPath();
-    ctx.moveTo(upper[0], upper[1]);
-    for (let i = 2; i < upper.length; i += 2) ctx.lineTo(upper[i], upper[i + 1]);
-    for (let i = lower.length - 2; i >= 0; i -= 2) ctx.lineTo(lower[i], lower[i + 1]);
-    ctx.closePath();
-  };
-  ctx.globalCompositeOperation = 'source-over';
-  path(); ctx.fillStyle = 'rgba(2,14,36,0.92)'; ctx.fill();          // interior escuro
-  ctx.globalCompositeOperation = 'lighter';
-  path(); ctx.fillStyle = `rgba(90,200,255,${0.10 + 0.38 * open * glow})`; ctx.fill();
-  ctx.lineWidth = 1.7; ctx.strokeStyle = `rgba(200,242,255,${0.9 * glow})`; ctx.stroke();
+function drawCore(now, glow) {
+  const t = now * 0.001, lvl = state.level;
+  const pulse = 0.55 + 0.15 * Math.sin(t * 2.2) + 0.35 * mix.thinking * (0.5 + 0.5 * Math.sin(t * 9)) + 0.9 * lvl * mix.speaking;
+  const r = R * (0.42 + 0.12 * lvl * mix.speaking);
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  g.addColorStop(0, `rgba(235,250,255,${Math.min(1, 0.75 * pulse * glow).toFixed(3)})`);
+  g.addColorStop(0.18, `rgba(120,215,255,${Math.min(1, 0.55 * pulse * glow).toFixed(3)})`);
+  g.addColorStop(0.55, `rgba(40,120,255,${(0.16 * pulse * glow).toFixed(3)})`);
+  g.addColorStop(1, 'rgba(20,60,200,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
+  const h = ctx.createRadialGradient(cx, cy, R * 0.6, cx, cy, R * 1.5);
+  h.addColorStop(0, `rgba(60,150,255,${(0.10 * glow).toFixed(3)})`); h.addColorStop(1, 'rgba(40,100,255,0)');
+  ctx.fillStyle = h; ctx.beginPath(); ctx.arc(cx, cy, R * 1.5, 0, 7); ctx.fill();
 }
 
-// --------------------------------------------------------------------- HUD
-function ring(x, y, r, a0, a1, width, alpha) {
-  ctx.lineWidth = width; ctx.strokeStyle = `rgba(110,200,255,${alpha})`;
-  ctx.beginPath(); ctx.arc(x, y, r, a0, a1); ctx.stroke();
-}
-
-function drawHalo(t) {
-  project(0, 0.05, -0.4, 0, tmp);
-  const x = tmp.x, y = tmp.y, spin = t * 0.0002 * (state.mode === 'thinking' ? 6 : 1);
-  ring(x, y, S * 1.42, 0, 7, 1, 0.16);
-  for (let i = 0; i < 3; i++) ring(x, y, S * 1.5, spin + i * 2.1, spin + i * 2.1 + 1.2, 2.5, 0.32);
-  for (let i = 0; i < 4; i++) ring(x, y, S * 1.62, -spin * 1.4 + i * 1.57, -spin * 1.4 + i * 1.57 + 0.5, 1.2, 0.26);
-  ctx.strokeStyle = 'rgba(110,200,255,0.22)'; ctx.lineWidth = 1; ctx.beginPath();
-  for (let i = 0; i < 72; i++) {
-    const a = i * Math.PI / 36 + spin * 0.5, r0 = S * 1.30, r1 = S * (i % 6 ? 1.335 : 1.37);
-    ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); ctx.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1);
+function drawRings(now, glow) {
+  const t = now * 0.001;
+  for (const ring of rings) {
+    const sp = ring.speed * (1 + 2.5 * mix.thinking);
+    const ct = Math.cos(ring.tilt), st = Math.sin(ring.tilt), cr = Math.cos(ring.roll + spin * 0.3), sr = Math.sin(ring.roll + spin * 0.3);
+    for (let k = 0; k < ring.n; k++) {
+      if (Math.floor(k / ring.dash) % 2) continue;
+      const a = k / ring.n * Math.PI * 2 + t * sp;
+      let x = Math.cos(a) * ring.r, y = 0, z = Math.sin(a) * ring.r;
+      const y1 = y * ct - z * st, z1 = y * st + z * ct;
+      const x2 = x * cr - y1 * sr, y2 = x * sr + y1 * cr;
+      const p = 4.2 / (4.2 - z1);
+      const al = (0.12 + 0.55 * smooth((z1 + 1.6) / 3.2)) * glow;
+      ctx.fillStyle = `rgba(120,205,255,${al.toFixed(3)})`;
+      const s = 1.6 * p;
+      ctx.fillRect(cx + x2 * R * p - s / 2, cy + y2 * R * p - s / 2, s, s);
+    }
   }
-  ctx.stroke();
-  if (state.mode === 'listening') {                      // ondas se expandindo
+  if (mix.listening > 0.02) {                       // ondas de escuta se fechando
     for (let i = 0; i < 3; i++) {
-      const u = ((t * 0.0007) + i / 3) % 1;
-      ring(x, y, S * (1.05 + u * 0.75), 0, 7, 2, 0.4 * (1 - u));
+      const u = 1 - ((t * 0.7) + i / 3) % 1;
+      ctx.lineWidth = 1.5; ctx.strokeStyle = `rgba(130,215,255,${(0.45 * mix.listening * (1 - u)).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(cx, cy, R * (1.05 + u * 0.9), 0, 7); ctx.stroke();
     }
   }
 }
 
-function drawReactor(t) {
-  project(0, -1.78, 0.5, 0, tmp);
-  const x = tmp.x, y = tmp.y, r = S * 0.2, pulse = 0.6 + 0.4 * Math.sin(t * 0.004) + state.level * 0.8;
-  const g = ctx.createRadialGradient(x, y, 0, x, y, r * 2.2);
-  g.addColorStop(0, `rgba(200,245,255,${Math.min(1, 0.75 * pulse)})`);
-  g.addColorStop(0.3, `rgba(90,190,255,${Math.min(1, 0.4 * pulse)})`);
-  g.addColorStop(1, 'rgba(40,120,255,0)');
-  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 2.2, 0, 7); ctx.fill();
-  ring(x, y, r, 0, 7, 2, 0.75);
-  ring(x, y, r * 0.62, 0, 7, 1.2, 0.6);
-  for (let i = 0; i < 8; i++) ring(x, y, r * 0.81, t * 0.001 + i * 0.785, t * 0.001 + i * 0.785 + 0.5, 4, 0.5);
+// --------------------------------------------------------------------- HUD
+function arc(x, y, r, a0, a1, w, al) { ctx.lineWidth = w; ctx.strokeStyle = `rgba(110,200,255,${al})`; ctx.beginPath(); ctx.arc(x, y, r, a0, a1); ctx.stroke(); }
+
+function drawFrame(now) {
+  const t = now * 0.0002 * (1 + 4 * mix.thinking);
+  arc(cx, cy, R * 1.82, 0, 7, 1, 0.12);
+  for (let i = 0; i < 3; i++) arc(cx, cy, R * 1.9, t + i * 2.1, t + i * 2.1 + 1.0, 2.2, 0.28);
+  ctx.strokeStyle = 'rgba(110,200,255,0.18)'; ctx.lineWidth = 1; ctx.beginPath();
+  for (let i = 0; i < 90; i++) {
+    const a = i * Math.PI / 45 - t * 0.6, r0 = R * 1.72, r1 = R * (i % 5 ? 1.75 : 1.79);
+    ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0); ctx.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1);
+  }
+  ctx.stroke();
 }
 
-function drawBadge(t) {
-  const r = Math.max(34, Math.min(W, H) * 0.075), x = W - r - 26, y = r + 26;
+function drawBadge(now) {
+  const r = Math.max(34, Math.min(W, H) * 0.07), x = W - r - 26, y = r + 26;
   ctx.fillStyle = 'rgba(8,40,90,0.55)'; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
-  ring(x, y, r, 0, 7, 1.5, 0.8);
-  ring(x, y, r * 0.84, t * 0.0012, t * 0.0012 + 4.2, 3, 0.55);
-  ring(x, y, r * 1.14, -t * 0.0008, -t * 0.0008 + 2.2, 1.5, 0.45);
+  arc(x, y, r, 0, 7, 1.5, 0.8);
+  arc(x, y, r * 0.84, now * 0.0012, now * 0.0012 + 4.2, 3, 0.55);
   ctx.fillStyle = 'rgba(215,245,255,0.95)';
   ctx.font = `600 ${Math.round(r * 0.3)}px "Segoe UI", system-ui, sans-serif`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -471,44 +329,36 @@ function drawBadge(t) {
 }
 
 const bars = new Float32Array(48);
-function drawStatus(t) {
-  const label = LABELS[state.mode] || '';
+function drawStatus(now) {
   const color = state.mode === 'offline' ? '255,140,120' : '150,225,255';
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
   ctx.font = '600 13px "Segoe UI", system-ui, sans-serif';
   if ('letterSpacing' in ctx) ctx.letterSpacing = '3px';
-  const blink = state.mode === 'idle' ? 1 : 0.55 + 0.45 * Math.sin(t * 0.008);
-  ctx.fillStyle = `rgba(${color},${blink})`;
-  ctx.beginPath(); ctx.arc(30, 38, 4, 0, 7); ctx.fill();
-  ctx.fillStyle = `rgba(${color},0.9)`;
-  ctx.fillText(label, 44, 43);
+  const blink = state.mode === 'idle' ? 1 : 0.55 + 0.45 * Math.sin(now * 0.008);
+  ctx.fillStyle = `rgba(${color},${blink})`; ctx.beginPath(); ctx.arc(30, 38, 4, 0, 7); ctx.fill();
+  ctx.fillStyle = `rgba(${color},0.9)`; ctx.fillText(LABELS[state.mode] || '', 44, 43);
   if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
 
-  // barras de áudio
   const bw = Math.min(5, W / 140), gap = bw * 0.7, total = bars.length * (bw + gap), x0 = cx - total / 2, yb = H - 26;
   for (let i = 0; i < bars.length; i++) {
     const mid = 1 - Math.abs(i - bars.length / 2) / (bars.length / 2);
-    const target = state.level * (0.3 + 0.7 * mid) * (0.45 + 0.55 * Math.abs(Math.sin(t * 0.013 + i * 1.7)));
+    const target = state.level * (0.3 + 0.7 * mid) * (0.45 + 0.55 * Math.abs(Math.sin(now * 0.013 + i * 1.7)));
     bars[i] += (target - bars[i]) * 0.35;
     const h = 2 + bars[i] * 46;
     ctx.fillStyle = `rgba(120,210,255,${0.35 + 0.6 * bars[i]})`;
     ctx.fillRect(x0 + i * (bw + gap), yb - h, bw, h);
   }
 
-  // legenda da fala
   if (state.mode === 'speaking' && state.text) {
     const total = state.envelope ? state.envelope.length * state.frameMs : state.text.length * 62;
     const shown = Math.ceil(state.text.length * Math.min(1, (performance.now() - state.speakStart) / total + 0.05));
     let line = state.text.slice(0, shown);
-    ctx.font = '400 16px "Segoe UI", system-ui, sans-serif';
-    ctx.textAlign = 'center';
+    ctx.font = '400 16px "Segoe UI", system-ui, sans-serif'; ctx.textAlign = 'center';
     const max = Math.min(W - 60, 720);
     while (ctx.measureText(line).width > max && line.includes(' ')) line = line.slice(line.indexOf(' ') + 1);
     const tw = ctx.measureText(line).width;
-    ctx.fillStyle = 'rgba(2,12,30,0.62)';
-    ctx.fillRect(cx - tw / 2 - 14, H - 109, tw + 28, 30);
-    ctx.fillStyle = 'rgba(225,245,255,0.95)';
-    ctx.fillText(line, cx, H - 88);
+    ctx.fillStyle = 'rgba(2,12,30,0.62)'; ctx.fillRect(cx - tw / 2 - 14, H - 109, tw + 28, 30);
+    ctx.fillStyle = 'rgba(225,245,255,0.95)'; ctx.fillText(line, cx, H - 88);
   }
 }
 
@@ -529,48 +379,37 @@ function mouthTarget(now) {
     if (i >= e.length - 1) return 0;
     return e[i] + (e[i + 1] - e[i]) * (f - i);
   }
-  // sem dados de volume: movimento genérico de fala
   const s = now * 0.001;
   return Math.max(0, 0.42 + 0.34 * Math.sin(s * 11.3) * Math.sin(s * 6.7) + 0.2 * Math.sin(s * 23.1));
 }
 
+let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
+  const dt = Math.min(50, now - last); last = now;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (state.hidden) { drawStandby(); return; }
   if (DEMO) demoTick(now);
 
   const target = Math.min(1, mouthTarget(now));
-  state.level += (target - state.level) * (target > state.level ? 0.55 : 0.28);
-  jawOpen = state.level * JAW_MAX;
+  state.level += (target - state.level) * (target > state.level ? 0.55 : 0.25);
+  update(now, dt);
 
-  const s = now * 0.001, talk = state.level;
-  yaw = 0.24 * Math.sin(s * 0.45) + 0.05 * Math.sin(s * 1.3) + (state.mode === 'thinking' ? 0.12 * Math.sin(s * 2.1) : 0);
-  pitch = 0.05 * Math.sin(s * 0.6) + 0.035 * talk * Math.sin(s * 5.1) + (state.mode === 'listening' ? -0.05 : 0);
-  if (FREEZE) { yaw = params.has('yaw') ? parseFloat(params.get('yaw')) : 0.3; pitch = 0.02; }
-  setPose();
-
-  const flicker = (Math.random() < 0.012 ? 0.72 : 1) * (state.mode === 'offline' ? 0.45 : 1);
-  const glow = (0.75 + 0.25 * Math.sin(s * 2.3) + 0.35 * talk) * (state.mode === 'offline' ? 0.4 : 1);
-
+  const glow = (Math.random() < 0.01 ? 0.8 : 1) * (1 - 0.6 * mix.offline);
   ctx.globalCompositeOperation = 'source-over';
   ctx.drawImage(bg, 0, 0, W, H);
   ctx.globalCompositeOperation = 'lighter';
-  drawHalo(now);
-  drawHead(now, flicker);
-  drawReactor(now);
-  drawFeatures(Math.min(1, glow));
-  drawMouth(Math.min(1, glow));
-  drawEyes(now, Math.min(1, glow));
+  drawFrame(now);
+  drawCore(now, glow);
+  drawFilaments(now, glow);
+  drawEdges(glow);
+  drawParticles(now, glow);
+  drawPulses(glow);
+  drawRings(now, glow);
 
-  // brilho: cópia reduzida e desfocada somada por cima
   bctx.globalCompositeOperation = 'copy';
   bctx.drawImage(cv, 0, 0, bloom.width, bloom.height);
-  ctx.save();
-  ctx.filter = 'blur(7px)';
-  ctx.globalAlpha = 0.55;
-  ctx.drawImage(bloom, 0, 0, W, H);
-  ctx.restore();
+  ctx.save(); ctx.filter = 'blur(8px)'; ctx.globalAlpha = 0.6; ctx.drawImage(bloom, 0, 0, W, H); ctx.restore();
 
   ctx.globalCompositeOperation = 'source-over';
   drawBadge(now);
@@ -582,23 +421,16 @@ function apply(msg) {
   switch (msg.type) {
     case 'state':
       if (state.mode === 'speaking' && msg.mode !== 'speaking') state.envelope = null;
-      state.mode = msg.mode;
-      break;
+      state.mode = msg.mode; break;
     case 'speak':
       state.mode = 'speaking';
       state.envelope = msg.envelope && msg.envelope.length ? msg.envelope : null;
       state.frameMs = msg.frame_ms || 40;
       state.speakStart = performance.now() + (msg.delay_ms || 0);
-      state.text = msg.text || '';
-      break;
-    case 'stop':
-      state.mode = msg.mode || 'idle'; state.envelope = null; state.text = '';
-      break;
+      state.text = msg.text || ''; break;
+    case 'stop': state.mode = msg.mode || 'idle'; state.envelope = null; state.text = ''; break;
     case 'show': state.hidden = false; break;
-    case 'hide':
-      window.close();                       // funciona quando aberto como janela de app
-      setTimeout(() => { state.hidden = true; }, 250);
-      break;
+    case 'hide': window.close(); setTimeout(() => { state.hidden = true; }, 250); break;
   }
 }
 
@@ -606,30 +438,32 @@ function connect() {
   const es = new EventSource('/events');
   es.onopen = () => { if (state.mode === 'offline') state.mode = 'idle'; };
   es.onmessage = ev => { try { apply(JSON.parse(ev.data)); } catch (e) { console.error(e); } };
-  es.onerror = () => { state.mode = 'offline'; state.envelope = null; };   // reconecta sozinho
+  es.onerror = () => { state.mode = 'offline'; state.envelope = null; };
   // sinal de vida: é assim que o Jarvis sabe que esta janela continua aberta
   setInterval(() => { fetch('/alive').catch(() => {}); }, 1500);
 }
 
-// demonstração sem o Jarvis: ?demo=1 (ou ?demo=1&freeze=speaking para uma pose fixa)
 let demoStep = -1;
 function demoTick(now) {
   if (FREEZE) {
-    if (demoStep < 0) { demoStep = 0; state.mode = FREEZE; state.text = 'Bom dia, Pedro. Todos os sistemas estão online.'; state.speakStart = now - 1500; }
-    if (FREEZE === 'speaking') state.level = 0.6;
+    if (demoStep < 0) {
+      demoStep = 0; state.mode = FREEZE; for (const m of Object.keys(mix)) mix[m] = m === FREEZE ? 1 : 0;
+      state.text = 'Bom dia, Pedro. Todos os sistemas estão online.'; state.speakStart = now - 1500;
+    }
+    if (FREEZE === 'speaking') state.envelope = Array(400).fill(0.75);
     return;
   }
-  const step = Math.floor(now / 1000) % 12;
+  const step = Math.floor(now / 1000) % 14;
   if (step === demoStep) return;
   demoStep = step;
   if (step === 0) apply({ type: 'state', mode: 'idle' });
   if (step === 2) apply({ type: 'state', mode: 'listening' });
-  if (step === 4) apply({ type: 'state', mode: 'thinking' });
-  if (step === 6) {
-    const env = Array.from({ length: 110 }, (_, i) => Math.max(0, Math.sin(i * 0.9) * Math.sin(i * 0.23) * 0.9 + 0.25));
+  if (step === 5) apply({ type: 'state', mode: 'thinking' });
+  if (step === 8) {
+    const env = Array.from({ length: 130 }, (_, i) => Math.max(0, Math.sin(i * 0.9) * Math.sin(i * 0.23) * 0.9 + 0.25));
     apply({ type: 'speak', envelope: env, frame_ms: 40, text: 'Bom dia, Pedro. Todos os sistemas estão online.' });
   }
-  if (step === 11) apply({ type: 'stop' });
+  if (step === 13) apply({ type: 'stop' });
 }
 
 window.addEventListener('resize', resize);

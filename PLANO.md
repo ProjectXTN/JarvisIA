@@ -77,21 +77,23 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 
 Depende da Fase 2 (modelo novo com ferramentas). Substitui os itens 39 a 41 da Fase 5.
 
-- [ ] 50. Personalidade própria em `brain/persona/`: traços fixos, humor do dia e opiniões que ele forma e guarda
-- [ ] 51. Memória de longo prazo sobre o Pedro: fatos, preferências e projetos extraídos das conversas, com busca por semelhança
-- [ ] 52. Diário: ao fim de cada dia, resumo do que conversaram e do que aprendeu, lido na próxima inicialização
-- [ ] 53. Curiosidade: lista de temas a estudar, alimentada pelas conversas e pelos interesses do Pedro
-- [ ] 54. Estudo autônomo quando o PC está ocioso: busca, lê, resume, confere em mais de uma fonte e guarda com a fonte
-- [ ] 55. Reflexão noturna: revisa o que aprendeu, junta notas repetidas, marca contradições e atualiza opiniões
-- [ ] 56. Iniciativa: puxa assunto sobre o que aprendeu, lembra compromissos, comenta novidades dos temas do Pedro
-- [ ] 57. Painel "o que o Jarvis sabe": ver, corrigir e apagar memórias e aprendizados
-- [ ] 58. Limites de segurança: internet só para leitura, nada de executar, comprar ou enviar sem permissão
-- [ ] 59. (Opcional, avançado) Ajuste fino LoRA mensal com as conversas aprovadas pelo Pedro
+- [ ] 52. Personalidade própria em `brain/persona/`: traços fixos, humor do dia e opiniões que ele forma e guarda
+- [ ] 53. Memória de longo prazo sobre o Pedro: fatos, preferências e projetos extraídos das conversas, com busca por semelhança
+- [ ] 54. Diário: ao fim de cada dia, resumo do que conversaram e do que aprendeu, lido na próxima inicialização
+- [ ] 55. Curiosidade: lista de temas a estudar, alimentada pelas conversas e pelos interesses do Pedro
+- [ ] 56. Estudo autônomo quando o PC está ocioso: busca, lê, resume, confere em mais de uma fonte e guarda com a fonte
+- [ ] 57. Reflexão noturna: revisa o que aprendeu, junta notas repetidas, marca contradições e atualiza opiniões
+- [ ] 58. Iniciativa: puxa assunto sobre o que aprendeu, lembra compromissos, comenta novidades dos temas do Pedro
+- [ ] 59. Painel "o que o Jarvis sabe": ver, corrigir e apagar memórias e aprendizados
+- [ ] 60. Limites de segurança: internet só para leitura, nada de executar, comprar ou enviar sem permissão
+- [ ] 61. (Opcional, avançado) Ajuste fino LoRA mensal com as conversas aprovadas pelo Pedro
 
 ## Extras pedidos durante o projeto
 
 - [x] 48. Avatar holográfico 3D que fala (`brain/avatar/`, `commands/commands_avatar.py`)
 - [x] 49. Avatar com anatomia humana: crânio, maxilar, nariz, lábios, pálpebras, orelhas e cabelo
+- [x] 50. Avatar trocado por um núcleo neural de partículas (original), aberto sempre junto com o Jarvis
+- [ ] 51. Novo gerador de imagens: ComfyUI com FLUX.2 [klein] 4B no lugar do Stable Diffusion 1.5
 
 ## Registro
 
@@ -156,4 +158,11 @@ Sintoma: o Whisper ouviu "Alexi"/"Lexi" e a resposta do país virou "Pronto."; a
 
 ### 2026-11-17 — Fase 7 planejada (Jarvis vivo)
 
-O modelo do Ollama não muda sozinho ao ler a internet: os pesos são fixos. O que faz o Jarvis ficar mais inteligente com o tempo é a memória que cresce em volta do modelo (o que ele sabe sobre o Pedro, o que estudou, as opiniões que formou) e que entra em cada resposta. O ajuste fino (item 59) existe, mas é a última etapa e opcional.
+O modelo do Ollama não muda sozinho ao ler a internet: os pesos são fixos. O que faz o Jarvis ficar mais inteligente com o tempo é a memória que cresce em volta do modelo (o que ele sabe sobre o Pedro, o que estudou, as opiniões que formou) e que entra em cada resposta. O ajuste fino (item 61) existe, mas é a última etapa e opcional.
+
+### 2026-11-17 — Novo avatar e abertura automática (item 50)
+
+- O rosto foi trocado por um núcleo neural original: 1.500 partículas ligadas como neurônios, núcleo de luz, filamentos internos e anéis em órbita.
+- Repouso: respira devagar. Ouvindo: se contrai e recebe ondas. Processando: gira mais rápido, acende sinapses e filamentos. Falando: a superfície vibra no volume real da voz.
+- `AVATAR_AUTO_OPEN` agora vem ligado: o avatar abre junto com o Jarvis. Para desligar, `JARVIS_AVATAR_AUTO_OPEN=0` no `.env`.
+- O rosto anterior continua no histórico do git (commit `eabb5b6`).

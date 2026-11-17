@@ -54,8 +54,8 @@ HOME_COUNTRY = os.getenv("JARVIS_HOME_COUNTRY", "FR")
 
 # === Avatar ===
 AVATAR_PORT = int(os.getenv("JARVIS_AVATAR_PORT", "8765"))
-# True abre o avatar junto com o Jarvis; False só quando você pedir por voz
-AVATAR_AUTO_OPEN = os.getenv("JARVIS_AVATAR_AUTO_OPEN", "0") == "1"
+# Abre o avatar junto com o Jarvis. Para desligar: JARVIS_AVATAR_AUTO_OPEN=0 no .env
+AVATAR_AUTO_OPEN = os.getenv("JARVIS_AVATAR_AUTO_OPEN", "1") == "1"
 # Atraso entre mandar tocar o áudio e o som sair (ms). Se a boca mexer antes
 # da voz, aumente; se mexer depois, diminua.
 AVATAR_AUDIO_DELAY_MS = int(os.getenv("JARVIS_AVATAR_AUDIO_DELAY_MS", "180"))
