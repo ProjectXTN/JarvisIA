@@ -52,55 +52,116 @@ const ellipseR = (a, b, phi) => {
   return 1 / Math.sqrt(s * s + c * c);
 };
 
+/* Perfil do crânio por altura y (1 = topo, -1 = base do queixo), interpolado
+   entre pontos de controle medidos em proporções de uma cabeça humana:
+   a = meia largura, bf = profundidade da face, bb = profundidade da nuca. */
+const PROFILE_Y  = [1.00, 0.92, 0.80, 0.60, 0.40, 0.22, 0.05, -0.12, -0.30, -0.48, -0.62, -0.76, -0.88, -0.96, -1.00];
+const PROFILE_A  = [0.00, 0.36, 0.53, 0.645, 0.685, 0.695, 0.685, 0.665, 0.625, 0.560, 0.480, 0.360, 0.230, 0.110, 0.00];
+const PROFILE_BF = [0.00, 0.40, 0.62, 0.780, 0.840, 0.860, 0.830, 0.850, 0.840, 0.820, 0.800, 0.770, 0.700, 0.460, 0.00];
+const PROFILE_BB = [0.00, 0.48, 0.70, 0.840, 0.880, 0.860, 0.800, 0.690, 0.560, 0.450, 0.380, 0.340, 0.310, 0.280, 0.00];
+
+function profile(table, y) {
+  if (y >= PROFILE_Y[0] || y <= PROFILE_Y[PROFILE_Y.length - 1]) return 0;
+  let i = 0;
+  while (PROFILE_Y[i + 1] > y) i++;
+  const t = (PROFILE_Y[i] - y) / (PROFILE_Y[i] - PROFILE_Y[i + 1]);
+  const p0 = table[Math.max(0, i - 1)], p1 = table[i], p2 = table[i + 1], p3 = table[Math.min(table.length - 1, i + 2)];
+  const v = 0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (-p0 + 3 * p1 - 3 * p2 + p3) * t * t * t);
+  return Math.max(0, v);
+}
+
+/* Superelipse: n > 2 achata a frente do rosto (rostos não são esferas). */
+function superR(a, b, phi, n) {
+  const s = Math.abs(Math.sin(phi)) / a, c = Math.abs(Math.cos(phi)) / b;
+  return Math.pow(Math.pow(s, n) + Math.pow(c, n), -1 / n);
+}
+
+const EYE_Y = 0.07, EYE_PHI = 0.33, MOUTH_Y = -0.435;
+
+/* Linha do cabelo: na testa fica em y≈0.50, desce nas têmporas e contorna as orelhas. */
+function hairline(phi) {
+  const ap = Math.abs(phi);
+  if (ap > 2.0) return -0.30;                       // nuca
+  return 0.50 - 0.20 * smooth((ap - 0.55) / 0.55) - 0.28 * smooth((ap - 1.25) / 0.6);
+}
+
 /* Raio da superfície na altura y e no ângulo phi (0 = frente). */
 function surface(y, phi) {
-  let rHead = 0;
-  if (y < 1 && y > -1) {
-    const s = Math.sqrt(1 - y * y);
-    let a = 0.70 * Math.pow(s, 0.72);      // meia largura
-    let bf = 0.86 * Math.pow(s, 0.70);     // profundidade para a frente
-    let bb = 0.92 * Math.pow(s, 0.85);     // profundidade para trás
-    if (y < 0) {
-      const t = -y;
-      a *= 1 - 0.24 * Math.pow(t, 1.7);    // afina no queixo
-      bf *= 1 - 0.10 * t * t;
-      bb *= 1 - 0.55 * smooth((t - 0.25) / 0.75);
-    }
-    const b = Math.cos(phi) >= 0 ? bf : bb;
-    if (a > 0.004 && b > 0.004) {
+  let rHead = 0, hair = 0;
+  const a = profile(PROFILE_A, y);
+  if (a > 0.004) {
+    const front = Math.cos(phi) >= 0;
+    const b = front ? profile(PROFILE_BF, y) : profile(PROFILE_BB, y);
+    if (b > 0.004) {
       const ap = Math.abs(phi);
-      rHead = ellipseR(a, b, phi);
-      rHead += 0.23 * bump(phi, 0, 0.14) * (bump(y, -0.13, 0.12) + 0.42 * bump(y, 0.06, 0.17)); // nariz
-      rHead += 0.060 * bump(y, 0.215, 0.06) * bump(phi, 0, 0.90);  // sobrancelha
-      rHead -= 0.085 * bump(y, 0.10, 0.07) * bump(ap, 0.42, 0.20);  // órbitas
-      rHead += 0.045 * bump(y, -0.08, 0.15) * bump(ap, 0.82, 0.28); // maçãs do rosto
-      rHead += 0.040 * bump(y, -0.58, 0.14) * bump(ap, 1.15, 0.30); // ângulo do maxilar
-      rHead += 0.040 * bump(y, -0.43, 0.055) * bump(phi, 0, 0.36);  // lábios
-      rHead -= 0.020 * bump(y, -0.55, 0.05) * bump(phi, 0, 0.30);
-      rHead += 0.050 * bump(y, -0.80, 0.13) * bump(phi, 0, 0.42);   // queixo
-      rHead += 0.050 * bump(y, -0.02, 0.17) * bump(ap, 1.62, 0.13); // orelhas
+      rHead = superR(a, b, phi, front ? 2.45 : 2.1);
+
+      // --- testa e olhos
+      rHead += 0.050 * bump(y, 0.19, 0.06) * bump(phi, 0, 0.85);                  // arco das sobrancelhas
+      rHead -= 0.030 * bump(y, 0.30, 0.10) * bump(ap, 1.05, 0.22);                // têmporas
+      rHead -= 0.095 * bump(y, EYE_Y, 0.075) * bump(ap, EYE_PHI, 0.17);           // órbitas
+      rHead += 0.055 * bump(y, EYE_Y, 0.040) * bump(ap, EYE_PHI, 0.095);          // globo ocular
+
+      // --- nariz: dorso cresce até a ponta, depois some rápido
+      const tip = -0.175;
+      let nose = 0;
+      if (y > tip) nose = 0.205 * Math.pow(smooth((0.17 - y) / (0.17 - tip)), 1.25);
+      else nose = 0.205 * Math.exp(-Math.pow((y - tip) / 0.045, 2));
+      const noseW = 0.065 + 0.055 * smooth((0.05 - y) / 0.2);
+      rHead += nose * bump(phi, 0, noseW);
+      rHead += 0.060 * bump(y, -0.195, 0.040) * bump(ap, 0.115, 0.050);          // asas do nariz
+      rHead -= 0.040 * bump(y, -0.225, 0.025) * bump(ap, 0.06, 0.05);            // narinas
+
+      // --- boca e queixo
+      rHead += 0.012 * bump(y, -0.31, 0.06) * bump(phi, 0, 0.05);                // filtro labial
+      rHead += 0.050 * bump(y, MOUTH_Y + 0.030, 0.030) * bump(phi, 0, 0.24);     // lábio superior
+      rHead += 0.048 * bump(y, MOUTH_Y - 0.035, 0.032) * bump(phi, 0, 0.21);     // lábio inferior
+      rHead -= 0.022 * bump(y, MOUTH_Y, 0.010) * bump(phi, 0, 0.23);             // fenda da boca
+      rHead -= 0.032 * bump(y, -0.56, 0.035) * bump(phi, 0, 0.25);               // sulco do queixo
+      rHead += 0.060 * bump(y, -0.72, 0.085) * bump(phi, 0, 0.30);               // queixo
+
+      // --- maçãs, bochechas e maxilar
+      rHead += 0.050 * bump(y, -0.03, 0.10) * bump(ap, 0.78, 0.24);              // maçãs do rosto
+      rHead -= 0.035 * bump(y, -0.33, 0.12) * bump(ap, 0.72, 0.20);              // bochecha encovada
+      rHead += 0.060 * bump(y, -0.58, 0.10) * bump(ap, 1.22, 0.24);              // ângulo do maxilar
+      rHead += 0.030 * bump(y, -0.40, 0.25) * bump(ap, 1.50, 0.25);              // músculo masseter
+
+      // --- orelhas
+      rHead += 0.085 * bump(y, -0.03, 0.15) * bump(ap, 1.62, 0.09);
+
+      // --- cabelo: volume acima da linha do cabelo, topete na frente
+      const hl = hairline(phi);
+      const inHair = smooth((y - hl) / 0.06);
+      const thick = 0.045 + 0.075 * bump(y, 0.78, 0.16) * bump(phi, 0.05, 0.55);   // topete
+      hair = inHair * thick * (y > -0.55 ? 1 : 0);
+      rHead += hair;
     }
   }
   let rBody = 0;
   if (y < -0.55) {
-    rBody = ellipseR(0.34, 0.36, phi) * smooth((-0.55 - y) / 0.25);           // pescoço
-    if (y < -1.3) {
-      const t = smooth((-1.3 - y) / 0.6);
-      rBody = Math.max(rBody, ellipseR(0.34 + 1.3 * t, 0.36 + 0.24 * t, phi)); // ombros
+    // pescoço: começa atrás do maxilar, mais largo na base
+    const neck = smooth((-0.55 - y) / 0.20);
+    const wide = smooth((-1.0 - y) / 0.35);
+    rBody = ellipseR(0.30 + 0.06 * wide, 0.32 + 0.03 * wide, phi) * neck;
+    rBody += 0.035 * bump(y, -1.0, 0.18) * bump(phi, 0, 0.35);                   // pomo de adão / clavícula
+    if (y < -1.15) {
+      // trapézio desce do pescoço até os ombros, depois o peito
+      const t = smooth((-1.15 - y) / 0.75);
+      rBody = Math.max(rBody, ellipseR(0.38 + 1.25 * t, 0.36 + 0.22 * t, phi));
     }
   }
-  return rHead >= rBody ? { r: rHead, head: true } : { r: rBody, head: false };
+  return rHead >= rBody ? { r: rHead, head: true, hair } : { r: rBody, head: false, hair: 0 };
 }
 
-const SEG = 120;
+const SEG = 144;
 const ringY = [];
-for (let y = 0.985; y > -1.0; y -= 0.034) ringY.push(y);
+for (let y = 0.962; y > -1.0; y -= 0.028) ringY.push(y);
 for (let y = -1.03; y > -2.2; y -= 0.05) ringY.push(y);
 const RINGS = ringY.length, N = RINGS * SEG;
 
 const PX = new Float32Array(N), PY = new Float32Array(N), PZ = new Float32Array(N);
 const NX = new Float32Array(N), NY = new Float32Array(N), NZ = new Float32Array(N);
-const JAW = new Float32Array(N), ROT = new Float32Array(N), FADE = new Float32Array(N);
+const JAW = new Float32Array(N), ROT = new Float32Array(N), FADE = new Float32Array(N), HAIR = new Float32Array(N);
 const SX = new Float32Array(N), SY = new Float32Array(N), BR = new Float32Array(N);
 
 for (let i = 0; i < RINGS; i++) {
@@ -110,7 +171,10 @@ for (let i = 0; i < RINGS; i++) {
     const s = surface(y, phi), k = i * SEG + j;
     PX[k] = s.r * Math.sin(phi); PY[k] = y; PZ[k] = s.r * Math.cos(phi);
     // quanto o ponto acompanha o maxilar ao abrir a boca
-    JAW[k] = s.head ? smooth((-0.44 - y) / 0.12) * (0.35 + 0.65 * Math.max(0, Math.cos(phi))) : 0;
+    JAW[k] = s.head ? smooth((MOUTH_Y - 0.01 - y) / 0.12) * (0.35 + 0.65 * Math.max(0, Math.cos(phi))) : 0;
+    HAIR[k] = s.hair > 0.01 ? 1 : 0;
+    // pescoço atrás do rosto: o deslocamento entra aos poucos para não criar degrau sob o queixo
+    if (!s.head) PZ[k] -= 0.13 * smooth((-0.62 - y) / 0.45) * smooth((y + 1.75) / 0.6);
     // quanto o ponto gira junto com a cabeça (o tronco fica parado)
     ROT[k] = s.head ? 1 : smooth((y + 1.5) / 0.7);
     FADE[k] = smooth((y + 2.25) / 0.75);
@@ -134,7 +198,7 @@ for (let i = 0; i < RINGS; i++) {
 // ------------------------------------------------------------------ câmera
 const CAM = 5.2, PIVOT_Y = -0.85, CENTER_Y = -0.42;
 let S = 200, cx = 0, cy = 0;
-const JAW_MAX = 0.12;
+const JAW_MAX = 0.085;
 let yaw = 0, pitch = 0, jawOpen = 0;
 let cyw = 1, syw = 0, cpt = 1, spt = 0;
 
@@ -232,6 +296,7 @@ function drawHead(t, flicker) {
       const fres = Math.pow(1 - Math.max(0, n.z), 2);          // borda acesa
       const lam = Math.max(0, n.x * LIGHT[0] + n.y * LIGHT[1] + n.z * LIGHT[2]);
       b = 0.04 + 0.50 * fres + 0.50 * lam * lam;
+      if (HAIR[k]) b = b * 0.75 + 0.10 * (0.5 + 0.5 * Math.sin(k * 0.61 + PX[k] * 9));   // mechas
       const ds = Math.abs(tmp.y - scanY);
       if (ds < 16) b += 0.4 * (1 - ds / 16);                    // faixa de varredura
     }
@@ -250,6 +315,7 @@ function drawHead(t, flicker) {
   for (let i = 0; i < RINGS - 1; i++) {
     const o = i * SEG;
     for (let j = 0; j < SEG; j += 3) push(o + j, o + SEG + j, 0.7);
+    for (let j = 1; j < SEG; j += 3) if (HAIR[o + j] && HAIR[o + SEG + j]) push(o + j, o + SEG + j, 0.55);
   }
   ctx.lineWidth = 1.05;
   for (let q = 0; q < NB; q++) {
@@ -267,13 +333,13 @@ function drawEyes(t, glow) {
   const blinkPhase = (t % 4300) / 140;
   const blink = blinkPhase < 1 ? Math.abs(1 - blinkPhase * 2) : 1;      // pisca a cada ~4 s
   for (const side of [-1, 1]) {
-    const phi = side * 0.42, y = 0.10;
-    const r = surface(y, phi).r + 0.012;
+    const phi = side * EYE_PHI, y = EYE_Y;
+    const r = surface(y, phi).r + 0.010;
     const x = r * Math.sin(phi), z = r * Math.cos(phi);
     project(x, y, z, 1, tmp);
     const n = rotNormalZ(Math.sin(phi), 0, Math.cos(phi), 1);
     if (n.z < 0.12) continue;
-    const rx = S * 0.092 * tmp.p * Math.max(0.3, n.z), ry = S * 0.030 * tmp.p * (0.15 + 0.85 * blink);
+    const rx = S * 0.070 * tmp.p * Math.max(0.3, n.z), ry = S * 0.030 * tmp.p * (0.15 + 0.85 * blink);
     ctx.save();
     ctx.translate(tmp.x, tmp.y);
     const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, rx * 2.6);
@@ -307,24 +373,30 @@ function featureLine(fn, steps, width, alpha) {
 function drawFeatures(glow) {
   const a = 0.75 * glow;
   for (const side of [-1, 1]) {
-    featureLine(u => ({ phi: side * (0.20 + 0.50 * u), y: 0.225 + 0.035 * Math.sin(u * Math.PI) - 0.03 * u }), 12, 2.2, a);        // sobrancelha
-    featureLine(u => ({ phi: side * (0.07 + 0.11 * Math.sin(u * Math.PI)), y: -0.20 - 0.07 * u }), 8, 1.3, a * 0.8);              // asa do nariz
-    featureLine(u => ({ phi: side * (0.50 + 0.85 * u), y: -0.80 + 0.42 * Math.pow(u, 1.4) }), 16, 1.4, a * 0.7);                  // maxilar
+    featureLine(u => ({ phi: side * (0.13 + 0.48 * u), y: 0.205 + 0.03 * Math.sin(u * Math.PI * 0.9) - 0.035 * u * u }), 14, 2.4, a);   // sobrancelha
+    featureLine(u => ({ phi: side * (0.20 + 0.27 * u), y: EYE_Y + 0.030 + 0.020 * Math.sin(u * Math.PI) }), 12, 1.5, a * 0.95);           // pálpebra superior
+    featureLine(u => ({ phi: side * (0.21 + 0.25 * u), y: EYE_Y - 0.028 - 0.010 * Math.sin(u * Math.PI) }), 12, 1.0, a * 0.55);           // pálpebra inferior
+    featureLine(u => ({ phi: side * (0.21 + 0.27 * u), y: EYE_Y + 0.062 + 0.012 * Math.sin(u * Math.PI) }), 12, 0.9, a * 0.35);           // vinco da pálpebra
+    featureLine(u => ({ phi: side * (0.055 + 0.085 * Math.sin(u * Math.PI * 0.85)), y: -0.17 - 0.06 * u }), 10, 1.3, a * 0.8);            // asa do nariz
+    featureLine(u => ({ phi: side * (0.17 + 0.13 * u), y: -0.20 - 0.21 * u }), 12, 1.1, a * 0.45);                                        // sulco nasolabial
+    featureLine(u => ({ phi: side * (0.30 + 1.0 * u), y: -0.80 + 0.30 * Math.pow(u, 1.6) }), 18, 1.4, a * 0.6);                            // maxilar
   }
-  featureLine(u => ({ phi: 0, y: 0.17 - 0.38 * u }), 10, 1.6, a);                                                                 // dorso do nariz
+  featureLine(u => ({ phi: 0.012, y: 0.13 - 0.30 * u }), 10, 1.4, a * 0.85);
+  for (const side of [-1, 1]) featureLine(u => ({ phi: side * (1.54 + 0.12 * Math.sin(u * Math.PI)), y: 0.10 - 0.30 * u }), 12, 1.4, a * 0.7);   // orelha                                                               // dorso do nariz
+  featureLine(u => ({ phi: (u - 0.5) * 0.22, y: -0.755 - 0.02 * Math.sin(u * Math.PI) }), 10, 1.1, a * 0.45);                             // queixo
 }
 
 function drawMouth(glow) {
-  const STEPS = 14, HALF = 0.235;
+  const STEPS = 16, HALF = 0.185;
   const upper = [], lower = [];
   for (let i = 0; i <= STEPS; i++) {
     const u = i / STEPS * 2 - 1, phi = u * HALF;
-    const pin = 1 - u * u;                                  // cantos presos
-    let y = -0.425 + 0.012 * pin - 0.010 * bump(u, 0, 0.25); // arco do cupido
+    const pin = Math.pow(1 - u * u, 0.7);                   // cantos presos, boca mais reta
+    let y = MOUTH_Y + 0.010 + 0.010 * pin - 0.009 * bump(u, 0, 0.22); // arco do cupido
     let r = surface(y, phi).r + 0.006;
     project(r * Math.sin(phi), y, r * Math.cos(phi), 1, tmp);
     upper.push(tmp.x, tmp.y);
-    y = -0.440 - 0.014 * pin;
+    y = MOUTH_Y - 0.006 - 0.012 * pin;
     r = surface(y, phi).r + 0.006;
     const drop = jawOpen * pin;
     project(r * Math.sin(phi), y - drop, r * Math.cos(phi) - drop * 0.35, 1, tmp);
@@ -475,7 +547,7 @@ function frame(now) {
   const s = now * 0.001, talk = state.level;
   yaw = 0.24 * Math.sin(s * 0.45) + 0.05 * Math.sin(s * 1.3) + (state.mode === 'thinking' ? 0.12 * Math.sin(s * 2.1) : 0);
   pitch = 0.05 * Math.sin(s * 0.6) + 0.035 * talk * Math.sin(s * 5.1) + (state.mode === 'listening' ? -0.05 : 0);
-  if (FREEZE) { yaw = 0.3; pitch = 0.02; }
+  if (FREEZE) { yaw = params.has('yaw') ? parseFloat(params.get('yaw')) : 0.3; pitch = 0.02; }
   setPose();
 
   const flicker = (Math.random() < 0.012 ? 0.72 : 1) * (state.mode === 'offline' ? 0.45 : 1);

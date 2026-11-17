@@ -73,9 +73,25 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 - [ ] 46. Testes automáticos (desligamento, hotword, roteamento)
 - [ ] 47. Atualizar `README.md`, `Dockerfile` e `build_jarvis.bat`
 
+## Fase 7 — Jarvis vivo: personalidade, memória e aprendizado autônomo
+
+Depende da Fase 2 (modelo novo com ferramentas). Substitui os itens 39 a 41 da Fase 5.
+
+- [ ] 50. Personalidade própria em `brain/persona/`: traços fixos, humor do dia e opiniões que ele forma e guarda
+- [ ] 51. Memória de longo prazo sobre o Pedro: fatos, preferências e projetos extraídos das conversas, com busca por semelhança
+- [ ] 52. Diário: ao fim de cada dia, resumo do que conversaram e do que aprendeu, lido na próxima inicialização
+- [ ] 53. Curiosidade: lista de temas a estudar, alimentada pelas conversas e pelos interesses do Pedro
+- [ ] 54. Estudo autônomo quando o PC está ocioso: busca, lê, resume, confere em mais de uma fonte e guarda com a fonte
+- [ ] 55. Reflexão noturna: revisa o que aprendeu, junta notas repetidas, marca contradições e atualiza opiniões
+- [ ] 56. Iniciativa: puxa assunto sobre o que aprendeu, lembra compromissos, comenta novidades dos temas do Pedro
+- [ ] 57. Painel "o que o Jarvis sabe": ver, corrigir e apagar memórias e aprendizados
+- [ ] 58. Limites de segurança: internet só para leitura, nada de executar, comprar ou enviar sem permissão
+- [ ] 59. (Opcional, avançado) Ajuste fino LoRA mensal com as conversas aprovadas pelo Pedro
+
 ## Extras pedidos durante o projeto
 
 - [x] 48. Avatar holográfico 3D que fala (`brain/avatar/`, `commands/commands_avatar.py`)
+- [x] 49. Avatar com anatomia humana: crânio, maxilar, nariz, lábios, pálpebras, orelhas e cabelo
 
 ## Registro
 
@@ -130,3 +146,14 @@ Sintoma: o Whisper ouviu "Alexi"/"Lexi" e a resposta do país virou "Pronto."; a
 - **Ajuste fino:** se a boca mexer antes ou depois da voz, mude `AVATAR_AUDIO_DELAY_MS` em `core/settings.py`.
 - **Ver sem o Jarvis:** abrir `brain/avatar/static/index.html` direto no navegador roda uma demonstração.
 - **Testado:** servidor, eventos e medida de volume fora do Jarvis; visual conferido em Chrome. Falta o teste por voz no PC.
+
+### 2026-11-17 — Rosto realista do avatar (item 49)
+
+- O crânio deixou de ser uma esfera: largura, profundidade da face e da nuca seguem uma tabela de proporções humanas, e a frente do rosto é achatada.
+- Novos detalhes de relevo: arco das sobrancelhas, órbitas, globo ocular, nariz com dorso, asas e narinas, lábios, queixo, maçãs do rosto, maxilar, orelhas e cabelo com topete.
+- Traços em luz: sobrancelhas, pálpebras, nariz, sulco nasolabial, maxilar e orelhas.
+- O pescoço fica atrás do rosto, como numa pessoa; a malha ficou mais densa.
+
+### 2026-11-17 — Fase 7 planejada (Jarvis vivo)
+
+O modelo do Ollama não muda sozinho ao ler a internet: os pesos são fixos. O que faz o Jarvis ficar mais inteligente com o tempo é a memória que cresce em volta do modelo (o que ele sabe sobre o Pedro, o que estudou, as opiniões que formou) e que entra em cada resposta. O ajuste fino (item 59) existe, mas é a última etapa e opcional.
