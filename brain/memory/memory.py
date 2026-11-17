@@ -4,6 +4,7 @@ from brain.learning.personal_responses import check_personal_answer
 from core.settings import (
     OLLAMA_HOST,
     OLLAMA_TIMEOUT,
+    OLLAMA_KEEP_ALIVE,
     DEFAULT_MODEL,
     DEFAULT_MODEL_HIGH,
     DEFAULT_MODEL_CODE,
@@ -110,12 +111,14 @@ def llama_query(prompt, model=None, direct_mode=False, mode=None, lang="pt"):
             )
             final_prompt = f"{system_prompt}\n{history}\nUsuário: {prompt}\nJarvis:"
 
+        print(f"[LLM] Gerando resposta com {model} ({len(final_prompt)} caracteres)...")
         response = session.post(
             f"{OLLAMA_HOST}/api/generate",
             json={
                 "model": model,
                 "prompt": final_prompt,
                 "stream": False,
+                "keep_alive": OLLAMA_KEEP_ALIVE,
                 # O Ollama só lê a temperatura dentro de "options"
                 "options": {"temperature": temperature},
             },

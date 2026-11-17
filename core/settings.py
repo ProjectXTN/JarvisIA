@@ -26,6 +26,10 @@ def _normalize_host(value):
 OLLAMA_HOST = _normalize_host(os.getenv("OLLAMA_HOST"))
 # (conexão, leitura) em segundos
 OLLAMA_TIMEOUT = (5, 180)
+# Quanto tempo o modelo fica carregado na GPU depois de usado
+OLLAMA_KEEP_ALIVE = "30m"
+# Tempo máximo de espera pela consulta aos documentos internos (RAG)
+RAG_TIMEOUT = 15
 
 # === Modelos (serão trocados na Fase 2 do PLANO.md) ===
 DEFAULT_MODEL = os.getenv("JARVIS_MODEL", "llama3.2")
@@ -34,9 +38,6 @@ DEFAULT_MODEL_CODE = os.getenv("JARVIS_MODEL_CODE", "codestral")
 VISION_MODEL_LOW = os.getenv("JARVIS_VISION_MODEL_LOW", "llava:13b")
 VISION_MODEL_HIGH = os.getenv("JARVIS_VISION_MODEL_HIGH", "llama3.2-vision:90b")
 EMBEDDING_MODEL = os.getenv("JARVIS_EMBEDDING_MODEL", "nomic-embed-text")
-
-# Modelos carregados na inicialização
-STARTUP_MODELS = [VISION_MODEL_HIGH, DEFAULT_MODEL, DEFAULT_MODEL_HIGH]
 
 # === Voz ===
 WHISPER_MODEL = os.getenv("JARVIS_WHISPER_MODEL", "medium")

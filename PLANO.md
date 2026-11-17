@@ -32,7 +32,7 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 - [ ] 17. Reescrever `llama_query` para `/api/chat` (system, histórico, `options`, `keep_alive`, `think: false`)
 - [ ] 18. Unificar os prompts de sistema num "Jarvis de voz"
 - [ ] 19. Ligar o histórico de conversa no fluxo de voz
-- [ ] 20. Trocar `start_llava()` por um aquecimento HTTP do modelo escolhido
+- [x] 20. Trocar `start_llava()` por um aquecimento HTTP do modelo escolhido (feito para o modelo atual; trocar o nome quando o novo for escolhido)
 - [ ] 21. Visão: enviar imagem em base64 pelo `/api/chat`
 - [ ] 22. Modelo reserva de código quando o principal recusar
 
@@ -101,3 +101,11 @@ Pendências para o Pedro:
 - Testar no PC com microfone e GPU: hotword, "que horas são", desligar e uma pergunta ao LLM. Aqui só foi possível rodar os testes automáticos.
 - Rodar `pip install -r requirements.txt` no venv (entrou `llama-index`).
 - O `.gitattributes` tem comandos `git lfs track ...` no lugar de padrões; o git avisa a cada comando. Corrigir junto com a Fase 6.
+
+### 2026-11-17 — Travamento no primeiro teste por voz
+
+Sintoma: depois de "Jarvis, bom dia. Que horas é agora?" o console parou após a busca na web.
+
+- "que horas é agora" não era reconhecido como pedido de hora (só "que horas são") e caía na busca web. Corrigido em `commands_day_time.py`.
+- A inicialização carregava três modelos (visão 90B, llama3.2 e llama3.3 70B). Hipótese para a espera: a pergunta ficava na fila do Ollama atrás desses carregamentos. Agora só o modelo de conversa é pré-carregado, por HTTP, em segundo plano (item 20).
+- A consulta ao RAG ganhou limite de 15 s, e o console avisa cada etapa (`[RAG]`, `[LLM]`) para se ver onde está parado.

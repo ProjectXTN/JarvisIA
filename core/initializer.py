@@ -3,12 +3,11 @@ import subprocess
 import requests
 import time
 import sys
+import threading
 import psutil
 from brain.audio import listen
 from brain.utils.utils import normalize_text, sounds_like_jarvis
-from core.settings import LOCK_FILE, OLLAMA_HOST, STARTUP_MODELS, VISION_MODEL_HIGH
-
-VISION_MODELS = STARTUP_MODELS
+from core.settings import LOCK_FILE, OLLAMA_HOST, DEFAULT_MODEL, OLLAMA_KEEP_ALIVE
 stable_diffusion_process = None
 stable_diffusion_pid = None
 
@@ -88,39 +87,31 @@ def start_llava():
         )
         time.sleep(5)
 
-    for model in VISION_MODELS:
-        models = subprocess.run(["ollama", "list"], capture_output=True, text=True)
-        if model not in models.stdout:
-            print(f"⬇️ Downloading model {model}...")
-            subprocess.run(["ollama", "pull", model])
+    # Só o modelo de conversa é pré-carregado. Antes eram carregados também o
+    # modelo de visão de 90B e o llama3.3 de 70B (cerca de 100 GB), que não
+    # cabem na GPU e deixavam a primeira pergunta esperando minutos na fila.
+    # Os outros modelos agora carregam sozinhos quando forem usados.
+    models = subprocess.run(["ollama", "list"], capture_output=True, text=True)
+    if DEFAULT_MODEL not in models.stdout:
+        print(f"⬇️ Downloading model {DEFAULT_MODEL}...")
+        subprocess.run(["ollama", "pull", DEFAULT_MODEL])
 
-        print(f"Starting model {model}...")
-        # Prompt vazio: só carrega o modelo e sai. stdin fechado para o
-        # processo não ficar disputando o teclado do console.
-        subprocess.Popen(
-            ["ollama", "run", model, ""],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-
-    time.sleep(5)
-    warmup_vision_model()
+    threading.Thread(target=warmup_model, args=(DEFAULT_MODEL,), daemon=True).start()
 
 
-def warmup_vision_model():
-    print("🔥 Warming up the vision model...")
+def warmup_model(model):
+    """Carrega o modelo na GPU (prompt vazio) e o mantém carregado."""
+    print(f"🔥 Carregando o modelo {model}...")
+    start = time.time()
     try:
-        subprocess.run(
-            ["ollama", "run", VISION_MODEL_HIGH],
-            input="<image>null</image>\nIgnore this.",
-            capture_output=True,
-            encoding="utf-8",
-            text=True,
-            timeout=10,
-        )
-    except Exception:
-        pass
+        requests.post(
+            f"{OLLAMA_HOST}/api/generate",
+            json={"model": model, "keep_alive": OLLAMA_KEEP_ALIVE},
+            timeout=(5, 600),
+        ).raise_for_status()
+        print(f"✅ Modelo {model} pronto em {time.time() - start:.1f}s.")
+    except Exception as e:
+        print(f"⚠️ Não consegui pré-carregar {model}: {e}")
 
 
 def passive_mode():

@@ -20,6 +20,7 @@ datetime_commands = [
     (r"\bque dia (é|e) hoje\b", date_command),
     (r"\bqual (é |e )?a data de hoje\b", date_command),
     # "que horas são", mas não "que horas são em Tóquio" (vai para o LLM)
-    (r"\bque horas? (são|sao)\b(?!\s+(em|no|na|nos|nas)\b)", time_command),
+    (r"\bque horas? (são|sao|é|e)\b(?!\s+(agora\s+)?(em|no|na|nos|nas)\b)", time_command),
+    (r"\bque horas? tem(os)?\b", time_command),
     (r"\b(diga|fala|fale|informe)( as)? horas\b", time_command),
 ]

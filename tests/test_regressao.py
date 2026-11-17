@@ -125,6 +125,9 @@ class CommandPatternTest(unittest.TestCase):
     def test_horas(self):
         self.assertTrue(_matches(datetime_commands, "que horas são"))
         self.assertTrue(_matches(datetime_commands, "me diga as horas"))
+        self.assertTrue(_matches(datetime_commands, "bom dia que horas é agora"))
+        self.assertTrue(_matches(datetime_commands, "que hora é"))
+        self.assertFalse(_matches(datetime_commands, "que horas é agora em lisboa"))
         self.assertFalse(_matches(datetime_commands, "quantas horas tem um dia"))
         self.assertFalse(_matches(datetime_commands, "que horas são em tóquio"))
         self.assertFalse(_matches(datetime_commands, "a que horas começa o jogo"))

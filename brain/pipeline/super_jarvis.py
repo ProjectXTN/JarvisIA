@@ -1,6 +1,10 @@
 from brain.websearch.websearch import search_web
 from brain.rag.query_rag import query_rag
+from concurrent.futures import ThreadPoolExecutor
 from brain.memory.memory import llama_query, DEFAULT_MODEL
+from core.settings import RAG_TIMEOUT
+
+_rag_pool = ThreadPoolExecutor(max_workers=1)
 
 PROMPT_TEMPLATES = {
     "pt": {
@@ -32,11 +36,14 @@ PROMPT_TEMPLATES = {
 
 def super_jarvis_query(user_prompt, lang="pt"):
     web_context, web_sources = search_web(user_prompt)
+    print("[RAG] Consultando documentos internos...")
     try:
-        local_context = query_rag(user_prompt)
+        local_context = _rag_pool.submit(query_rag, user_prompt).result(
+            timeout=RAG_TIMEOUT
+        )
     except Exception as e:
-        # Sem índice ou sem modelo de embeddings: segue só com a web
-        print(f"[RAG] Indisponível, seguindo sem documentos internos: {e}")
+        # Sem índice, sem modelo de embeddings ou demorou demais: segue só com a web
+        print(f"[RAG] Indisponível, seguindo sem documentos internos: {e!r}")
         local_context = ""
     pt = PROMPT_TEMPLATES.get(lang, PROMPT_TEMPLATES["en"])
 
