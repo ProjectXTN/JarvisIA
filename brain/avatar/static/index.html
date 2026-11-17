@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jarvis</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #01050d; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+/* Avatar holográfico do Jarvis.
+   Cabeça 3D gerada por fórmulas (sem bibliotecas nem imagens), desenhada em
+   linhas de luz. A boca segue o volume real da voz, enviado pelo Jarvis em
+   /events. Abrir com ?demo=1 mostra um ciclo de demonstração sem o Jarvis. */
+(() => {
+'use strict';
+
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+const bloom = document.createElement('canvas');
+const bctx = bloom.getContext('2d');
+let W = 0, H = 0, DPR = 1, bg = null;
+
+const params = new URLSearchParams(location.search);
+const DEMO = params.has('demo') || location.protocol === 'file:';
+const FREEZE = params.get('freeze');
+
+const LABELS = {
+  idle: 'ONLINE', listening: 'OUVINDO', thinking: 'PROCESSANDO',
+  speaking: 'FALANDO', offline: 'SEM CONEXÃO',
+};
+
+const state = {
+  mode: DEMO ? 'idle' : 'offline',
+  level: 0,            // abertura da boca suavizada, 0 a 1
+  envelope: null,      // volumes da fala atual, 0 a 1
+  frameMs: 40,
+  speakStart: 0,
+  text: '',
+  hidden: false,
+};
+
+// ---------------------------------------------------------------- geometria
+const smooth = t => { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
+const bump = (v, c, w) => { const d = (v - c) / w; return Math.exp(-d * d); };
+const ellipseR = (a, b, phi) => {
+  const s = Math.sin(phi) / a, c = Math.cos(phi) / b;
+  return 1 / Math.sqrt(s * s + c * c);
+};
+
+/* Raio da superfície na altura y e no ângulo phi (0 = frente). */
+function surface(y, phi) {
+  let rHead = 0;
+  if (y < 1 && y > -1) {
+    const s = Math.sqrt(1 - y * y);
+    let a = 0.70 * Math.pow(s, 0.72);      // meia largura
+    let bf = 0.86 * Math.pow(s, 0.70);     // profundidade para a frente
+    let bb = 0.92 * Math.pow(s, 0.85);     // profundidade para trás
+    if (y < 0) {
+      const t = -y;
+      a *= 1 - 0.24 * Math.pow(t, 1.7);    // afina no queixo
+      bf *= 1 - 0.10 * t * t;
+      bb *= 1 - 0.55 * smooth((t - 0.25) / 0.75);
+    }
+    const b = Math.cos(phi) >= 0 ? bf : bb;
+    if (a > 0.004 && b > 0.004) {
+      const ap = Math.abs(phi);
+      rHead = ellipseR(a, b, phi);
+      rHead += 0.23 * bump(phi, 0, 0.14) * (bump(y, -0.13, 0.12) + 0.42 * bump(y, 0.06, 0.17)); // nariz
+      rHead += 0.060 * bump(y, 0.215, 0.06) * bump(phi, 0, 0.90);  // sobrancelha
+      rHead -= 0.085 * bump(y, 0.10, 0.07) * bump(ap, 0.42, 0.20);  // órbitas
+      rHead += 0.045 * bump(y, -0.08, 0.15) * bump(ap, 0.82, 0.28); // maçãs do rosto
+      rHead += 0.040 * bump(y, -0.58, 0.14) * bump(ap, 1.15, 0.30); // ângulo do maxilar
+      rHead += 0.040 * bump(y, -0.43, 0.055) * bump(phi, 0, 0.36);  // lábios
+      rHead -= 0.020 * bump(y, -0.55, 0.05) * bump(phi, 0, 0.30);
+      rHead += 0.050 * bump(y, -0.80, 0.13) * bump(phi, 0, 0.42);   // queixo
+      rHead += 0.050 * bump(y, -0.02, 0.17) * bump(ap, 1.62, 0.13); // orelhas
+    }
+  }
+  let rBody = 0;
+  if (y < -0.55) {
+    rBody = ellipseR(0.34, 0.36, phi) * smooth((-0.55 - y) / 0.25);           // pescoço
+    if (y < -1.3) {
+      const t = smooth((-1.3 - y) / 0.6);
+      rBody = Math.max(rBody, ellipseR(0.34 + 1.3 * t, 0.36 + 0.24 * t, phi)); // ombros
+    }
+  }
+  return rHead >= rBody ? { r: rHead, head: true } : { r: rBody, head: false };
+}
+
+const SEG = 120;
+const ringY = [];
+for (let y = 0.985; y > -1.0; y -= 0.034) ringY.push(y);
+for (let y = -1.03; y > -2.2; y -= 0.05) ringY.push(y);
+const RINGS = ringY.length, N = RINGS * SEG;
+
+const PX = new Float32Array(N), PY = new Float32Array(N), PZ = new Float32Array(N);
+const NX = new Float32Array(N), NY = new Float32Array(N), NZ = new Float32Array(N);
+const JAW = new Float32Array(N), ROT = new Float32Array(N), FADE = new Float32Array(N);
+const SX = new Float32Array(N), SY = new Float32Array(N), BR = new Float32Array(N);
+
+for (let i = 0; i < RINGS; i++) {
+  const y = ringY[i];
+  for (let j = 0; j < SEG; j++) {
+    const phi = -Math.PI + 2 * Math.PI * j / SEG;
+    const s = surface(y, phi), k = i * SEG + j;
+    PX[k] = s.r * Math.sin(phi); PY[k] = y; PZ[k] = s.r * Math.cos(phi);
+    // quanto o ponto acompanha o maxilar ao abrir a boca
+    JAW[k] = s.head ? smooth((-0.44 - y) / 0.12) * (0.35 + 0.65 * Math.max(0, Math.cos(phi))) : 0;
+    // quanto o ponto gira junto com a cabeça (o tronco fica parado)
+    ROT[k] = s.head ? 1 : smooth((y + 1.5) / 0.7);
+    FADE[k] = smooth((y + 2.25) / 0.75);
+  }
+}
+for (let i = 0; i < RINGS; i++) {
+  const iu = Math.max(0, i - 1), id = Math.min(RINGS - 1, i + 1);
+  for (let j = 0; j < SEG; j++) {
+    const k = i * SEG + j, a = i * SEG + (j + 1) % SEG, b = i * SEG + (j + SEG - 1) % SEG;
+    const u = iu * SEG + j, d = id * SEG + j;
+    const tx = PX[a] - PX[b], ty = PY[a] - PY[b], tz = PZ[a] - PZ[b];
+    const mx = PX[d] - PX[u], my = PY[d] - PY[u], mz = PZ[d] - PZ[u];
+    let nx = ty * mz - tz * my, ny = tz * mx - tx * mz, nz = tx * my - ty * mx;
+    const len = Math.hypot(nx, ny, nz) || 1;
+    nx /= len; ny /= len; nz /= len;
+    if (nx * PX[k] + nz * PZ[k] < 0) { nx = -nx; ny = -ny; nz = -nz; }
+    NX[k] = nx; NY[k] = ny; NZ[k] = nz;
+  }
+}
+
+// ------------------------------------------------------------------ câmera
+const CAM = 5.2, PIVOT_Y = -0.85, CENTER_Y = -0.42;
+let S = 200, cx = 0, cy = 0;
+const JAW_MAX = 0.12;
+let yaw = 0, pitch = 0, jawOpen = 0;
+let cyw = 1, syw = 0, cpt = 1, spt = 0;
+
+function setPose() { cyw = Math.cos(yaw); syw = Math.sin(yaw); cpt = Math.cos(pitch); spt = Math.sin(pitch); }
+
+/* Ponto do modelo -> tela. w: 0 = tronco parado, 1 = gira com a cabeça. */
+function project(x, y, z, w, out) {
+  let rx = x, ry = y, rz = z;
+  if (w > 0) {
+    const yy = y - PIVOT_Y;
+    const x1 = x * cyw + z * syw, z1 = -x * syw + z * cyw;
+    const y2 = yy * cpt - z1 * spt, z2 = yy * spt + z1 * cpt;
+    rx = x + (x1 - x) * w; ry = y + (y2 + PIVOT_Y - y) * w; rz = z + (z2 - z) * w;
+  }
+  const p = CAM / (CAM - rz);
+  out.x = cx + rx * S * p; out.y = cy - (ry - CENTER_Y) * S * p; out.z = rz; out.p = p;
+  return out;
+}
+function rotNormalZ(nx, ny, nz, w) {
+  if (w < 0.5) return { x: nx, y: ny, z: nz };
+  const x1 = nx * cyw + nz * syw, z1 = -nx * syw + nz * cyw;
+  return { x: x1, y: ny * cpt - z1 * spt, z: ny * spt + z1 * cpt };
+}
+
+// ------------------------------------------------------------------- fundo
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  bloom.width = Math.ceil(W / 3); bloom.height = Math.ceil(H / 3);
+  S = Math.min(W * 0.36, H * 0.25);
+  cx = W / 2; cy = H * 0.47;
+  buildBackground();
+}
+
+function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
+
+function buildBackground() {
+  bg = document.createElement('canvas');
+  bg.width = Math.round(W * DPR); bg.height = Math.round(H * DPR);
+  const g = bg.getContext('2d');
+  g.scale(DPR, DPR);
+  const grad = g.createRadialGradient(cx, cy - S * 0.2, 0, cx, cy, Math.max(W, H) * 0.8);
+  grad.addColorStop(0, '#0b2f63'); grad.addColorStop(0.45, '#051a3a'); grad.addColorStop(1, '#01050d');
+  g.fillStyle = grad; g.fillRect(0, 0, W, H);
+
+  g.strokeStyle = 'rgba(70,150,255,0.055)'; g.lineWidth = 1; g.beginPath();
+  for (let x = (W / 2) % 36; x < W; x += 36) { g.moveTo(x, 0); g.lineTo(x, H); }
+  for (let y = 0; y < H; y += 36) { g.moveTo(0, y); g.lineTo(W, y); }
+  g.stroke();
+
+  // painéis de "dados" nas laterais
+  const rnd = rng(7);
+  for (let i = 0; i < 14; i++) {
+    const left = i % 2 === 0;
+    const pw = 60 + rnd() * 70, ph = 34 + rnd() * 60;
+    const px = left ? 10 + rnd() * W * 0.14 : W - 10 - pw - rnd() * W * 0.14;
+    const py = 20 + rnd() * (H - 80);
+    g.strokeStyle = 'rgba(90,170,255,0.16)'; g.strokeRect(px, py, pw, ph);
+    g.fillStyle = 'rgba(90,170,255,0.035)'; g.fillRect(px, py, pw, ph);
+    g.fillStyle = 'rgba(120,200,255,0.16)';
+    for (let l = 0; l < ph / 7 - 1; l++) g.fillRect(px + 5, py + 6 + l * 7, (pw - 10) * (0.3 + rnd() * 0.7), 2);
+  }
+  // trilhas de circuito
+  g.strokeStyle = 'rgba(80,160,255,0.10)';
+  for (let i = 0; i < 16; i++) {
+    let x = rnd() * W, y = rnd() * H;
+    g.beginPath(); g.moveTo(x, y);
+    for (let s = 0; s < 4; s++) { if (s % 2) y += (rnd() - 0.5) * 120; else x += (rnd() - 0.5) * 160; g.lineTo(x, y); }
+    g.stroke();
+    g.fillStyle = 'rgba(120,200,255,0.25)'; g.fillRect(x - 1.5, y - 1.5, 3, 3);
+  }
+  const vig = g.createRadialGradient(cx, cy, Math.min(W, H) * 0.35, cx, cy, Math.max(W, H) * 0.75);
+  vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,2,8,0.75)');
+  g.fillStyle = vig; g.fillRect(0, 0, W, H);
+}
+
+// ------------------------------------------------------------- malha de luz
+const NB = 8;
+const buckets = Array.from({ length: NB }, () => []);
+const LIGHT = (() => { const v = [-0.45, 0.5, 0.74], l = Math.hypot(...v); return v.map(c => c / l); })();
+const tmp = { x: 0, y: 0, z: 0, p: 1 };
+
+function drawHead(t, flicker) {
+  const scanY = cy - S * 1.6 + ((t * 0.00022) % 1) * S * 3.4;
+  for (let k = 0; k < N; k++) {
+    const jw = JAW[k] * jawOpen;
+    project(PX[k], PY[k] - jw, PZ[k] - jw * 0.35, ROT[k], tmp);
+    SX[k] = tmp.x; SY[k] = tmp.y;
+    const n = rotNormalZ(NX[k], NY[k], NZ[k], ROT[k]);
+    let b;
+    if (n.z < -0.08) {
+      b = 0.03;                                    // lado de trás, quase invisível
+    } else {
+      const fres = Math.pow(1 - Math.max(0, n.z), 2);          // borda acesa
+      const lam = Math.max(0, n.x * LIGHT[0] + n.y * LIGHT[1] + n.z * LIGHT[2]);
+      b = 0.04 + 0.50 * fres + 0.50 * lam * lam;
+      const ds = Math.abs(tmp.y - scanY);
+      if (ds < 16) b += 0.4 * (1 - ds / 16);                    // faixa de varredura
+    }
+    BR[k] = b * FADE[k] * flicker;
+  }
+  for (const b of buckets) b.length = 0;
+  const push = (a, c, gain) => {
+    const v = (BR[a] + BR[c]) * 0.5 * gain;
+    const q = Math.min(NB - 1, Math.floor(v * NB));
+    buckets[q].push(SX[a], SY[a], SX[c], SY[c]);
+  };
+  for (let i = 0; i < RINGS; i++) {
+    const o = i * SEG;
+    for (let j = 0; j < SEG; j++) push(o + j, o + (j + 1) % SEG, 1);
+  }
+  for (let i = 0; i < RINGS - 1; i++) {
+    const o = i * SEG;
+    for (let j = 0; j < SEG; j += 3) push(o + j, o + SEG + j, 0.7);
+  }
+  ctx.lineWidth = 1.05;
+  for (let q = 0; q < NB; q++) {
+    const b = buckets[q];
+    if (!b.length) continue;
+    const u = q / (NB - 1);
+    ctx.strokeStyle = `rgba(${Math.round(40 + 140 * u)},${Math.round(130 + 110 * u)},255,${(0.05 + 0.85 * u).toFixed(3)})`;
+    ctx.beginPath();
+    for (let i = 0; i < b.length; i += 4) { ctx.moveTo(b[i], b[i + 1]); ctx.lineTo(b[i + 2], b[i + 3]); }
+    ctx.stroke();
+  }
+}
+
+function drawEyes(t, glow) {
+  const blinkPhase = (t % 4300) / 140;
+  const blink = blinkPhase < 1 ? Math.abs(1 - blinkPhase * 2) : 1;      // pisca a cada ~4 s
+  for (const side of [-1, 1]) {
+    const phi = side * 0.42, y = 0.10;
+    const r = surface(y, phi).r + 0.012;
+    const x = r * Math.sin(phi), z = r * Math.cos(phi);
+    project(x, y, z, 1, tmp);
+    const n = rotNormalZ(Math.sin(phi), 0, Math.cos(phi), 1);
+    if (n.z < 0.12) continue;
+    const rx = S * 0.092 * tmp.p * Math.max(0.3, n.z), ry = S * 0.030 * tmp.p * (0.15 + 0.85 * blink);
+    ctx.save();
+    ctx.translate(tmp.x, tmp.y);
+    const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, rx * 2.6);
+    halo.addColorStop(0, `rgba(120,220,255,${0.55 * glow})`); halo.addColorStop(1, 'rgba(60,150,255,0)');
+    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(0, 0, rx * 2.6, 0, 7); ctx.fill();
+    ctx.scale(1, ry / rx);
+    const core = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+    core.addColorStop(0, `rgba(255,255,255,${glow})`);
+    core.addColorStop(0.45, `rgba(150,230,255,${0.95 * glow})`);
+    core.addColorStop(1, 'rgba(60,160,255,0)');
+    ctx.fillStyle = core; ctx.beginPath(); ctx.arc(0, 0, rx, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+}
+
+/* Linha de luz sobre a superfície do rosto (y e phi em função de u, 0 a 1). */
+function featureLine(fn, steps, width, alpha) {
+  ctx.beginPath();
+  let started = false;
+  for (let i = 0; i <= steps; i++) {
+    const q = fn(i / steps);
+    const r = surface(q.y, q.phi).r + 0.008;
+    const n = rotNormalZ(Math.sin(q.phi), 0, Math.cos(q.phi), 1);
+    if (n.z < 0.05) { started = false; continue; }
+    project(r * Math.sin(q.phi), q.y, r * Math.cos(q.phi), 1, tmp);
+    if (started) ctx.lineTo(tmp.x, tmp.y); else { ctx.moveTo(tmp.x, tmp.y); started = true; }
+  }
+  ctx.lineWidth = width; ctx.strokeStyle = `rgba(170,235,255,${alpha})`; ctx.stroke();
+}
+
+function drawFeatures(glow) {
+  const a = 0.75 * glow;
+  for (const side of [-1, 1]) {
+    featureLine(u => ({ phi: side * (0.20 + 0.50 * u), y: 0.225 + 0.035 * Math.sin(u * Math.PI) - 0.03 * u }), 12, 2.2, a);        // sobrancelha
+    featureLine(u => ({ phi: side * (0.07 + 0.11 * Math.sin(u * Math.PI)), y: -0.20 - 0.07 * u }), 8, 1.3, a * 0.8);              // asa do nariz
+    featureLine(u => ({ phi: side * (0.50 + 0.85 * u), y: -0.80 + 0.42 * Math.pow(u, 1.4) }), 16, 1.4, a * 0.7);                  // maxilar
+  }
+  featureLine(u => ({ phi: 0, y: 0.17 - 0.38 * u }), 10, 1.6, a);                                                                 // dorso do nariz
+}
+
+function drawMouth(glow) {
+  const STEPS = 14, HALF = 0.235;
+  const upper = [], lower = [];
+  for (let i = 0; i <= STEPS; i++) {
+    const u = i / STEPS * 2 - 1, phi = u * HALF;
+    const pin = 1 - u * u;                                  // cantos presos
+    let y = -0.425 + 0.012 * pin - 0.010 * bump(u, 0, 0.25); // arco do cupido
+    let r = surface(y, phi).r + 0.006;
+    project(r * Math.sin(phi), y, r * Math.cos(phi), 1, tmp);
+    upper.push(tmp.x, tmp.y);
+    y = -0.440 - 0.014 * pin;
+    r = surface(y, phi).r + 0.006;
+    const drop = jawOpen * pin;
+    project(r * Math.sin(phi), y - drop, r * Math.cos(phi) - drop * 0.35, 1, tmp);
+    lower.push(tmp.x, tmp.y);
+  }
+  const open = Math.min(1, jawOpen / JAW_MAX);
+  const path = () => {
+    ctx.beginPath();
+    ctx.moveTo(upper[0], upper[1]);
+    for (let i = 2; i < upper.length; i += 2) ctx.lineTo(upper[i], upper[i + 1]);
+    for (let i = lower.length - 2; i >= 0; i -= 2) ctx.lineTo(lower[i], lower[i + 1]);
+    ctx.closePath();
+  };
+  ctx.globalCompositeOperation = 'source-over';
+  path(); ctx.fillStyle = 'rgba(2,14,36,0.92)'; ctx.fill();          // interior escuro
+  ctx.globalCompositeOperation = 'lighter';
+  path(); ctx.fillStyle = `rgba(90,200,255,${0.10 + 0.38 * open * glow})`; ctx.fill();
+  ctx.lineWidth = 1.7; ctx.strokeStyle = `rgba(200,242,255,${0.9 * glow})`; ctx.stroke();
+}
+
+// --------------------------------------------------------------------- HUD
+function ring(x, y, r, a0, a1, width, alpha) {
+  ctx.lineWidth = width; ctx.strokeStyle = `rgba(110,200,255,${alpha})`;
+  ctx.beginPath(); ctx.arc(x, y, r, a0, a1); ctx.stroke();
+}
+
+function drawHalo(t) {
+  project(0, 0.05, -0.4, 0, tmp);
+  const x = tmp.x, y = tmp.y, spin = t * 0.0002 * (state.mode === 'thinking' ? 6 : 1);
+  ring(x, y, S * 1.42, 0, 7, 1, 0.16);
+  for (let i = 0; i < 3; i++) ring(x, y, S * 1.5, spin + i * 2.1, spin + i * 2.1 + 1.2, 2.5, 0.32);
+  for (let i = 0; i < 4; i++) ring(x, y, S * 1.62, -spin * 1.4 + i * 1.57, -spin * 1.4 + i * 1.57 + 0.5, 1.2, 0.26);
+  ctx.strokeStyle = 'rgba(110,200,255,0.22)'; ctx.lineWidth = 1; ctx.beginPath();
+  for (let i = 0; i < 72; i++) {
+    const a = i * Math.PI / 36 + spin * 0.5, r0 = S * 1.30, r1 = S * (i % 6 ? 1.335 : 1.37);
+    ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); ctx.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1);
+  }
+  ctx.stroke();
+  if (state.mode === 'listening') {                      // ondas se expandindo
+    for (let i = 0; i < 3; i++) {
+      const u = ((t * 0.0007) + i / 3) % 1;
+      ring(x, y, S * (1.05 + u * 0.75), 0, 7, 2, 0.4 * (1 - u));
+    }
+  }
+}
+
+function drawReactor(t) {
+  project(0, -1.78, 0.5, 0, tmp);
+  const x = tmp.x, y = tmp.y, r = S * 0.2, pulse = 0.6 + 0.4 * Math.sin(t * 0.004) + state.level * 0.8;
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r * 2.2);
+  g.addColorStop(0, `rgba(200,245,255,${Math.min(1, 0.75 * pulse)})`);
+  g.addColorStop(0.3, `rgba(90,190,255,${Math.min(1, 0.4 * pulse)})`);
+  g.addColorStop(1, 'rgba(40,120,255,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 2.2, 0, 7); ctx.fill();
+  ring(x, y, r, 0, 7, 2, 0.75);
+  ring(x, y, r * 0.62, 0, 7, 1.2, 0.6);
+  for (let i = 0; i < 8; i++) ring(x, y, r * 0.81, t * 0.001 + i * 0.785, t * 0.001 + i * 0.785 + 0.5, 4, 0.5);
+}
+
+function drawBadge(t) {
+  const r = Math.max(34, Math.min(W, H) * 0.075), x = W - r - 26, y = r + 26;
+  ctx.fillStyle = 'rgba(8,40,90,0.55)'; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ring(x, y, r, 0, 7, 1.5, 0.8);
+  ring(x, y, r * 0.84, t * 0.0012, t * 0.0012 + 4.2, 3, 0.55);
+  ring(x, y, r * 1.14, -t * 0.0008, -t * 0.0008 + 2.2, 1.5, 0.45);
+  ctx.fillStyle = 'rgba(215,245,255,0.95)';
+  ctx.font = `600 ${Math.round(r * 0.3)}px "Segoe UI", system-ui, sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '2px';
+  ctx.fillText('JARVIS', x + 1, y);
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+}
+
+const bars = new Float32Array(48);
+function drawStatus(t) {
+  const label = LABELS[state.mode] || '';
+  const color = state.mode === 'offline' ? '255,140,120' : '150,225,255';
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.font = '600 13px "Segoe UI", system-ui, sans-serif';
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '3px';
+  const blink = state.mode === 'idle' ? 1 : 0.55 + 0.45 * Math.sin(t * 0.008);
+  ctx.fillStyle = `rgba(${color},${blink})`;
+  ctx.beginPath(); ctx.arc(30, 38, 4, 0, 7); ctx.fill();
+  ctx.fillStyle = `rgba(${color},0.9)`;
+  ctx.fillText(label, 44, 43);
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+
+  // barras de áudio
+  const bw = Math.min(5, W / 140), gap = bw * 0.7, total = bars.length * (bw + gap), x0 = cx - total / 2, yb = H - 26;
+  for (let i = 0; i < bars.length; i++) {
+    const mid = 1 - Math.abs(i - bars.length / 2) / (bars.length / 2);
+    const target = state.level * (0.3 + 0.7 * mid) * (0.45 + 0.55 * Math.abs(Math.sin(t * 0.013 + i * 1.7)));
+    bars[i] += (target - bars[i]) * 0.35;
+    const h = 2 + bars[i] * 46;
+    ctx.fillStyle = `rgba(120,210,255,${0.35 + 0.6 * bars[i]})`;
+    ctx.fillRect(x0 + i * (bw + gap), yb - h, bw, h);
+  }
+
+  // legenda da fala
+  if (state.mode === 'speaking' && state.text) {
+    const total = state.envelope ? state.envelope.length * state.frameMs : state.text.length * 62;
+    const shown = Math.ceil(state.text.length * Math.min(1, (performance.now() - state.speakStart) / total + 0.05));
+    let line = state.text.slice(0, shown);
+    ctx.font = '400 16px "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    const max = Math.min(W - 60, 720);
+    while (ctx.measureText(line).width > max && line.includes(' ')) line = line.slice(line.indexOf(' ') + 1);
+    const tw = ctx.measureText(line).width;
+    ctx.fillStyle = 'rgba(2,12,30,0.62)';
+    ctx.fillRect(cx - tw / 2 - 14, H - 109, tw + 28, 30);
+    ctx.fillStyle = 'rgba(225,245,255,0.95)';
+    ctx.fillText(line, cx, H - 88);
+  }
+}
+
+function drawStandby() {
+  ctx.fillStyle = '#01050d'; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(110,190,255,0.35)';
+  ctx.font = '600 13px "Segoe UI", system-ui, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('JARVIS · AVATAR OCULTO', cx, H / 2);
+}
+
+// --------------------------------------------------------------- animação
+function mouthTarget(now) {
+  if (state.mode !== 'speaking') return 0;
+  if (state.envelope && state.envelope.length) {
+    const f = (now - state.speakStart) / state.frameMs;
+    if (f < 0) return 0;
+    const i = Math.floor(f), e = state.envelope;
+    if (i >= e.length - 1) return 0;
+    return e[i] + (e[i + 1] - e[i]) * (f - i);
+  }
+  // sem dados de volume: movimento genérico de fala
+  const s = now * 0.001;
+  return Math.max(0, 0.42 + 0.34 * Math.sin(s * 11.3) * Math.sin(s * 6.7) + 0.2 * Math.sin(s * 23.1));
+}
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (state.hidden) { drawStandby(); return; }
+  if (DEMO) demoTick(now);
+
+  const target = Math.min(1, mouthTarget(now));
+  state.level += (target - state.level) * (target > state.level ? 0.55 : 0.28);
+  jawOpen = state.level * JAW_MAX;
+
+  const s = now * 0.001, talk = state.level;
+  yaw = 0.24 * Math.sin(s * 0.45) + 0.05 * Math.sin(s * 1.3) + (state.mode === 'thinking' ? 0.12 * Math.sin(s * 2.1) : 0);
+  pitch = 0.05 * Math.sin(s * 0.6) + 0.035 * talk * Math.sin(s * 5.1) + (state.mode === 'listening' ? -0.05 : 0);
+  if (FREEZE) { yaw = 0.3; pitch = 0.02; }
+  setPose();
+
+  const flicker = (Math.random() < 0.012 ? 0.72 : 1) * (state.mode === 'offline' ? 0.45 : 1);
+  const glow = (0.75 + 0.25 * Math.sin(s * 2.3) + 0.35 * talk) * (state.mode === 'offline' ? 0.4 : 1);
+
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(bg, 0, 0, W, H);
+  ctx.globalCompositeOperation = 'lighter';
+  drawHalo(now);
+  drawHead(now, flicker);
+  drawReactor(now);
+  drawFeatures(Math.min(1, glow));
+  drawMouth(Math.min(1, glow));
+  drawEyes(now, Math.min(1, glow));
+
+  // brilho: cópia reduzida e desfocada somada por cima
+  bctx.globalCompositeOperation = 'copy';
+  bctx.drawImage(cv, 0, 0, bloom.width, bloom.height);
+  ctx.save();
+  ctx.filter = 'blur(7px)';
+  ctx.globalAlpha = 0.55;
+  ctx.drawImage(bloom, 0, 0, W, H);
+  ctx.restore();
+
+  ctx.globalCompositeOperation = 'source-over';
+  drawBadge(now);
+  drawStatus(now);
+}
+
+// --------------------------------------------------------- ligação ao Jarvis
+function apply(msg) {
+  switch (msg.type) {
+    case 'state':
+      if (state.mode === 'speaking' && msg.mode !== 'speaking') state.envelope = null;
+      state.mode = msg.mode;
+      break;
+    case 'speak':
+      state.mode = 'speaking';
+      state.envelope = msg.envelope && msg.envelope.length ? msg.envelope : null;
+      state.frameMs = msg.frame_ms || 40;
+      state.speakStart = performance.now() + (msg.delay_ms || 0);
+      state.text = msg.text || '';
+      break;
+    case 'stop':
+      state.mode = msg.mode || 'idle'; state.envelope = null; state.text = '';
+      break;
+    case 'show': state.hidden = false; break;
+    case 'hide':
+      window.close();                       // funciona quando aberto como janela de app
+      setTimeout(() => { state.hidden = true; }, 250);
+      break;
+  }
+}
+
+function connect() {
+  const es = new EventSource('/events');
+  es.onopen = () => { if (state.mode === 'offline') state.mode = 'idle'; };
+  es.onmessage = ev => { try { apply(JSON.parse(ev.data)); } catch (e) { console.error(e); } };
+  es.onerror = () => { state.mode = 'offline'; state.envelope = null; };   // reconecta sozinho
+  // sinal de vida: é assim que o Jarvis sabe que esta janela continua aberta
+  setInterval(() => { fetch('/alive').catch(() => {}); }, 1500);
+}
+
+// demonstração sem o Jarvis: ?demo=1 (ou ?demo=1&freeze=speaking para uma pose fixa)
+let demoStep = -1;
+function demoTick(now) {
+  if (FREEZE) {
+    if (demoStep < 0) { demoStep = 0; state.mode = FREEZE; state.text = 'Bom dia, Pedro. Todos os sistemas estão online.'; state.speakStart = now - 1500; }
+    if (FREEZE === 'speaking') state.level = 0.6;
+    return;
+  }
+  const step = Math.floor(now / 1000) % 12;
+  if (step === demoStep) return;
+  demoStep = step;
+  if (step === 0) apply({ type: 'state', mode: 'idle' });
+  if (step === 2) apply({ type: 'state', mode: 'listening' });
+  if (step === 4) apply({ type: 'state', mode: 'thinking' });
+  if (step === 6) {
+    const env = Array.from({ length: 110 }, (_, i) => Math.max(0, Math.sin(i * 0.9) * Math.sin(i * 0.23) * 0.9 + 0.25));
+    apply({ type: 'speak', envelope: env, frame_ms: 40, text: 'Bom dia, Pedro. Todos os sistemas estão online.' });
+  }
+  if (step === 11) apply({ type: 'stop' });
+}
+
+window.addEventListener('resize', resize);
+resize();
+if (!DEMO) connect();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

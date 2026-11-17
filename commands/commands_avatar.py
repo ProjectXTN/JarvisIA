@@ -1,6 +1,33 @@
 import subprocess
 import sys
+from brain import avatar
 from brain.audio import say
+
+
+def show_avatar(query):
+    """Abre a janela do avatar holográfico."""
+    if avatar.show():
+        say("Avatar na tela.")
+    else:
+        say("Não consegui abrir o avatar.")
+    return True
+
+
+def hide_avatar(query):
+    """Fecha a janela do avatar."""
+    avatar.hide()
+    say("Avatar oculto.")
+    return True
+
+
+# Lista de (regex, função). "Esconder" vem antes para "feche o avatar" não
+# cair no padrão de mostrar.
+avatar_view_commands = [
+    (r"\b(esconda|esconder|oculte|ocultar|feche|fechar|fecha|tire|tirar|remova|remover|desative|desativar)\b.*\b(avatar|holograma)\b", hide_avatar),
+    (r"\b(mostre|mostrar|mostra|abra|abrir|abre|exiba|exibir|ative|ativar|quero ver|apareça|aparecer)\b.*\b(avatar|holograma|seu rosto)\b", show_avatar),
+    (r"^(seu |o )?avatar$", show_avatar),
+]
+
 
 def generate_avatar(query):
     try:

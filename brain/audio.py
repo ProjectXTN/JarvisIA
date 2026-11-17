@@ -18,6 +18,7 @@ import requests
 import json
 import base64
 from brain.utils.utils import clean_output
+from brain import avatar
 from core.settings import WHISPER_MODEL, WHISPER_BEAM_SIZE, WHISPER_VOCABULARY
 
 load_dotenv()
@@ -131,9 +132,13 @@ def say(text, lang="pt-BR", gender="MALE"):
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as out:
             out.write(audio_content)
             out.flush()
-            subprocess.run(
-                ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", out.name]
-            )
+            avatar.speak_start(out.name, clean_text)  # boca do avatar segue o áudio
+            try:
+                subprocess.run(
+                    ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", out.name]
+                )
+            finally:
+                avatar.speak_stop()
 
         os.remove(out.name)
 
@@ -159,6 +164,7 @@ def listen():
     block_duration = frame_size / fs if fs > 0 else 0.01
 
     print("\n🎙️ Listening with VAD...")
+    avatar.set_state("listening")
 
     audio = []
     ring_buffer = collections.deque(maxlen=10)
@@ -208,6 +214,8 @@ def listen():
     if average_volume < 100:
         print("🧘 Low volume detected, ignoring...")
         return ""
+
+    avatar.set_state("thinking")
 
     # O arquivo é fechado antes de transcrever e apagado no fim (antes cada
     # fala deixava um .wav na pasta temporária).

@@ -18,6 +18,8 @@ from core.initializer import (
 from brain.learning import auto_learning
 from brain.learning.auto_learning import auto_learn
 from brain.utils.utils import sounds_like_jarvis
+from brain import avatar
+from core.settings import AVATAR_AUTO_OPEN
 
 START_STUDY_PATTERN = (
     r"\b(comece|começar|comeca|comecar)\s+a\s+(estudar|aprender)\b"
@@ -58,6 +60,9 @@ def main():
         sys.exit()
 
     atexit.register(remove_lock)
+
+    if AVATAR_AUTO_OPEN:
+        avatar.show()
 
     start_llava()
     start_stable_diffusion()

@@ -173,6 +173,36 @@ class WeatherTest(unittest.TestCase):
         self.assertEqual(spoken, ["Sol."])
 
 
+class AvatarCommandTest(unittest.TestCase):
+    def _handler(self, phrase):
+        from commands.commands_avatar import avatar_view_commands
+
+        for pattern, func in avatar_view_commands:
+            if re.search(pattern, phrase):
+                return func.__name__
+        return None
+
+    def test_mostrar(self):
+        for phrase in ["mostre o avatar", "mostrar seu avatar", "abra o avatar", "quero ver seu rosto", "ative o holograma", "avatar"]:
+            self.assertEqual(self._handler(phrase), "show_avatar", phrase)
+
+    def test_esconder(self):
+        for phrase in ["esconda o avatar", "feche o avatar", "pode tirar o avatar da tela"]:
+            self.assertEqual(self._handler(phrase), "hide_avatar", phrase)
+
+    def test_outras_frases_nao_abrem(self):
+        for phrase in ["que horas são", "mostre a previsão do tempo", "o que é um avatar"]:
+            self.assertIsNone(self._handler(phrase), phrase)
+
+    def test_funcoes_do_avatar_nao_fazem_nada_com_a_janela_fechada(self):
+        from brain import avatar
+
+        self.assertFalse(avatar.is_open())
+        avatar.set_state("listening")
+        avatar.speak_start("arquivo_que_nao_existe.mp3", "oi")
+        avatar.speak_stop()
+
+
 class HandlerFlowTest(unittest.TestCase):
     def test_comando_que_devolve_false_nao_encerra(self):
         # "atualize o sistema" casa com a chave "atualize", mas o comando de

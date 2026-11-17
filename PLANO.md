@@ -73,6 +73,10 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 - [ ] 46. Testes automáticos (desligamento, hotword, roteamento)
 - [ ] 47. Atualizar `README.md`, `Dockerfile` e `build_jarvis.bat`
 
+## Extras pedidos durante o projeto
+
+- [x] 48. Avatar holográfico 3D que fala (`brain/avatar/`, `commands/commands_avatar.py`)
+
 ## Registro
 
 ### 2026-11-17 — Fases 0 e 1 concluídas
@@ -117,3 +121,12 @@ Sintoma: o Whisper ouviu "Alexi"/"Lexi" e a resposta do país virou "Pronto."; a
 - O Jarvis não pergunta mais o país. A cidade é resolvida pela geocodificação da OpenWeather (`resolve_location` em `brain/weatherAPI/weatherAPI.py`).
 - Nomes que soam como a cidade de casa viram a cidade de casa. Ela fica em `core/settings.py` (`HOME_CITY`, `HOME_COUNTRY`) e pode ser trocada pelo `.env`.
 - O Whisper recebe uma lista de nomes próprios como dica de grafia (`WHISPER_VOCABULARY`).
+
+### 2026-11-17 — Avatar holográfico (item 48)
+
+- **O que é:** janela própria com um rosto 3D em malha de luz azul, gerado por fórmulas (sem imagens nem bibliotecas externas). Mostra o estado do Jarvis (ONLINE, OUVINDO, PROCESSANDO, FALANDO), a legenda da fala e mexe a boca no volume real da voz.
+- **Como usar:** "Jarvis, mostre o avatar" e "Jarvis, feche o avatar". Para abrir sempre junto com o Jarvis, ponha `JARVIS_AVATAR_AUTO_OPEN=1` no `.env`.
+- **Como funciona:** `brain/avatar/__init__.py` sobe um servidor local em `127.0.0.1:8765` e envia eventos à página `brain/avatar/static/index.html`. O volume da fala é medido com o `ffmpeg` antes de tocar. Sem `ffmpeg` no PATH, a boca usa um movimento genérico.
+- **Ajuste fino:** se a boca mexer antes ou depois da voz, mude `AVATAR_AUDIO_DELAY_MS` em `core/settings.py`.
+- **Ver sem o Jarvis:** abrir `brain/avatar/static/index.html` direto no navegador roda uma demonstração.
+- **Testado:** servidor, eventos e medida de volume fora do Jarvis; visual conferido em Chrome. Falta o teste por voz no PC.
