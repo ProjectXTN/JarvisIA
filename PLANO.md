@@ -88,6 +88,19 @@ Depende da Fase 2 (modelo novo com ferramentas). Substitui os itens 39 a 41 da F
 - [ ] 60. Limites de segurança: internet só para leitura, nada de executar, comprar ou enviar sem permissão
 - [ ] 61. (Opcional, avançado) Ajuste fino LoRA mensal com as conversas aprovadas pelo Pedro
 
+## Fase 8 — Modo programador: criar apps de verdade
+
+Depende da Fase 2 (modelo com ferramentas). Hoje o pedido de código só gera texto e é lido em voz alta.
+
+- [ ] 62. Pasta de projetos `C:\Projetos\jarvis_apps\<nome-do-app>`, uma por pedido, com README do que foi pedido
+- [ ] 63. Gerar o projeto em vários arquivos por ferramentas (`criar_arquivo`, `ler_arquivo`, `listar_pasta`); código nunca é falado
+- [ ] 64. Ambiente isolado por projeto (venv próprio); comandos só dentro da pasta do projeto
+- [ ] 65. Confirmação por voz antes de instalar pacotes, executar o app ou fazer build
+- [ ] 66. Ciclo de correção: roda, lê o erro, corrige, até 5 tentativas; depois explica onde travou
+- [ ] 67. Build quando fizer sentido (`pyinstaller` para .exe, `npm run build` para web) e abre a pasta ou o VS Code
+- [ ] 68. Resumo falado curto: o que fez, onde salvou, como rodar
+- [ ] 69. "Continue o app X": reabre um projeto antigo e altera em cima dele
+
 ## Extras pedidos durante o projeto
 
 - [x] 48. Avatar holográfico 3D que fala (`brain/avatar/`, `commands/commands_avatar.py`)
