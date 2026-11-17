@@ -1,13 +1,9 @@
 # === CORE (voice, TTS, VAD, transcription) ===
-openai-whisper
 faster-whisper
 ctranslate2
 sentencepiece
 edge-tts
 webrtcvad
-pyttsx3
-pyaudio
-speechrecognition
 sounddevice
 numpy
 scipy
@@ -52,8 +48,8 @@ unidecode
 jsbeautifier
 
 # === LLMs, RAG & EMBEDDINGS ===
-# llama-index
-# llama-index-embeddings-ollama
+llama-index
+llama-index-embeddings-ollama
 # ollama-py  # Client for Ollama local API
 
 # === COPILOT INTEGRATION ===

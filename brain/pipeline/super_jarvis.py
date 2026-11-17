@@ -32,7 +32,12 @@ PROMPT_TEMPLATES = {
 
 def super_jarvis_query(user_prompt, lang="pt"):
     web_context, web_sources = search_web(user_prompt)
-    local_context = query_rag(user_prompt)
+    try:
+        local_context = query_rag(user_prompt)
+    except Exception as e:
+        # Sem índice ou sem modelo de embeddings: segue só com a web
+        print(f"[RAG] Indisponível, seguindo sem documentos internos: {e}")
+        local_context = ""
     pt = PROMPT_TEMPLATES.get(lang, PROMPT_TEMPLATES["en"])
 
     prompt = (

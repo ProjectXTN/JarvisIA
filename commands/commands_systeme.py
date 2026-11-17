@@ -67,22 +67,34 @@ def shutdown_stable_diffusion():
         print("No Stable Diffusion process to terminate.")
 
 
+# Só desliga quando a frase inteira é um pedido de desligamento.
+# Palavras soltas no meio de outra frase ("o que ele falou", "quando vai sair")
+# não contam mais.
+_SHUTDOWN_VERB = r"(desligar|desliga|desligue|encerrar|encerra|encerre)"
+SHUTDOWN_PATTERNS = [
+    # "desligar", "jarvis pode desligar", "sair", "encerrar o sistema agora"
+    rf"^(jarvis )?(pode )?(se )?({_SHUTDOWN_VERB}|sair)( (o )?(jarvis|sistema))?( agora)?( jarvis)?$",
+    # despedidas ditas sozinhas
+    r"^(jarvis )?(tchau|adeus|até logo|ate logo|até mais|ate mais|vai embora|vá embora|pode ir embora)( jarvis)?$",
+    # "... desligar o jarvis" / "... encerre o sistema" no fim da frase
+    rf"\b{_SHUTDOWN_VERB}( o)? (jarvis|sistema)( agora)?$",
+]
+
+
+def is_shutdown_request(query):
+    """True se a frase é um pedido explícito para desligar o Jarvis."""
+    normalized = re.sub(r"[^\w\s]", " ", query.lower())
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    return any(re.search(pattern, normalized) for pattern in SHUTDOWN_PATTERNS)
+
+
 def shutdown_command(query):
-    query = query.lower()
+    """Devolve False quando o Jarvis deve desligar, True caso contrário."""
+    if is_shutdown_request(query):
+        say("Jarvis desligando.")
 
-    # List of patterns indicating shutdown commands
-    patterns = [
-        r"\b(jarvis)?[ ,]*desliga[rs]?\b",
-        r"\b(encerrar|desligar|sair|off|tchau|falou|vaza|vá embora|vai embora|até logo|adeus)\b",
-        r"\b(jarvis)?[ ,]*(pode)?[ ]*(desligar|sair)\b",
-    ]
+        shutdown_stable_diffusion()
 
-    for pattern in patterns:
-        if re.search(pattern, query):
-            say("Jarvis desligando.")
-
-            shutdown_stable_diffusion()
-
-            return False
+        return False
 
     return True

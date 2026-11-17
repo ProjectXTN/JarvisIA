@@ -1,9 +1,10 @@
 from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.core.settings import Settings
+from core.settings import OLLAMA_HOST, EMBEDDING_MODEL
 
 Settings.embed_model = OllamaEmbedding(
-    model_name="nomic-embed-text",
-    base_url="http://localhost:11500"
+    model_name=EMBEDDING_MODEL,
+    base_url=OLLAMA_HOST
 )
 
 from llama_index.core import SimpleDirectoryReader, VectorStoreIndex

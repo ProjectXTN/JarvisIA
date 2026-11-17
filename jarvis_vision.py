@@ -1,8 +1,6 @@
 import subprocess
 import re
-
-VISION_MODEL_LOW = "llava:13b"
-VISION_MODEL_HIGH = "llama3.2-vision:90b"
+from core.settings import VISION_MODEL_LOW, VISION_MODEL_HIGH
 
 PRECISION_TRIGGERS = [
     r"\b(detalh(e|es|ado|ada|ados|adas)?)\b",

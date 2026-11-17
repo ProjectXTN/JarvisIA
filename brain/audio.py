@@ -18,6 +18,7 @@ import requests
 import json
 import base64
 from brain.utils.utils import clean_output
+from core.settings import WHISPER_MODEL, WHISPER_BEAM_SIZE
 
 load_dotenv()
 
@@ -37,7 +38,7 @@ if getattr(sys, "frozen", False):
 # === Transcription model ===
 # model = whisper.load_model("medium").to("cuda" if torch.cuda.is_available() else "cpu")
 model = faster_whisper.WhisperModel(
-    "medium",
+    WHISPER_MODEL,
     device="cuda" if torch.cuda.is_available() else "cpu",
     compute_type="float16" if torch.cuda.is_available() else "int8",
 )
@@ -84,7 +85,10 @@ async def speak_with_gui(text):
 # === Public speech function ===
 def say(text, lang="pt-BR", gender="MALE"):
 
-    clean_text = clean_output(text).strip()
+    if not text or not str(text).strip():
+        return
+
+    clean_text = clean_output(str(text)).strip()
     clean_text = re.sub(r"(^\s*\*\s*|\s+\*\s+)", " ", clean_text, flags=re.MULTILINE)
     clean_text = re.sub(r"-{3,}", " ", clean_text)
     clean_text = re.sub(r"^\s*-+\s*$", "", clean_text, flags=re.MULTILINE)
@@ -110,7 +114,13 @@ def say(text, lang="pt-BR", gender="MALE"):
     print("🔊 Starting TTS generation...")
     start_time = time.time()
 
-    response = requests.post(url, headers=headers, data=json.dumps(body))
+    try:
+        response = requests.post(
+            url, headers=headers, data=json.dumps(body), timeout=30
+        )
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Erro de rede no TTS: {e}")
+        return
 
     end_time = time.time()
     duration = end_time - start_time
@@ -199,39 +209,44 @@ def listen():
         print("🧘 Low volume detected, ignoring...")
         return ""
 
+    # O arquivo é fechado antes de transcrever e apagado no fim (antes cada
+    # fala deixava um .wav na pasta temporária).
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-        scipy.io.wavfile.write(f.name, fs, audio_np)
+        wav_path = f.name
+
+    try:
+        scipy.io.wavfile.write(wav_path, fs, audio_np)
         print("🔎 Transcribing with Faster-Whisper...")
 
+        start_time = time.time()
+
+        # O faster-whisper só processa de verdade ao percorrer "segments",
+        # então o laço fica dentro do lock e da medição de tempo.
+        with transcribe_lock:
+            segments, info = model.transcribe(
+                wav_path,
+                language="pt",
+                beam_size=WHISPER_BEAM_SIZE,
+                vad_filter=True,
+                vad_parameters={"threshold": 0.5},
+            )
+            text_out = "".join(segment.text for segment in segments).strip()
+
+        duration = time.time() - start_time
+        print(f"⏱️ Time to transcribe audio: {duration:.2f} seconds.")
+
+    except Exception as e:
+        print(f"❌ Error during transcription: {e}")
+        return ""
+    finally:
         try:
-            start_time = time.time()
+            os.remove(wav_path)
+        except OSError:
+            pass
 
-            with transcribe_lock:
-                segments, info = model.transcribe(
-                    f.name,
-                    language="pt",
-                    beam_size=5,
-                    vad_filter=True,
-                    vad_parameters={"threshold": 0.5},
-                )
+    if text_out:
+        print("🖙️ You said:", text_out)
+        return text_out
 
-            end_time = time.time()
-            duration = end_time - start_time
-            print(f"⏱️ Time to transcribe audio: {duration:.2f} seconds.")
-
-            text_out = ""
-            for segment in segments:
-                text_out += segment.text
-
-            text_out = text_out.strip()
-
-        except Exception as e:
-            print(f"❌ Error during transcription: {e}")
-            return ""
-
-        if text_out:
-            print("🖙️ You said:", text_out)
-            return text_out
-        else:
-            print("No text detected.")
-            return ""
+    print("No text detected.")
+    return ""

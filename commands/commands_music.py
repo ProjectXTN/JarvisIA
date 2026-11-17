@@ -47,7 +47,10 @@ def previous_music(_):
     return True
 
 music_commands = [
-    (r"\b(tocar|toque|coloque|quero ouvir)\b", search_and_play_apple_music),
+    (r"\b(tocar|toque|quero ouvir)\b", search_and_play_apple_music),
+    # "coloque" sozinho abria o Apple Music para qualquer pedido
+    (r"\bcoloque\b.*\b(música|musica|playlist|álbum|album|apple music)\b", search_and_play_apple_music),
+    (r"\bcoloque\b.*\b(pra|para) tocar\b", search_and_play_apple_music),
     (r"\b(abrir|iniciar)\s+(minha\s+)?(biblioteca|playlist|apple music|música)$", play_music),
     (r"\b(pausar|parar|interromper)\s+(a\s+)?música\b", pause_music),
     (r"\b(stop|pausa)\b", pause_music),

@@ -3,6 +3,7 @@ import re
 import difflib
 from datetime import datetime
 import unicodedata
+from core.settings import HOTWORDS, HOTWORD_SIMILARITY
 
 COUNTRY_CODES = {
     "brasil": "BR",
@@ -85,7 +86,8 @@ def clean_output(text):
     return " ".join(lines)
 
 def sounds_like_jarvis(text):
-    activation_words = ["jarvis"]
+    """Devolve (True, palavra) se alguma palavra do texto soa como a hotword."""
+    activation_words = HOTWORDS
     text = normalize_text(text)
 
     words = text.split()
@@ -100,7 +102,7 @@ def sounds_like_jarvis(text):
                 best_match = similarity
                 best_word = word
 
-    if best_match >= 0.6:
+    if best_match >= HOTWORD_SIMILARITY:
         return True, best_word
     else:
         return False, None

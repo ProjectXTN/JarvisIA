@@ -3,11 +3,12 @@ import subprocess
 import requests
 import time
 import sys
+import psutil
 from brain.audio import listen
 from brain.utils.utils import normalize_text, sounds_like_jarvis
+from core.settings import LOCK_FILE, OLLAMA_HOST, STARTUP_MODELS, VISION_MODEL_HIGH
 
-LOCK_FILE = "jarvis.lock"
-VISION_MODELS = ["llama3.2-vision:90b", "llama3.2", "llama3.3"]
+VISION_MODELS = STARTUP_MODELS
 stable_diffusion_process = None
 stable_diffusion_pid = None
 
@@ -32,9 +33,32 @@ def get_stable_diffusion_process():
     return stable_diffusion_process
 
 
+def _read_lock_pid():
+    """PID gravado no lock, ou None se o arquivo não existe ou está ilegível."""
+    try:
+        with open(LOCK_FILE, "r") as f:
+            return int(f.read().strip())
+    except (OSError, ValueError):
+        return None
+
+
+def _is_jarvis_process(pid):
+    """True se o PID pertence a um processo Python/Jarvis ainda vivo."""
+    try:
+        name = psutil.Process(pid).name().lower()
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        return False
+    return "python" in name or "jarvis" in name
+
+
 def is_already_running():
-    if os.path.exists(LOCK_FILE):
+    pid = _read_lock_pid()
+    if pid is not None and pid != os.getpid() and _is_jarvis_process(pid):
         return True
+
+    if os.path.exists(LOCK_FILE):
+        print("Lock antigo encontrado (processo já encerrado). Ignorando.")
+
     try:
         with open(LOCK_FILE, "w") as f:
             f.write(str(os.getpid()))
@@ -45,14 +69,19 @@ def is_already_running():
 
 
 def remove_lock():
-    if os.path.exists(LOCK_FILE):
-        os.remove(LOCK_FILE)
+    # Só apaga o lock que esta instância criou; uma segunda instância que
+    # desiste de iniciar não pode apagar o lock da primeira.
+    if _read_lock_pid() == os.getpid():
+        try:
+            os.remove(LOCK_FILE)
+        except OSError:
+            pass
 
 
 def start_llava():
     try:
-        requests.get("http://localhost:11434")
-    except requests.exceptions.ConnectionError:
+        requests.get(OLLAMA_HOST, timeout=3)
+    except requests.exceptions.RequestException:
         print("Starting Ollama server...")
         subprocess.Popen(
             ["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
@@ -66,8 +95,11 @@ def start_llava():
             subprocess.run(["ollama", "pull", model])
 
         print(f"Starting model {model}...")
+        # Prompt vazio: só carrega o modelo e sai. stdin fechado para o
+        # processo não ficar disputando o teclado do console.
         subprocess.Popen(
-            ["ollama", "run", model],
+            ["ollama", "run", model, ""],
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
@@ -80,14 +112,14 @@ def warmup_vision_model():
     print("🔥 Warming up the vision model...")
     try:
         subprocess.run(
-            ["ollama", "run", "llama3.2-vision:90b"],
+            ["ollama", "run", VISION_MODEL_HIGH],
             input="<image>null</image>\nIgnore this.",
             capture_output=True,
             encoding="utf-8",
             text=True,
             timeout=10,
         )
-    except:
+    except Exception:
         pass
 
 
@@ -101,7 +133,10 @@ def passive_mode():
         text_raw = text.strip()
         text_normalized = normalize_text(text_raw)
 
-        if sounds_like_jarvis(text_normalized):
+        # sounds_like_jarvis devolve (bool, palavra); testar a tupla direto
+        # era sempre verdadeiro e qualquer fala ativava o Jarvis.
+        matched, _ = sounds_like_jarvis(text_normalized)
+        if matched:
             return text_raw
         else:
             print(f"[DEBUG] Nenhuma ativação detectada em: {text_raw}")

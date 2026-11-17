@@ -3,7 +3,7 @@ import time
 import os
 from brain.memory.memory import llama_query, DEFAULT_MODEL
 
-def translate_subtitle_llm(input_path, output_path, target_lang="portuguese", model="llama3.2"):
+def translate_subtitle_llm(input_path, output_path, target_lang="portuguese", model=DEFAULT_MODEL):
     print(f"[DEBUG] START: {input_path=} {output_path=} {target_lang=}")
     start_time = time.time()
     
@@ -32,7 +32,7 @@ def translate_subtitle_llm(input_path, output_path, target_lang="portuguese", mo
                 try:
                     translated_text_raw = llama_query(prompt, model=model, direct_mode=True)
                     
-                    if translated_text_raw.startswith("Error generating response via API HTTP:"):
+                    if not translated_text_raw:
                         print(f"Error translating line {i}: {translated_text_raw}")
                         translated_text = dialogue_text
                     else:
@@ -70,7 +70,7 @@ def translate_subtitle_llm(input_path, output_path, target_lang="portuguese", mo
             try:
                 translated_text_raw = llama_query(prompt, model=model, direct_mode=True)
                 
-                if translated_text_raw.startswith("Error generating response via API HTTP:"):
+                if not translated_text_raw:
                     print(f"Error translating block {i}: {translated_text_raw}")
                     translated_text = text
                 else:

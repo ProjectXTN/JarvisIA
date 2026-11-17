@@ -32,3 +32,7 @@ dist/
 
 # VSCode settings (opcional)
 .vscode/
+
+# Dados pessoais e binários grandes (não versionar)
+*.db
+piper/

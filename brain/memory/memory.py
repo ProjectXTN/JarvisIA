@@ -1,20 +1,20 @@
-import os
-import subprocess
 import requests
 from brain.utils.utils import clean_output
 from brain.learning.personal_responses import check_personal_answer
-
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+from core.settings import (
+    OLLAMA_HOST,
+    OLLAMA_TIMEOUT,
+    DEFAULT_MODEL,
+    DEFAULT_MODEL_HIGH,
+    DEFAULT_MODEL_CODE,
+)
 
 
 # === Contexto de memória para manter a conversação ===
 memory_context = []
 MAX_CONTEXT = 5
 
-# === Available models ===
-DEFAULT_MODEL = "llama3.2"
-DEFAULT_MODEL_HIGH = "llama3.3"
-DEFAULT_MODEL_CODE = "codestral"
+# === Available models: definidos em core/settings.py ===
 
 # === HTTP session for active Ollama Server ===
 session = requests.Session()
@@ -71,7 +71,11 @@ def detect_reflection_request(prompt):
 
 
 def llama_query(prompt, model=None, direct_mode=False, mode=None, lang="pt"):
-    """Generate response using Ollama Server with different prompt styles based on the mode."""
+    """Generate response using Ollama Server with different prompt styles based on the mode.
+
+    Devolve o texto da resposta, ou None se o Ollama falhar. Quem chama deve
+    tratar None como "sem resposta" (nunca falar, logar ou guardar em cache).
+    """
 
     temperature = 1.1 if mode == "terminal" else 0.2
 
@@ -112,9 +116,12 @@ def llama_query(prompt, model=None, direct_mode=False, mode=None, lang="pt"):
                 "model": model,
                 "prompt": final_prompt,
                 "stream": False,
-                "temperature": temperature,
+                # O Ollama só lê a temperatura dentro de "options"
+                "options": {"temperature": temperature},
             },
+            timeout=OLLAMA_TIMEOUT,
         )
+        response.raise_for_status()
 
         raw_response = response.json()["response"]
 
@@ -131,4 +138,5 @@ def llama_query(prompt, model=None, direct_mode=False, mode=None, lang="pt"):
         return output
 
     except Exception as e:
-        return f"Error generating response via API HTTP: {e}"
+        print(f"[ERROR] Falha ao gerar resposta no Ollama ({model}): {e}")
+        return None
