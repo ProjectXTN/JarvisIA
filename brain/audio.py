@@ -56,6 +56,10 @@ model = faster_whisper.WhisperModel(
     compute_type="float16" if torch.cuda.is_available() else "int8",
 )
 current_audio_process = None
+print(
+    f"🎙️ Whisper {WHISPER_MODEL} rodando em "
+    f"{'GPU (CUDA)' if torch.cuda.is_available() else 'CPU, mais lento'}."
+)
 
 # === Interrupção por voz ===
 # Comando dito junto com o pedido de parar ("para, que horas são?"); o

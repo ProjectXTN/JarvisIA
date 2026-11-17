@@ -178,3 +178,9 @@ O modelo do Ollama não muda sozinho ao ler a internet: os pesos são fixos. O q
 - **Busca na internet:** "pesquise na internet" passa a falar um resumo feito pelo modelo, não o texto cru das páginas.
 - Para desligar a interrupção: `JARVIS_INTERRUPT=0` no `.env`.
 - Testado só com os testes automáticos (28); falta o teste com microfone e caixa de som.
+
+### 2026-11-17 — Pergunta sobre AION 2 travou 3 minutos
+
+- "informações sobre a classe Ranger" foi tratada como pedido de código por causa da palavra "classe" e mandada ao `codestral` (22B, não carregado), que estourou os 180 s. `is_code_request` agora exige termos de programação ("código", "script", "regex", "html", "classe em python"...).
+- O Whisper ouviu "AION II" como "dwayon ii". Criado `vocabulario.txt` na raiz: nomes de jogos, classes e termos que ele deve reconhecer. Edite e reinicie para acrescentar palavras.
+- O console mostra na abertura se o Whisper roda na GPU ou na CPU (as transcrições de 4 a 10 s sugerem CPU).

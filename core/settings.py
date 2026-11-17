@@ -50,8 +50,26 @@ INTERRUPT_WHISPER_MODEL = os.getenv("JARVIS_INTERRUPT_MODEL", "base")
 # Limite de caracteres de cada fala (o resto aparece só no console)
 MAX_SPOKEN_CHARS = 1200
 
-# Nomes próprios que o Whisper costuma errar; servem de dica na transcrição
-WHISPER_VOCABULARY = ["Jarvis", "Pedro", "Lexy"]
+# Nomes próprios que o Whisper costuma errar; servem de dica na transcrição.
+# Para acrescentar palavras, edite vocabulario.txt na raiz do projeto
+# (uma por linha) e reinicie o Jarvis.
+VOCABULARY_FILE = os.path.join(BASE_DIR, "vocabulario.txt")
+
+
+def _load_vocabulary():
+    words = ["Jarvis", "Pedro", "Lexy"]
+    try:
+        with open(VOCABULARY_FILE, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and line not in words:
+                    words.append(line)
+    except FileNotFoundError:
+        pass
+    return words
+
+
+WHISPER_VOCABULARY = _load_vocabulary()
 
 # === Clima ===
 # Cidade usada quando nenhuma é dita, e também quando o que foi ouvido

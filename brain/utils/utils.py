@@ -119,13 +119,14 @@ def is_code_request(query):
     if any(p in query_lower for p in false_positives):
         return False 
 
+    # Palavras soltas como "classe", "função", "método" e "exemplo" não contam:
+    # "a classe Ranger de AION 2" ou "me dá um exemplo" não são pedidos de
+    # código e mandavam a pergunta para o modelo de programação.
     code_patterns = [
-        # PT
-        r"\bcódigo\b", r"\bscript\b", r"\bclasse\b", r"\bfunção\b", r"\bmétodo\b", r"\bimplementação\b", r"\bexemplo\b",
-        # EN
-        r"\bcode\b", r"\bscript\b", r"\bclass\b", r"\bfunction\b", r"\bmethod\b", r"\bimplementation\b", r"\bexample\b",
-        # FR
-        r"\bcode\b", r"\bscript\b", r"\bclasse\b", r"\bfonction\b", r"\bméthode\b", r"\bimplémentation\b", r"\bexemple\b",
+        # PT / EN / FR: termos que só aparecem em programação
+        r"\bcódigo\b", r"\bcodigo\b", r"\bscript\b", r"\bcode\b",
+        r"\bprograma(r|ção|cao)?\b.*\b(em|in|en)\s+\w+",
+        r"\b(classe|função|funcao|método|metodo|class|function|method|fonction|méthode)\b.*\b(em|in|en)\s+(python|javascript|typescript|c\+\+|c#|java|php|go|rust)\b",
 
         # PT
         r"me mostre.*(código|script|função|classe|exemplo)",

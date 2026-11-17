@@ -257,6 +257,31 @@ class SpeechTextTest(unittest.TestCase):
         self.assertLessEqual(len(prepare_for_speech("Frase longa. " * 300, 500)), 500)
 
 
+class CodeRequestTest(unittest.TestCase):
+    def test_palavras_comuns_nao_viram_pedido_de_codigo(self):
+        from brain.utils.utils import is_code_request
+
+        for phrase in [
+            "bom dia informações sobre a classe ranger de aion 2",
+            "me dá um exemplo de build",
+            "qual a função do ranger no grupo",
+            "qual o melhor método para estudar",
+        ]:
+            self.assertFalse(is_code_request(phrase), phrase)
+
+    def test_pedidos_de_codigo(self):
+        from brain.utils.utils import is_code_request
+
+        for phrase in [
+            "escreva um código em python que lê um arquivo",
+            "crie uma classe em python para usuário",
+            "faça um script para renomear arquivos",
+            "como fazer uma regex para email",
+            "monte uma página html",
+        ]:
+            self.assertTrue(is_code_request(phrase), phrase)
+
+
 class HandlerFlowTest(unittest.TestCase):
     def test_comando_que_devolve_false_nao_encerra(self):
         # "atualize o sistema" casa com a chave "atualize", mas o comando de

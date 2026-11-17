@@ -1,0 +1,18 @@
+# Palavras que o Jarvis deve reconhecer na sua fala (uma por linha).
+# Use para nomes de jogos, pessoas, lugares e termos técnicos.
+# Depois de editar, reinicie o Jarvis.
+AION 2
+Ranger
+Gladiator
+Templar
+Assassin
+Sorcerer
+Cleric
+Chanter
+Spiritmaster
+PvP
+PvE
+NCSOFT
+Steam
+Discord
+Ollama
