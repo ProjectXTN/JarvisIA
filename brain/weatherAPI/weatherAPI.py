@@ -1,18 +1,21 @@
 import requests
 import os
 import re
+import difflib
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from brain.audio import say, listen
 from brain.utils.utils import normalize_text
 from core import config
+from core.settings import HOME_CITY, HOME_COUNTRY
 
 load_dotenv()
 
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY")
+HOME_LOCATION = f"{HOME_CITY},{HOME_COUNTRY}"
 
 
-def get_weather(city="Lexy", forecast=False, next_week=False, lang="pt"):
+def get_weather(city=HOME_LOCATION, forecast=False, next_week=False, lang="pt"):
     if not OPENWEATHER_API_KEY:
         return {
             "pt": "API KEY do serviço de previsão do tempo não configurada.",
@@ -30,7 +33,9 @@ def get_weather(city="Lexy", forecast=False, next_week=False, lang="pt"):
         else:
             url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={OPENWEATHER_API_KEY}&lang={api_lang}&units=metric"
 
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)
+        # Na fala, só o nome da cidade ("Lexy"), sem o código do país
+        city = city.split(",")[0]
         data = response.json()
 
         if data.get("cod") not in (200, "200"):
@@ -368,6 +373,42 @@ def detect_forecast_request(query):
     return False, False
 
 
+def _sounds_like_home(city):
+    """True se o nome ouvido parece a cidade de casa (o Whisper erra a grafia)."""
+    heard = normalize_text(city)
+    home = normalize_text(HOME_CITY)
+    return difflib.SequenceMatcher(None, heard, home).ratio() >= 0.65
+
+
+def resolve_location(city):
+    """Transforma o nome ouvido em 'Cidade,PAÍS' para a OpenWeather.
+
+    Usa a cidade de casa se o nome soar parecido; senão pergunta ao serviço
+    de geocodificação da OpenWeather. Devolve None se a cidade não existe.
+    """
+    if _sounds_like_home(city):
+        return HOME_LOCATION
+
+    try:
+        results = requests.get(
+            "https://api.openweathermap.org/geo/1.0/direct",
+            params={"q": city, "limit": 1, "appid": OPENWEATHER_API_KEY},
+            timeout=10,
+        ).json()
+    except Exception as e:
+        print(f"[CLIMA] Geocodificação falhou, usando o nome como ouvido: {e}")
+        return city
+
+    if isinstance(results, list):
+        if not results:
+            return None
+        return f"{results[0]['name']},{results[0]['country']}"
+
+    # Resposta de erro da API (chave sem acesso, por exemplo)
+    print(f"[CLIMA] Geocodificação indisponível: {results}")
+    return city
+
+
 def handle_weather_query(query, lang="pt"):
     if not is_weather_request(query):
         return False
@@ -375,46 +416,26 @@ def handle_weather_query(query, lang="pt"):
     city = extract_city(query)
     forecast, next_week = detect_forecast_request(query)
 
-    if city:
-        if config.IS_API_REQUEST:
-            location = city
-        else:
-            say(f"Você quer saber o clima de {city}. Pode me dizer o país?")
-            country_response = listen().lower().strip()
+    # Sem cidade na frase: usa a cidade de casa. Não pergunta mais o país;
+    # a geocodificação descobre sozinha.
+    location = resolve_location(city) if city else HOME_LOCATION
 
-            if country_response:
-                normalized_country = normalize_country(country_response)
-                location = f"{city},{normalized_country}"
-            else:
-                location = city
+    if location is None and not config.IS_API_REQUEST:
+        say(f"Não encontrei a cidade {city}. Pode repetir só o nome da cidade?")
+        city_retry = listen().strip(" .,!?").title()
+        location = resolve_location(city_retry) if city_retry else None
+
+    if location is None:
+        weather_report = {
+            "pt": "Não encontrei essa cidade.",
+            "en": "I could not find that city.",
+            "fr": "Je n'ai pas trouvé cette ville.",
+        }.get(lang, "Não encontrei essa cidade.")
     else:
-        location = None
-
-    # Faz a busca pela previsão
-    weather_report = get_weather(
-        location if location else "Lexy",  # fallback
-        forecast=forecast,
-        next_week=next_week,
-        lang=lang,
-    )
-
-    # Se não deu certo, tenta repetir no modo CLI
-    if not weather_report or "Não consegui obter" in weather_report:
-        if not config.IS_API_REQUEST:
-            say(
-                "Desculpe, não entendi o nome da cidade. Pode repetir o nome da cidade, por favor?"
-            )
-            city_retry = listen().lower().strip().title()
-            if city_retry:
-                say("E o país?")
-                country_retry = listen().lower().strip()
-                normalized_country = normalize_country(country_retry)
-                location = f"{city_retry},{normalized_country}"
-                weather_report = get_weather(
-                    location, forecast=forecast, next_week=next_week
-                )
-            else:
-                weather_report = "Não foi possível obter a previsão do tempo."
+        print(f"[CLIMA] Consultando: {location}")
+        weather_report = get_weather(
+            location, forecast=forecast, next_week=next_week, lang=lang
+        )
 
     if not weather_report:
         weather_report = "Desculpe, não consegui obter a previsão do tempo."

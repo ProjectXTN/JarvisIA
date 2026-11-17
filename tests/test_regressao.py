@@ -142,6 +142,37 @@ class CommandPatternTest(unittest.TestCase):
         self.assertFalse(_matches(music_commands, "coloque um alarme para as sete"))
 
 
+class WeatherTest(unittest.TestCase):
+    def test_grafias_erradas_da_cidade_de_casa(self):
+        from brain.weatherAPI import weatherAPI
+
+        for heard in ["Alexi", "Lexi", "Lexy", "Léxi"]:
+            self.assertEqual(
+                weatherAPI.resolve_location(heard), weatherAPI.HOME_LOCATION, heard
+            )
+
+    def test_outra_cidade_usa_geocodificacao(self):
+        from brain.weatherAPI import weatherAPI
+
+        reply = mock.Mock()
+        reply.json.return_value = [{"name": "Lisbon", "country": "PT"}]
+        with mock.patch.object(weatherAPI.requests, "get", return_value=reply):
+            self.assertEqual(weatherAPI.resolve_location("Lisboa"), "Lisbon,PT")
+        reply.json.return_value = []
+        with mock.patch.object(weatherAPI.requests, "get", return_value=reply):
+            self.assertIsNone(weatherAPI.resolve_location("Xyzabc"))
+
+    def test_nao_pergunta_mais_o_pais(self):
+        from brain.weatherAPI import weatherAPI
+
+        spoken.clear()
+        with mock.patch.object(weatherAPI, "get_weather", return_value="Sol.") as gw, \
+             mock.patch.object(weatherAPI, "listen", side_effect=AssertionError("não deve ouvir")):
+            weatherAPI.handle_weather_query("qual a previsão do tempo para alexi")
+        self.assertEqual(gw.call_args.args[0], weatherAPI.HOME_LOCATION)
+        self.assertEqual(spoken, ["Sol."])
+
+
 class HandlerFlowTest(unittest.TestCase):
     def test_comando_que_devolve_false_nao_encerra(self):
         # "atualize o sistema" casa com a chave "atualize", mas o comando de

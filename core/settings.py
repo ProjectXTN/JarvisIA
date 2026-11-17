@@ -43,6 +43,15 @@ EMBEDDING_MODEL = os.getenv("JARVIS_EMBEDDING_MODEL", "nomic-embed-text")
 WHISPER_MODEL = os.getenv("JARVIS_WHISPER_MODEL", "medium")
 WHISPER_BEAM_SIZE = 5
 
+# Nomes próprios que o Whisper costuma errar; servem de dica na transcrição
+WHISPER_VOCABULARY = ["Jarvis", "Pedro", "Lexy"]
+
+# === Clima ===
+# Cidade usada quando nenhuma é dita, e também quando o que foi ouvido
+# soa parecido com ela ("Alexi", "Lexi")
+HOME_CITY = os.getenv("JARVIS_HOME_CITY", "Lexy")
+HOME_COUNTRY = os.getenv("JARVIS_HOME_COUNTRY", "FR")
+
 # === Hotword ===
 HOTWORDS = ["jarvis"]
 # Similaridade mínima (0 a 1) entre a palavra ouvida e a hotword

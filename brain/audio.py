@@ -18,7 +18,7 @@ import requests
 import json
 import base64
 from brain.utils.utils import clean_output
-from core.settings import WHISPER_MODEL, WHISPER_BEAM_SIZE
+from core.settings import WHISPER_MODEL, WHISPER_BEAM_SIZE, WHISPER_VOCABULARY
 
 load_dotenv()
 
@@ -227,6 +227,8 @@ def listen():
                 wav_path,
                 language="pt",
                 beam_size=WHISPER_BEAM_SIZE,
+                # Dica de grafia para nomes próprios (cidade, hotword)
+                initial_prompt=", ".join(WHISPER_VOCABULARY) + ".",
                 vad_filter=True,
                 vad_parameters={"threshold": 0.5},
             )
