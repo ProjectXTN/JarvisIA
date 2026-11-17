@@ -43,6 +43,13 @@ EMBEDDING_MODEL = os.getenv("JARVIS_EMBEDDING_MODEL", "nomic-embed-text")
 WHISPER_MODEL = os.getenv("JARVIS_WHISPER_MODEL", "medium")
 WHISPER_BEAM_SIZE = 5
 
+# Interromper o Jarvis por voz enquanto ele fala ("pare", "pode parar", "chega")
+INTERRUPT_ENABLED = os.getenv("JARVIS_INTERRUPT", "1") == "1"
+# Modelo pequeno e rápido, só para reconhecer o pedido de parar
+INTERRUPT_WHISPER_MODEL = os.getenv("JARVIS_INTERRUPT_MODEL", "base")
+# Limite de caracteres de cada fala (o resto aparece só no console)
+MAX_SPOKEN_CHARS = 1200
+
 # Nomes próprios que o Whisper costuma errar; servem de dica na transcrição
 WHISPER_VOCABULARY = ["Jarvis", "Pedro", "Lexy"]
 

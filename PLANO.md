@@ -43,7 +43,7 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 - [ ] 25. TTS local com Kokoro (`brain/tts.py`), Google TTS como reserva
 - [ ] 26. Streaming LLM → TTS frase a frase
 - [ ] 27. Tocar áudio com `sounddevice`, sem `ffplay`
-- [ ] 28. Interrupção por voz enquanto o Jarvis fala
+- [x] 28. Interrupção por voz enquanto o Jarvis fala (só com ordem de parar; perguntas não interrompem)
 - [ ] 29. Bip local no lugar de "Jarvis Ativado..." e remover `sleep(0.5)`
 - [ ] 30. Hotword dedicada com `openWakeWord`
 
@@ -166,3 +166,15 @@ O modelo do Ollama não muda sozinho ao ler a internet: os pesos são fixos. O q
 - Repouso: respira devagar. Ouvindo: se contrai e recebe ondas. Processando: gira mais rápido, acende sinapses e filamentos. Falando: a superfície vibra no volume real da voz.
 - `AVATAR_AUTO_OPEN` agora vem ligado: o avatar abre junto com o Jarvis. Para desligar, `JARVIS_AVATAR_AUTO_OPEN=0` no `.env`.
 - O rosto anterior continua no histórico do git (commit `eabb5b6`).
+
+### 2026-11-17 — Interrupção por voz e fala limpa (item 28)
+
+- **Interromper:** enquanto fala, o Jarvis escuta o microfone com um Whisper pequeno (`base`). Só ordens de parar interrompem: "pare", "para", "pode parar", "parar de falar", "chega", "já entendi". A lista fica em `brain/speech_text.py` (`_STOP`).
+- **Pergunta não é ordem:** "para que serve este item?", "o que significa pare?" e "como faço para parar o boss?" não interrompem. A diferença é o começo da frase e a pausa: "Para, que horas são?" (com pausa) é ordem; "Para que serve?" é pergunta.
+- **Ordem com comando:** "Pare. Que horas são?" para a fala e já responde a hora.
+- **Eco:** frases longas com a palavra no meio, iguais ao que o Jarvis está falando, são tratadas como a voz dele captada pela caixa de som.
+- **Depois de interromper:** ele fica quieto até voltar a ouvir; avisos restantes do mesmo comando são descartados.
+- **Fala limpa:** `prepare_for_speech` tira marcações como `[TÍTULO]`, links, setas e frases repetidas, e corta falas acima de 1.200 caracteres (`MAX_SPOKEN_CHARS`).
+- **Busca na internet:** "pesquise na internet" passa a falar um resumo feito pelo modelo, não o texto cru das páginas.
+- Para desligar a interrupção: `JARVIS_INTERRUPT=0` no `.env`.
+- Testado só com os testes automáticos (28); falta o teste com microfone e caixa de som.

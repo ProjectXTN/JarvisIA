@@ -203,6 +203,60 @@ class AvatarCommandTest(unittest.TestCase):
         avatar.speak_stop()
 
 
+class SpeechTextTest(unittest.TestCase):
+    SPOKEN = (
+        "O Ranger ataca à distância com armas físicas, somando dano "
+        "consistente com mobilidade para reposicionar durante o combate."
+    )
+
+    def test_ordens_de_parar_interrompem(self):
+        from brain.speech_text import is_interrupt
+
+        for phrase in [
+            "Pare!", "pare", "para", "Entendi, pode parar.", "parar de falar",
+            "chega", "já entendi", "Jarvis, para.", "Pare. Que horas são?",
+            "Para, que horas são?",
+        ]:
+            self.assertTrue(is_interrupt(phrase, self.SPOKEN), phrase)
+
+    def test_perguntas_e_conversa_nao_interrompem(self):
+        from brain.speech_text import is_interrupt
+
+        for phrase in [
+            "Para que serve este item?", "para que serve este item",
+            "pra que serve isso", "O que significa pare em inglês?",
+            "Por que ele para de atacar?", "Ele para quando?",
+            "Como faço para parar o boss?", "qual a previsão do tempo",
+            "vou viajar para Paris", "Obrigado.",
+            # eco: a própria voz do Jarvis saindo da caixa de som
+            "mobilidade para reposicionar durante o combate",
+        ]:
+            self.assertFalse(is_interrupt(phrase, self.SPOKEN), phrase)
+
+    def test_comando_junto_com_a_ordem(self):
+        from brain.speech_text import interrupt_remainder
+
+        self.assertEqual(interrupt_remainder("Para, que horas são?"), "que horas são?")
+        self.assertEqual(interrupt_remainder("Jarvis, pare. Qual a previsão do tempo"), "Qual a previsão do tempo")
+        self.assertEqual(interrupt_remainder("Entendi, pode parar."), "")
+        self.assertEqual(interrupt_remainder("chega"), "")
+
+    def test_texto_falado_sem_marcacoes(self):
+        from brain.speech_text import prepare_for_speech
+
+        raw = (
+            "[TÍTULO] Ranger · AION 2 [PARÁGRAFO] O Ranger ataca à distância. "
+            "[PARÁGRAFO] O Ranger ataca à distância. [LISTA] - Accuracy → Critical Hit. "
+            "- #1 Accuracy — Ajuda a superar Evasion. [FONTE] https://aion2br.com.br/x"
+        )
+        spoken = prepare_for_speech(raw)
+        for unwanted in ["[", "]", "→", "—", "#", "http", "·"]:
+            self.assertNotIn(unwanted, spoken)
+        self.assertEqual(spoken.count("O Ranger ataca à distância"), 1)
+        self.assertEqual(prepare_for_speech("Agora são 08:32."), "Agora são 08:32.")
+        self.assertLessEqual(len(prepare_for_speech("Frase longa. " * 300, 500)), 500)
+
+
 class HandlerFlowTest(unittest.TestCase):
     def test_comando_que_devolve_false_nao_encerra(self):
         # "atualize o sistema" casa com a chave "atualize", mas o comando de

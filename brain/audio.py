@@ -19,7 +19,19 @@ import json
 import base64
 from brain.utils.utils import clean_output
 from brain import avatar
-from core.settings import WHISPER_MODEL, WHISPER_BEAM_SIZE, WHISPER_VOCABULARY
+from core.settings import (
+    WHISPER_MODEL,
+    WHISPER_BEAM_SIZE,
+    WHISPER_VOCABULARY,
+    INTERRUPT_ENABLED,
+    INTERRUPT_WHISPER_MODEL,
+    MAX_SPOKEN_CHARS,
+)
+from brain.speech_text import (
+    prepare_for_speech,
+    is_interrupt,
+    interrupt_remainder,
+)
 
 load_dotenv()
 
@@ -44,6 +56,123 @@ model = faster_whisper.WhisperModel(
     compute_type="float16" if torch.cuda.is_available() else "int8",
 )
 current_audio_process = None
+
+# === Interrupção por voz ===
+# Comando dito junto com o pedido de parar ("para, que horas são?"); o
+# próximo listen() devolve ele em vez de ouvir o microfone.
+pending_command = None
+# Depois de uma interrupção o Jarvis fica quieto até voltar a ouvir: outras
+# falas do mesmo comando (avisos, confirmações) são descartadas.
+silenced = False
+
+_interrupt_model = None
+_interrupt_model_ready = threading.Event()
+
+
+def _load_interrupt_model():
+    global _interrupt_model
+    try:
+        _interrupt_model = faster_whisper.WhisperModel(
+            INTERRUPT_WHISPER_MODEL,
+            device="cuda" if torch.cuda.is_available() else "cpu",
+            compute_type="float16" if torch.cuda.is_available() else "int8",
+        )
+        print(f"✅ Interrupção por voz pronta (Whisper {INTERRUPT_WHISPER_MODEL}).")
+    except Exception as e:
+        print(f"⚠️ Interrupção por voz indisponível: {e}")
+    finally:
+        _interrupt_model_ready.set()
+
+
+if INTERRUPT_ENABLED:
+    threading.Thread(target=_load_interrupt_model, daemon=True).start()
+
+
+def _transcribe_array(whisper_model, audio_int16, prompt=None):
+    """Transcreve áudio 16 kHz (int16) direto da memória."""
+    audio = audio_int16.reshape(-1).astype(np.float32) / 32768.0
+    with transcribe_lock:
+        segments, _ = whisper_model.transcribe(
+            audio,
+            language="pt",
+            beam_size=1,
+            vad_filter=False,
+            initial_prompt=prompt,
+        )
+        return "".join(s.text for s in segments).strip()
+
+
+_STOP_PROMPT = "Pare. Para. Pode parar. Parar de falar. Chega. Já entendi. Jarvis."
+
+
+def _play_interruptible(path, spoken_text):
+    """Toca o áudio e escuta o microfone ao mesmo tempo.
+
+    Devolve True se você pediu para parar. Só frases de parar interrompem
+    (ver brain/speech_text.py); o resto do que você disser enquanto ele fala
+    é ignorado.
+    """
+    global current_audio_process, pending_command
+    proc = subprocess.Popen(
+        ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", path],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    current_audio_process = proc
+
+    if not INTERRUPT_ENABLED or _interrupt_model is None:
+        proc.wait()
+        return False
+
+    fs, frame = 16000, 480  # blocos de 30 ms
+    vad = webrtcvad.Vad(3)
+    try:
+        stream = sd.InputStream(samplerate=fs, channels=1, dtype="int16", blocksize=frame)
+        stream.start()
+    except Exception as e:
+        print(f"⚠️ Microfone indisponível durante a fala: {e}")
+        proc.wait()
+        return False
+
+    segment, speech, silence = [], 0, 0
+    interrupted = False
+    try:
+        while proc.poll() is None:
+            block, _ = stream.read(frame)
+            if vad.is_speech(block.tobytes(), fs):
+                segment.append(block)
+                speech += 1
+                silence = 0
+            elif segment:
+                segment.append(block)
+                silence += 1
+            else:
+                continue
+
+            # Avalia quando a frase termina (0,3 s de silêncio) ou passa de 2,5 s
+            if silence < 10 and len(segment) < 84:
+                continue
+            if speech >= 6:  # pelo menos 0,18 s de voz
+                heard = _transcribe_array(
+                    _interrupt_model, np.concatenate(segment), _STOP_PROMPT
+                )
+                if heard and is_interrupt(heard, spoken_text):
+                    proc.terminate()
+                    interrupted = True
+                    print(f"\n✋ Interrompido: {heard}")
+                    command = interrupt_remainder(heard)
+                    if command:
+                        pending_command = command
+                    break
+                if heard:
+                    print(f"[DEBUG] Ouvido durante a fala (ignorado): {heard}")
+            segment, speech, silence = [], 0, 0
+    finally:
+        stream.stop()
+        stream.close()
+        proc.wait()
+        current_audio_process = None
+    return interrupted
 
 
 # === Main speech function with GUI support ===
@@ -85,14 +214,22 @@ async def speak_with_gui(text):
 
 # === Public speech function ===
 def say(text, lang="pt-BR", gender="MALE"):
+    global silenced
 
     if not text or not str(text).strip():
+        return
+    if silenced:
+        print(f"[DEBUG] Fala descartada (você interrompeu): {str(text)[:80]}")
         return
 
     clean_text = clean_output(str(text)).strip()
     clean_text = re.sub(r"(^\s*\*\s*|\s+\*\s+)", " ", clean_text, flags=re.MULTILINE)
     clean_text = re.sub(r"-{3,}", " ", clean_text)
     clean_text = re.sub(r"^\s*-+\s*$", "", clean_text, flags=re.MULTILINE)
+    # Sem [TÍTULO], links, setas e frases repetidas; corta respostas longas
+    clean_text = prepare_for_speech(clean_text, MAX_SPOKEN_CHARS)
+    if not clean_text:
+        return
 
     # === CONTINUA NORMAL ===
     url = f"https://texttospeech.googleapis.com/v1/text:synthesize?key={API_KEY_GOOGLE_SPEECH}"
@@ -134,9 +271,8 @@ def say(text, lang="pt-BR", gender="MALE"):
             out.flush()
             avatar.speak_start(out.name, clean_text)  # boca do avatar segue o áudio
             try:
-                subprocess.run(
-                    ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", out.name]
-                )
+                if _play_interruptible(out.name, clean_text):
+                    silenced = True
             finally:
                 avatar.speak_stop()
 
@@ -149,8 +285,17 @@ def say(text, lang="pt-BR", gender="MALE"):
 
 # === Listening function with VAD + Fast-Whisper ===
 def listen():
-    global current_audio_process
+    global current_audio_process, pending_command, silenced
     stream = None
+
+    # Voltou a ouvir: o Jarvis pode falar de novo
+    silenced = False
+
+    # Comando dito junto com o pedido de parar ("para, que horas são?")
+    if pending_command:
+        command, pending_command = pending_command, None
+        print("🖙️ You said:", command)
+        return command
 
     if current_audio_process and current_audio_process.poll() is None:
         print("🔇 Interrupting active response...")
