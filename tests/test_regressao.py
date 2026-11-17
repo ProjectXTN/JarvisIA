@@ -29,10 +29,21 @@ OPTIONAL_LIBRARIES = {
 
 
 class _FakeMissingModules(importlib.abc.MetaPathFinder, importlib.abc.Loader):
-    """Último recurso na busca de módulos: só age se o import real falhou."""
+    """Último recurso na busca de módulos: só age se o import real falhou.
+
+    Uma biblioteca instalada de verdade nunca é misturada com partes falsas:
+    só falsificamos submódulos de bibliotecas que já são inteiras falsas.
+    """
+
+    faked = set()
 
     def find_spec(self, name, path=None, target=None):
-        if name.split(".")[0] not in OPTIONAL_LIBRARIES:
+        top = name.split(".")[0]
+        if top not in OPTIONAL_LIBRARIES:
+            return None
+        if name == top:
+            self.faked.add(top)
+        elif top not in self.faked:
             return None
         return importlib.machinery.ModuleSpec(name, self, is_package=True)
 
