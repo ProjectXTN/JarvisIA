@@ -40,13 +40,17 @@ VISION_MODEL_HIGH = os.getenv("JARVIS_VISION_MODEL_HIGH", "llama3.2-vision:90b")
 EMBEDDING_MODEL = os.getenv("JARVIS_EMBEDDING_MODEL", "nomic-embed-text")
 
 # === Voz ===
-WHISPER_MODEL = os.getenv("JARVIS_WHISPER_MODEL", "medium")
+# Na GPU: large-v3-turbo (preciso e rápido). Se a GPU não puder ser usada,
+# o Jarvis volta para o modelo de CPU.
+WHISPER_MODEL = os.getenv("JARVIS_WHISPER_MODEL", "large-v3-turbo")
+WHISPER_MODEL_CPU = os.getenv("JARVIS_WHISPER_MODEL_CPU", "medium")
 WHISPER_BEAM_SIZE = 5
 
 # Interromper o Jarvis por voz enquanto ele fala ("pare", "pode parar", "chega")
 INTERRUPT_ENABLED = os.getenv("JARVIS_INTERRUPT", "1") == "1"
 # Modelo pequeno e rápido, só para reconhecer o pedido de parar
 INTERRUPT_WHISPER_MODEL = os.getenv("JARVIS_INTERRUPT_MODEL", "base")
+INTERRUPT_WHISPER_MODEL_CPU = os.getenv("JARVIS_INTERRUPT_MODEL_CPU", "base")
 # Limite de caracteres de cada fala (o resto aparece só no console)
 MAX_SPOKEN_CHARS = 1200
 

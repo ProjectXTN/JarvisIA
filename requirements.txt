@@ -1,5 +1,8 @@
 # === CORE (voice, TTS, VAD, transcription) ===
 faster-whisper
+# Bibliotecas de GPU para o Whisper (CTranslate2) no Windows
+nvidia-cublas-cu12
+nvidia-cudnn-cu12==9.*
 ctranslate2
 sentencepiece
 edge-tts

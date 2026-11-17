@@ -6,21 +6,21 @@ import sounddevice as sd
 import numpy as np
 import scipy.io.wavfile
 import tempfile
-import whisper
-import torch
 import sys
 import webrtcvad
 import collections
 import threading
 import time
-import faster_whisper
 import requests
 import json
 import base64
 from brain.utils.utils import clean_output
 from brain import avatar
+from brain.whisper_loader import load_whisper
 from core.settings import (
     WHISPER_MODEL,
+    WHISPER_MODEL_CPU,
+    INTERRUPT_WHISPER_MODEL_CPU,
     WHISPER_BEAM_SIZE,
     WHISPER_VOCABULARY,
     INTERRUPT_ENABLED,
@@ -49,17 +49,10 @@ if getattr(sys, "frozen", False):
     os.environ["WHISPER_ASSETS"] = os.path.join(base_path, "whisper", "assets")
 
 # === Transcription model ===
-# model = whisper.load_model("medium").to("cuda" if torch.cuda.is_available() else "cpu")
-model = faster_whisper.WhisperModel(
-    WHISPER_MODEL,
-    device="cuda" if torch.cuda.is_available() else "cpu",
-    compute_type="float16" if torch.cuda.is_available() else "int8",
-)
+# GPU com large-v3-turbo; sem GPU utilizável, volta para a CPU (ver whisper_loader.py)
+model, _whisper_desc = load_whisper(WHISPER_MODEL, WHISPER_MODEL_CPU)
 current_audio_process = None
-print(
-    f"🎙️ Whisper {WHISPER_MODEL} rodando em "
-    f"{'GPU (CUDA)' if torch.cuda.is_available() else 'CPU, mais lento'}."
-)
+print(f"🎙️ {_whisper_desc}.")
 
 # === Interrupção por voz ===
 # Comando dito junto com o pedido de parar ("para, que horas são?"); o
@@ -76,12 +69,10 @@ _interrupt_model_ready = threading.Event()
 def _load_interrupt_model():
     global _interrupt_model
     try:
-        _interrupt_model = faster_whisper.WhisperModel(
-            INTERRUPT_WHISPER_MODEL,
-            device="cuda" if torch.cuda.is_available() else "cpu",
-            compute_type="float16" if torch.cuda.is_available() else "int8",
+        _interrupt_model, desc = load_whisper(
+            INTERRUPT_WHISPER_MODEL, INTERRUPT_WHISPER_MODEL_CPU, "Interrupção: Whisper"
         )
-        print(f"✅ Interrupção por voz pronta (Whisper {INTERRUPT_WHISPER_MODEL}).")
+        print(f"✅ Interrupção por voz pronta ({desc}).")
     except Exception as e:
         print(f"⚠️ Interrupção por voz indisponível: {e}")
     finally:

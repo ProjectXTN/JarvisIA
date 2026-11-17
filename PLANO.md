@@ -38,7 +38,7 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 
 ## Fase 3 — Velocidade e naturalidade da voz
 
-- [ ] 23. Whisper `large-v3-turbo`, `beam_size=1`, áudio em memória
+- [x] 23. Whisper `large-v3-turbo` na GPU, com volta automática para a CPU (`brain/whisper_loader.py`)
 - [ ] 24. Manter o microfone aberto entre escutas
 - [ ] 25. TTS local com Kokoro (`brain/tts.py`), Google TTS como reserva
 - [ ] 26. Streaming LLM → TTS frase a frase
@@ -197,3 +197,11 @@ O modelo do Ollama não muda sozinho ao ler a internet: os pesos são fixos. O q
 - "informações sobre a classe Ranger" foi tratada como pedido de código por causa da palavra "classe" e mandada ao `codestral` (22B, não carregado), que estourou os 180 s. `is_code_request` agora exige termos de programação ("código", "script", "regex", "html", "classe em python"...).
 - O Whisper ouviu "AION II" como "dwayon ii". Criado `vocabulario.txt` na raiz: nomes de jogos, classes e termos que ele deve reconhecer. Edite e reinicie para acrescentar palavras.
 - O console mostra na abertura se o Whisper roda na GPU ou na CPU (as transcrições de 4 a 10 s sugerem CPU).
+
+### 2026-11-17 — Whisper na GPU (item 23)
+
+- Causa da lentidão: o venv tem `torch 2.6.0+cpu`, e o código perguntava ao PyTorch se havia GPU. A resposta era sempre "não", e o Whisper rodava na CPU (5 a 6 s por frase).
+- O faster-whisper roda pelo CTranslate2, que tem CUDA próprio. `brain/whisper_loader.py` detecta a GPU por ele, registra as DLLs do cuBLAS e do cuDNN instaladas pelo pip e confere com uma transcrição de teste. Se falhar, volta para a CPU e mostra o comando para instalar o que falta.
+- Modelo na GPU: `large-v3-turbo` (ouve e interrompe); na CPU continua o `medium`.
+- `import whisper` e `import torch` saíram do `audio.py`, o que também deixa a abertura mais rápida.
+- Pendente do Pedro: `venv\Scripts\python.exe -m pip install nvidia-cublas-cu12 "nvidia-cudnn-cu12==9.*"`.
