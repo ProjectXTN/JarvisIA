@@ -6,7 +6,7 @@ import requests
 from brain.utils.utils import clean_output
 from brain.learning.personal_responses import check_personal_answer
 from core.settings import (OLLAMA_HOST, OLLAMA_TIMEOUT, OLLAMA_KEEP_ALIVE,
-    OLLAMA_NUM_CTX, NEWS_LLM_TIMEOUT, DEFAULT_MODEL, DEFAULT_MODEL_HIGH, DEFAULT_MODEL_CODE)
+    OLLAMA_NUM_CTX, NEWS_LLM_TIMEOUT, WEB_LLM_TIMEOUT, DEFAULT_MODEL, DEFAULT_MODEL_HIGH, DEFAULT_MODEL_CODE)
 
 memory_context = []
 MAX_CONTEXT = 5
@@ -44,6 +44,15 @@ def _is_refusal(text):
         r"(?:não posso (?:ajudar|fornecer|criar|gerar)|não consigo (?:criar|gerar)|"
         r"i (?:cannot|can't) (?:help|provide|create)|je ne peux pas)",
         text.strip(), re.IGNORECASE))
+
+
+def _read_timeout(mode):
+    """Limite de espera por modo: notícias e busca web não podem travar a voz."""
+    if mode == "news":
+        return (OLLAMA_TIMEOUT[0], min(OLLAMA_TIMEOUT[1], NEWS_LLM_TIMEOUT))
+    if mode == "web":
+        return (OLLAMA_TIMEOUT[0], min(OLLAMA_TIMEOUT[1], WEB_LLM_TIMEOUT))
+    return OLLAMA_TIMEOUT
 
 
 def llama_query(prompt, model=None, direct_mode=False, mode=None, lang="pt",
@@ -92,7 +101,7 @@ def llama_query(prompt, model=None, direct_mode=False, mode=None, lang="pt",
                       "think": False, "keep_alive": OLLAMA_KEEP_ALIVE,
                       "options": {"temperature": 0.2, "num_ctx": OLLAMA_NUM_CTX,
                                   "num_predict": 2048 if mode == "code" else (192 if mode == "news" else 512)}},
-                timeout=(OLLAMA_TIMEOUT[0], min(OLLAMA_TIMEOUT[1], NEWS_LLM_TIMEOUT)) if mode == "news" else OLLAMA_TIMEOUT)
+                timeout=_read_timeout(mode))
             response.raise_for_status()
             print(f"[LLM] Resposta recebida em {time.monotonic()-started:.1f}s.")
             raw = response.json()["message"]["content"].strip()

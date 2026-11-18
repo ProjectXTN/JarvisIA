@@ -19,7 +19,7 @@ from brain.learning import auto_learning
 from brain.learning.auto_learning import auto_learn
 from brain.utils.utils import sounds_like_jarvis
 from brain import avatar
-from core.settings import AVATAR_AUTO_OPEN
+from core.settings import AVATAR_AUTO_OPEN, SD_AUTOSTART
 
 START_STUDY_PATTERN = (
     r"\b(comece|começar|comeca|comecar)\s+a\s+(estudar|aprender)\b"
@@ -65,7 +65,8 @@ def main():
         avatar.show()
 
     start_ollama()
-    start_stable_diffusion()
+    if SD_AUTOSTART:
+        start_stable_diffusion()
 
     # Hello Pedro! =)
     personalized_greeting()

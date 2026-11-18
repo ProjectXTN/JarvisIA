@@ -32,6 +32,15 @@ OLLAMA_NUM_CTX = int(os.getenv("JARVIS_NUM_CTX", "4096"))
 # Tempo máximo de espera pela consulta aos documentos internos (RAG)
 RAG_TIMEOUT = 15
 NEWS_LLM_TIMEOUT = int(os.getenv("JARVIS_NEWS_LLM_TIMEOUT", "45"))
+# Limite para respostas com busca na web; depois disso o Jarvis desiste e avisa
+WEB_LLM_TIMEOUT = int(os.getenv("JARVIS_WEB_LLM_TIMEOUT", "60"))
+# Consulta aos documentos internos (RAG). Desligada até a Fase 5: o índice só
+# tem um arquivo de teste e a consulta carrega o modelo de embeddings na GPU,
+# o que empurrava parte do modelo principal para a CPU.
+RAG_ENABLED = os.getenv("JARVIS_RAG", "0") == "1"
+# Abrir o Stable Diffusion junto com o Jarvis. Desligado: ele ocupa a GPU que o
+# modelo principal precisa; agora abre só quando você pede uma imagem.
+SD_AUTOSTART = os.getenv("JARVIS_SD_AUTOSTART", "0") == "1"
 
 # === Modelos da Fase 2 (podem ser trocados no .env) ===
 # Escolha de 18/11/2026 (logs/fase2_modelos.json, GPU inteira):

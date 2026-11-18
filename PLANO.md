@@ -301,3 +301,14 @@ Teste com a GPU inteira, em `logs/fase2_modelos.json`:
 - **Reserva de código:** `qwen3.8:27b`, usada só quando o principal recusa. Os dois não cabem juntos nos 24 GB; quando a reserva é chamada, o Ollama troca os modelos (alguns segundos a mais nesse caso).
 - Ressalva: são cinco perguntas, uma de cada tipo. Se o Gemma errar com frequência em uso real, dá para inverter no `.env` (`JARVIS_MODEL` e `JARVIS_MODEL_CODE`) sem mexer no código.
 - `tests/benchmark_ollama.py` não grava mais o aviso fixo "AION 2 aberto"; use `--note` quando houver algo a registrar.
+
+### 2026-11-18 — Travamento em "novidades sobre IA hoje"
+
+Sintoma: notícias responderam em 1 s, mas a pergunta seguinte ficou mais de 90 s esperando o `gemma4:26b`.
+
+- Hipótese: o caminho geral consultava o RAG, que carrega o modelo de embeddings no Ollama. Com o Stable Diffusion aberto ocupando a GPU, o Gemma (18 GB) não cabia mais inteiro e parte foi para a CPU. Mesmo sintoma do primeiro teste do Qwen (2 tokens/s). Confirmar com `ollama ps` durante a espera.
+- **RAG desligado por padrão** (`JARVIS_RAG=0`) até a Fase 5: o índice só tem `teste.txt`.
+- **Stable Diffusion não abre mais com o Jarvis** (`JARVIS_SD_AUTOSTART=0`); abre ao pedir uma imagem, com aviso de que leva cerca de um minuto.
+- **Limite de 60 s** para respostas com busca web (`JARVIS_WEB_LLM_TIMEOUT`); depois disso ele avisa que não conseguiu responder.
+- **"Novidades" e "últimas sobre"** vão para o caminho rápido de notícias (três manchetes da Brave e resumo curto).
+- 33 testes de regressão passando; falta repetir o teste por voz.

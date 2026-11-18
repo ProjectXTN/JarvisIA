@@ -282,6 +282,29 @@ class CodeRequestTest(unittest.TestCase):
             self.assertTrue(is_code_request(phrase), phrase)
 
 
+class WebPathTest(unittest.TestCase):
+    def test_novidades_vao_para_o_caminho_de_noticias(self):
+        from brain.websearch.news import is_news_request
+
+        self.assertTrue(is_news_request("e falo sobre as novidades e tecnologias sobre ia hoje"))
+        self.assertTrue(is_news_request("quais as últimas sobre o AION 2"))
+        self.assertFalse(is_news_request("informações sobre a classe ranger"))
+
+    def test_busca_web_tem_limite_proprio(self):
+        self.assertEqual(memory._read_timeout("web")[1], min(memory.OLLAMA_TIMEOUT[1], memory.WEB_LLM_TIMEOUT))
+        self.assertEqual(memory._read_timeout(None), memory.OLLAMA_TIMEOUT)
+
+    def test_rag_desligado_nao_e_consultado(self):
+        from brain.pipeline import super_jarvis
+
+        with mock.patch.object(super_jarvis, "RAG_ENABLED", False), \
+             mock.patch.object(super_jarvis, "search_web", return_value=("texto", "fonte")), \
+             mock.patch.object(super_jarvis, "query_rag", side_effect=AssertionError("RAG chamado")), \
+             mock.patch.object(super_jarvis, "llama_query", return_value="ok") as llm:
+            self.assertEqual(super_jarvis.super_jarvis_query("explique a classe ranger"), "ok")
+        self.assertEqual(llm.call_args.kwargs["mode"], "web")
+
+
 class HandlerFlowTest(unittest.TestCase):
     def test_comando_que_devolve_false_nao_encerra(self):
         # "atualize o sistema" casa com a chave "atualize", mas o comando de

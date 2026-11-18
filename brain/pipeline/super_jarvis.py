@@ -2,7 +2,7 @@ from brain.websearch.websearch import search_web
 from brain.rag.query_rag import query_rag
 from concurrent.futures import ThreadPoolExecutor
 from brain.memory.memory import llama_query, DEFAULT_MODEL, memory_context, remember_turn
-from core.settings import RAG_TIMEOUT
+from core.settings import RAG_TIMEOUT, RAG_ENABLED
 from brain.websearch.news import is_news_request, news_response
 
 _rag_pool = ThreadPoolExecutor(max_workers=1)
@@ -39,15 +39,16 @@ def super_jarvis_query(user_prompt, lang="pt", conversation=False):
     if is_news_request(user_prompt):
         return news_response(user_prompt, lang=lang, conversation=conversation)
     web_context, web_sources = search_web(user_prompt)
-    print("[RAG] Consultando documentos internos...")
-    try:
-        local_context = _rag_pool.submit(query_rag, user_prompt).result(
-            timeout=RAG_TIMEOUT
-        )
-    except Exception as e:
-        # Sem índice, sem modelo de embeddings ou demorou demais: segue só com a web
-        print(f"[RAG] Indisponível, seguindo sem documentos internos: {e!r}")
-        local_context = ""
+    local_context = ""
+    if RAG_ENABLED:
+        print("[RAG] Consultando documentos internos...")
+        try:
+            local_context = _rag_pool.submit(query_rag, user_prompt).result(
+                timeout=RAG_TIMEOUT
+            )
+        except Exception as e:
+            # Sem índice, sem modelo de embeddings ou demorou demais: segue só com a web
+            print(f"[RAG] Indisponível, seguindo sem documentos internos: {e!r}")
     pt = PROMPT_TEMPLATES.get(lang, PROMPT_TEMPLATES["en"])
 
     prompt = (
@@ -59,7 +60,7 @@ def super_jarvis_query(user_prompt, lang="pt", conversation=False):
         f"{pt['answer_instruction']}"
     )
 
-    resposta = llama_query(prompt, model=DEFAULT_MODEL, direct_mode=True, lang=lang,
+    resposta = llama_query(prompt, model=DEFAULT_MODEL, direct_mode=True, lang=lang, mode="web",
                            history=list(memory_context) if conversation else [], remember=False)
     if conversation and resposta:
         remember_turn(user_prompt, resposta)

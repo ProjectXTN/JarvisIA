@@ -1,6 +1,15 @@
 import re
 from brain.audio import say
 from modules.stable_diffusion_controller import StableDiffusionGenerator
+from core.initializer import start_stable_diffusion
+import requests
+
+
+def is_stable_diffusion_running():
+    try:
+        return requests.get("http://127.0.0.1:7860/sdapi/v1/options", timeout=3).status_code == 200
+    except requests.exceptions.RequestException:
+        return False
 
 # NO CORPO DA FUNÇÃO - CERTO
 def dispatch_image_command(query):
@@ -22,6 +31,11 @@ def dispatch_image_command(query):
                 if not cleaned_prompt:
                     say("Você precisa me dizer o que deseja que eu desenhe!")
                     return True
+
+                # O Stable Diffusion não abre mais junto com o Jarvis
+                if not is_stable_diffusion_running():
+                    say("Abrindo o gerador de imagens. Isso leva cerca de um minuto.")
+                    start_stable_diffusion()
 
                 generator = StableDiffusionGenerator()
                 final_path = generator.generate_image(cleaned_prompt)

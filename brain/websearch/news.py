@@ -9,7 +9,10 @@ from core.settings import NEWS_LLM_TIMEOUT
 
 
 def is_news_request(query):
-    return bool(re.search(r'\b(not[ií]cias?|manchetes?|news|headlines?|actualités?)\b', query, re.I))
+    """Notícias, manchetes ou novidades de um assunto ("novidades sobre IA hoje")."""
+    return bool(re.search(
+        r'\b(not[ií]cias?|manchetes?|novidades?|[uú]ltimas (sobre|de|do|da)|news|headlines?|actualités?|nouveautés?)\b',
+        query, re.I))
 
 
 def _plain(value, limit):
