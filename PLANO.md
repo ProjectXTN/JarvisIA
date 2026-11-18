@@ -3,7 +3,7 @@
 Acompanhamento do trabalho no branch `refactor-2026`.
 `[x]` = feito · `[ ]` = pendente · `[-]` = descartado. A coluna "Onde" indica os arquivos alterados.
 
-Última atualização: 2026-11-17
+Última atualização: 2026-11-18
 
 ## Fase 0 — Preparar o terreno
 
