@@ -18,7 +18,7 @@ from commands.commands_avatar import generate_avatar, avatar_view_commands
 from commands.commands_systeme import system_command, shutdown_command
 from brain.weatherAPI.weatherAPI import handle_weather_query
 from brain.storage.file_saver import save_response_to_file, should_save_to_file
-from brain.memory.memory import llama_query, DEFAULT_MODEL_CODE
+from brain.memory.memory import llama_query, memory_context, remember_turn
 from brain.pipeline.super_jarvis import super_jarvis_query
 from brain.utils.querySensitive import is_query_time_sensitive
 from brain.utils.utils import is_code_request
@@ -111,25 +111,16 @@ def generate_response(query, lang="pt", api=False):
 
     try:
         if is_code_request(query):
-            if api:
-                print("[DEBUG] Pedido de código detectado: usando Codestral.")
-                lang_instruction = markdown_instruction.get(
-                    lang, markdown_instruction["en"]
-                )
-                prompt = f"{lang_instruction}\n{query}"
-                response = llama_query(prompt, model=DEFAULT_MODEL_CODE, lang=lang)
-
-                # Make sure markdown comes
-                if response and "```" not in response:
-                    response = f"```python\n{response.strip()}\n```"
-            else:
-                response = llama_query(query, model=DEFAULT_MODEL_CODE, lang=lang)
+            response = llama_query(query, mode="code", lang=lang,
+                                   history=[] if api else list(memory_context), remember=False)
+            if response and not api:
+                remember_turn(query, response)
         elif is_query_time_sensitive(query):
             print("[DEBUG] Query depends on current data. Using RAG+Web.")
-            response = super_jarvis_query(query, lang=lang)
+            response = super_jarvis_query(query, lang=lang, conversation=not api)
         else:
             print("[DEBUG] Timeless query. Using only LLaMA memory.")
-            response = llama_query(query, lang=lang, mode="site")
+            response = llama_query(query, lang=lang, mode="site" if api else None)
     except Exception as e:
         # Falha de rede, busca ou RAG não pode derrubar o Jarvis
         print(f"[ERROR] Falha ao gerar resposta: {e}")
@@ -174,11 +165,8 @@ def process_command(query, lang="pt"):
         return True
 
     # 🔁 Fallback pipeline RAG+Web (super_jarvis_query)
-    response = response_cache.get(query)
-    if not response:
-        response = generate_response(query, lang=lang)
-        if response:
-            response_cache[query] = response
+    # Respostas de conversa dependem do histórico; cache só por texto é incorreto.
+    response = generate_response(query, lang=lang)
 
     if response:
         log_interaction(query, response)

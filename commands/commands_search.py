@@ -2,6 +2,7 @@ import re
 from brain.audio import say
 from brain.websearch.websearch import search_web
 from brain.memory.memory import llama_query
+from brain.websearch.news import is_news_request, news_response
 
 
 def summarize_search(question, content, sources=""):
@@ -33,6 +34,12 @@ def execute_search(query, speak=True):
             if speak:
                 say("O que você quer que eu pesquise?")
             return None, None
+
+        if is_news_request(cleaned):
+            summary = news_response(cleaned, conversation=speak)
+            if speak:
+                say(summary)
+            return summary, "Brave Search"
 
         response = search_web(cleaned)
 

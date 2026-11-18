@@ -1,8 +1,9 @@
 from brain.websearch.websearch import search_web
 from brain.rag.query_rag import query_rag
 from concurrent.futures import ThreadPoolExecutor
-from brain.memory.memory import llama_query, DEFAULT_MODEL
+from brain.memory.memory import llama_query, DEFAULT_MODEL, memory_context, remember_turn
 from core.settings import RAG_TIMEOUT
+from brain.websearch.news import is_news_request, news_response
 
 _rag_pool = ThreadPoolExecutor(max_workers=1)
 
@@ -34,7 +35,9 @@ PROMPT_TEMPLATES = {
 }
 
 
-def super_jarvis_query(user_prompt, lang="pt"):
+def super_jarvis_query(user_prompt, lang="pt", conversation=False):
+    if is_news_request(user_prompt):
+        return news_response(user_prompt, lang=lang, conversation=conversation)
     web_context, web_sources = search_web(user_prompt)
     print("[RAG] Consultando documentos internos...")
     try:
@@ -56,5 +59,8 @@ def super_jarvis_query(user_prompt, lang="pt"):
         f"{pt['answer_instruction']}"
     )
 
-    resposta = llama_query(prompt, model=DEFAULT_MODEL, direct_mode=True, lang=lang)
+    resposta = llama_query(prompt, model=DEFAULT_MODEL, direct_mode=True, lang=lang,
+                           history=list(memory_context) if conversation else [], remember=False)
+    if conversation and resposta:
+        remember_turn(user_prompt, resposta)
     return resposta

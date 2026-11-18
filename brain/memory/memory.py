@@ -1,145 +1,116 @@
+"""Cliente de conversa Ollama; apenas a voz compartilha memória."""
+import re
+import threading
+import time
 import requests
 from brain.utils.utils import clean_output
 from brain.learning.personal_responses import check_personal_answer
-from core.settings import (
-    OLLAMA_HOST,
-    OLLAMA_TIMEOUT,
-    OLLAMA_KEEP_ALIVE,
-    DEFAULT_MODEL,
-    DEFAULT_MODEL_HIGH,
-    DEFAULT_MODEL_CODE,
-)
+from core.settings import (OLLAMA_HOST, OLLAMA_TIMEOUT, OLLAMA_KEEP_ALIVE,
+    OLLAMA_NUM_CTX, NEWS_LLM_TIMEOUT, DEFAULT_MODEL, DEFAULT_MODEL_HIGH, DEFAULT_MODEL_CODE)
 
-
-# === Contexto de memória para manter a conversação ===
 memory_context = []
 MAX_CONTEXT = 5
-
-# === Available models: definidos em core/settings.py ===
-
-# === HTTP session for active Ollama Server ===
+_history_lock = threading.RLock()
 session = requests.Session()
-
-# === System prompt padrão (modo local) ===
 system_prompt = (
-    "Você é Jarvis, um assistente de inteligência artificial altamente preciso, confiável e direto. "
-    "Antes de responder a qualquer pergunta, realize uma reflexão interna adequada ao nível de complexidade: "
-    "- Para perguntas simples, faça uma reflexão rápida. "
-    "- Para perguntas intermediárias, desenvolva uma reflexão de profundidade média, organizando claramente as ideias. "
-    "- Para perguntas complexas, realize uma reflexão profunda, considerando todas as variáveis relevantes. "
-    "Essa reflexão deve ser feita de forma silenciosa e não deve ser mostrada ao usuário; ela serve apenas para garantir a qualidade e a precisão da resposta. "
-    "Seu papel é fornecer respostas claras, informativas e bem estruturadas. "
-    "Evite respostas vagas, piadas ou firulas. Priorize a profundidade, concisão e utilidade da informação. "
-    "Sempre responda em português, com linguagem formal e objetiva. "
-    "Nunca mencione que é uma inteligência artificial ou qualquer detalhe da sua programação; apenas entregue a resposta com autoridade e clareza."
+    "Você é Jarvis, o assistente pessoal de Pedro. Responda para uma conversa por voz: "
+    "frases naturais, claras e curtas, normalmente de duas a quatro frases. "
+    "Seja direto e prestativo, com humor discreto quando couber. "
+    "Não use títulos, listas ou Markdown na fala. Detalhe quando solicitado. "
+    "Admita incertezas; não invente fatos, fontes, lembranças nem ações executadas. "
+    "Só afirme que pesquisou ou executou algo quando houver resultados de ferramentas. "
+    "Ao fornecer código, preserve a sintaxe e a formatação em blocos de código."
 )
-
-site_system_prompt = (
-    "You are Jarvis, the personal assistant like Jarvis from Pedro. "
-    "Respond with wit, slight sarcasm, and intelligent humor. "
-    "Your answers should be quick, engaging, and may include clever jokes or subtle irony, just like a true genius-billionaire-playboy-philanthropist's assistant would do. "
-    "Keep the responses classy and never let sarcasm become offensive or rude. "
-    "Be charming, brilliant, and slightly cocky — but always in a likable way. "
-    "Always reply in the same language the user uses, whether it's English, Portuguese, French or any other."
-)
-
-terminal_prompt = (
-    "Você é Jarvis, uma inteligência artificial sarcástica e direta, respondendo via terminal. "
-    "Seu estilo é hacker, debochado e levemente cínico, mas sempre afiado e inteligente. "
-    "Use frases curtas. Seja provocativo, mas útil. "
-    "Evite elogios automáticos, floreios ou discursos longos. "
-    "Você responde ao que o usuário digita, como se estivesse trocando mensagens no terminal. "
-    "Zombe quando for apropriado, mas entregue respostas úteis quando necessário. "
-    "Fale no idioma do usuário. E lembre-se: menos é mais. "
-)
+site_system_prompt = terminal_prompt = system_prompt
 
 
-# === Keywords that trigger deep reflection mode ===
-TRIGGER_WORDS = [
-    "faça uma reflexão",
-    "elabore uma reflexão",
-    "pense profundamente",
-    "explique seu raciocínio",
-    "demonstre seu pensamento",
-    "mostre o processo de pensamento",
-]
+def remember_turn(prompt, response):
+    if prompt and response:
+        with _history_lock:
+            memory_context.append((prompt[:6000], response[:6000]))
+            del memory_context[:-MAX_CONTEXT]
 
 
-def detect_reflection_request(prompt):
-    """Detect if the user explicitly asked for a deep reflection."""
-    prompt_lower = prompt.lower()
-    return any(trigger in prompt_lower for trigger in TRIGGER_WORDS)
+def clear_history():
+    with _history_lock:
+        memory_context.clear()
 
 
-def llama_query(prompt, model=None, direct_mode=False, mode=None, lang="pt"):
-    """Generate response using Ollama Server with different prompt styles based on the mode.
+def _is_refusal(text):
+    if not text or "```" in text:
+        return False
+    return bool(re.match(
+        r"^(?:desculpe[,.: ]*|sinto muito[,.: ]*|sorry[,.: ]*)?"
+        r"(?:não posso (?:ajudar|fornecer|criar|gerar)|não consigo (?:criar|gerar)|"
+        r"i (?:cannot|can't) (?:help|provide|create)|je ne peux pas)",
+        text.strip(), re.IGNORECASE))
 
-    Devolve o texto da resposta, ou None se o Ollama falhar. Quem chama deve
-    tratar None como "sem resposta" (nunca falar, logar ou guardar em cache).
-    """
 
-    temperature = 1.1 if mode == "terminal" else 0.2
-
-    personal_answer = check_personal_answer(prompt)
-    if personal_answer:
-        print("[🧠 PERSONAL] Resposta interceptada:", personal_answer)
-        return personal_answer
-
-    # Só define o model se NÃO foi explicitamente passado:
-    if model is None:
-        if detect_reflection_request(prompt):
-            model = DEFAULT_MODEL_HIGH
-        else:
-            model = DEFAULT_MODEL
-
-    try:
-        if mode == "site":
-            language_instructions = {
-                "pt": "Sempre responda em português brasileiro.",
-                "fr": "Répondez toujours en français.",
-                "en": "Always reply in English.",
-            }
-            extra = language_instructions.get(lang, "")
-            final_prompt = f"{site_system_prompt}\n{extra}\nUsuário: {prompt}\nJarvis:"
-        elif mode == "terminal":
-            final_prompt = f"{terminal_prompt}\nUsuário: {prompt}\nJarvis:"
-        elif direct_mode:
-            final_prompt = prompt
-        else:
-            history = "\n".join(
-                [f"Usuário: {p}\nJarvis: {r}" for p, r in memory_context[-MAX_CONTEXT:]]
-            )
-            final_prompt = f"{system_prompt}\n{history}\nUsuário: {prompt}\nJarvis:"
-
-        print(f"[LLM] Gerando resposta com {model} ({len(final_prompt)} caracteres)...")
-        response = session.post(
-            f"{OLLAMA_HOST}/api/generate",
-            json={
-                "model": model,
-                "prompt": final_prompt,
-                "stream": False,
-                "keep_alive": OLLAMA_KEEP_ALIVE,
-                # O Ollama só lê a temperatura dentro de "options"
-                "options": {"temperature": temperature},
-            },
-            timeout=OLLAMA_TIMEOUT,
-        )
-        response.raise_for_status()
-
-        raw_response = response.json()["response"]
-
-        if model == DEFAULT_MODEL_CODE or mode == "code":
-            output = raw_response
-        else:
-            output = clean_output(raw_response)
-
-        if not direct_mode and mode != "site":
-            memory_context.append((prompt, output))
-            if len(memory_context) > MAX_CONTEXT:
-                memory_context.pop(0)
-
-        return output
-
-    except Exception as e:
-        print(f"[ERROR] Falha ao gerar resposta no Ollama ({model}): {e}")
-        return None
+def llama_query(prompt, model=None, direct_mode=False, mode=None, lang="pt",
+                history=None, remember=None, images=None):
+    """Texto ou None. Resumos/API não alteram a conversa; history isola sessões."""
+    use_voice_history = not direct_mode and mode not in ("site", "code", "vision") and history is None
+    if remember is None:
+        remember = use_voice_history
+    personal = check_personal_answer(prompt) if not direct_mode and mode != "code" else None
+    if personal:
+        if remember:
+            remember_turn(prompt, personal)
+        return personal
+    instruction = {"pt": "Responda em português brasileiro.",
+                   "fr": "Répondez en français.", "en": "Reply in English."}.get(lang, "Responda no idioma do usuário.")
+    messages = [{"role": "system", "content": system_prompt + " " + instruction}]
+    if history is None:
+        with _history_lock:
+            turns = list(memory_context) if use_voice_history else []
+    else:
+        turns = list(history)
+    for question, answer in turns[-MAX_CONTEXT:]:
+        messages.extend([{"role": "user", "content": question},
+                         {"role": "assistant", "content": answer}])
+    user_message = {"role": "user", "content": prompt}
+    if images:
+        user_message["images"] = images
+    messages.append(user_message)
+    chosen = model or DEFAULT_MODEL
+    candidates = [chosen]
+    if mode == "code" and chosen != DEFAULT_MODEL_CODE:
+        candidates.append(DEFAULT_MODEL_CODE)
+    original_refusal = None
+    for index, candidate in enumerate(candidates):
+        started = time.monotonic()
+        finished = threading.Event()
+        def progress(model_name=candidate, stop=finished, since=started):
+            while not stop.wait(10):
+                print(f"[LLM] {model_name}: aguardando há {time.monotonic()-since:.0f}s...", flush=True)
+        threading.Thread(target=progress, daemon=True).start()
+        try:
+            print(f"[LLM] Gerando resposta com {candidate} ({sum(len(m['content']) for m in messages)} caracteres)...", flush=True)
+            response = session.post(
+                f"{OLLAMA_HOST}/api/chat",
+                json={"model": candidate, "messages": messages, "stream": False,
+                      "think": False, "keep_alive": OLLAMA_KEEP_ALIVE,
+                      "options": {"temperature": 0.2, "num_ctx": OLLAMA_NUM_CTX,
+                                  "num_predict": 2048 if mode == "code" else (192 if mode == "news" else 512)}},
+                timeout=(OLLAMA_TIMEOUT[0], min(OLLAMA_TIMEOUT[1], NEWS_LLM_TIMEOUT)) if mode == "news" else OLLAMA_TIMEOUT)
+            response.raise_for_status()
+            print(f"[LLM] Resposta recebida em {time.monotonic()-started:.1f}s.")
+            raw = response.json()["message"]["content"].strip()
+            if not raw:
+                return original_refusal
+            if mode == "code" and index == 0 and len(candidates) > 1 and _is_refusal(raw):
+                original_refusal = raw
+                print("[LLM] Recusa explícita; tentando o modelo reserva de código.")
+                continue
+            output = raw if mode == "code" else clean_output(raw)
+            if not output:
+                return None
+            if remember:
+                remember_turn(prompt, output)
+            return output
+        except Exception as error:
+            print(f"[ERROR] Falha no Ollama ({candidate}): {error}")
+            return original_refusal
+        finally:
+            finished.set()
+    return None

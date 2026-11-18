@@ -9,6 +9,8 @@ import tempfile
 import sys
 import webrtcvad
 import collections
+import queue
+from brain.playback import InterruptRecognizer, monitor_playback, finish_player
 import threading
 import time
 import requests
@@ -86,88 +88,78 @@ if INTERRUPT_ENABLED:
 def _transcribe_array(whisper_model, audio_int16, prompt=None):
     """Transcreve áudio 16 kHz (int16) direto da memória."""
     audio = audio_int16.reshape(-1).astype(np.float32) / 32768.0
-    with transcribe_lock:
-        segments, _ = whisper_model.transcribe(
-            audio,
-            language="pt",
-            beam_size=1,
-            vad_filter=False,
-            initial_prompt=prompt,
-        )
-        return "".join(s.text for s in segments).strip()
+    # Este modelo pertence exclusivamente ao worker de interrupção.
+    # Não pode segurar o lock do Whisper principal após o fim da reprodução.
+    segments, _ = whisper_model.transcribe(
+        audio, language="pt", beam_size=1, vad_filter=False, initial_prompt=prompt,
+    )
+    return "".join(s.text for s in segments).strip()
 
 
 _STOP_PROMPT = "Pare. Para. Pode parar. Parar de falar. Chega. Já entendi. Jarvis."
 
 
-def _play_interruptible(path, spoken_text):
-    """Toca o áudio e escuta o microfone ao mesmo tempo.
+_interrupt_recognizer = InterruptRecognizer(
+    lambda blocks: _transcribe_array(_interrupt_model, np.concatenate(blocks), _STOP_PROMPT)
+)
 
-    Devolve True se você pediu para parar. Só frases de parar interrompem
-    (ver brain/speech_text.py); o resto do que você disser enquanto ele fala
-    é ignorado.
-    """
+
+def _play_interruptible(path, spoken_text):
+    """O fim do player devolve o controle mesmo se o Whisper estiver ocupado."""
     global current_audio_process, pending_command
+    stream = None
     proc = subprocess.Popen(
         ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", path],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
     )
     current_audio_process = proc
-
-    if not INTERRUPT_ENABLED or _interrupt_model is None:
-        proc.wait()
-        return False
-
-    fs, frame = 16000, 480  # blocos de 30 ms
+    frames = queue.Queue(maxsize=100)
+    fs, frame = 16000, 480
     vad = webrtcvad.Vad(3)
+    recognizer = None
+    timeout = max(20.0, min(180.0, len(spoken_text) / 8.0 + 15.0))
+
+    def capture(indata, count, timing, status):
+        try:
+            frames.put_nowait(indata.copy())
+        except queue.Full:
+            pass
+
     try:
-        stream = sd.InputStream(samplerate=fs, channels=1, dtype="int16", blocksize=frame)
-        stream.start()
-    except Exception as e:
-        print(f"⚠️ Microfone indisponível durante a fala: {e}")
-        proc.wait()
+        if INTERRUPT_ENABLED and _interrupt_model is not None:
+            try:
+                stream = sd.InputStream(samplerate=fs, channels=1, dtype="int16",
+                                        blocksize=frame, callback=capture)
+                stream.start()
+                recognizer = _interrupt_recognizer
+            except Exception as error:
+                print(f"[AUDIO] Microfone indisponível durante a fala: {error}")
+        heard = monitor_playback(
+            proc, frames, lambda block: vad.is_speech(block.tobytes(), fs),
+            recognizer, is_interrupt, spoken_text, timeout,
+        )
+        if heard:
+            print(f"[AUDIO] Interrompido: {heard}")
+            command = interrupt_remainder(heard)
+            if command:
+                pending_command = command
+            return True
         return False
-
-    segment, speech, silence = [], 0, 0
-    interrupted = False
-    try:
-        while proc.poll() is None:
-            block, _ = stream.read(frame)
-            if vad.is_speech(block.tobytes(), fs):
-                segment.append(block)
-                speech += 1
-                silence = 0
-            elif segment:
-                segment.append(block)
-                silence += 1
-            else:
-                continue
-
-            # Avalia quando a frase termina (0,3 s de silêncio) ou passa de 2,5 s
-            if silence < 10 and len(segment) < 84:
-                continue
-            if speech >= 6:  # pelo menos 0,18 s de voz
-                heard = _transcribe_array(
-                    _interrupt_model, np.concatenate(segment), _STOP_PROMPT
-                )
-                if heard and is_interrupt(heard, spoken_text):
-                    proc.terminate()
-                    interrupted = True
-                    print(f"\n✋ Interrompido: {heard}")
-                    command = interrupt_remainder(heard)
-                    if command:
-                        pending_command = command
-                    break
-                if heard:
-                    print(f"[DEBUG] Ouvido durante a fala (ignorado): {heard}")
-            segment, speech, silence = [], 0, 0
     finally:
-        stream.stop()
-        stream.close()
-        proc.wait()
-        current_audio_process = None
-    return interrupted
+        try:
+            finish_player(proc)
+        finally:
+            current_audio_process = None
+            if stream is not None:
+                try:
+                    stream.abort()
+                except Exception as error:
+                    print(f"[AUDIO] Erro ao parar microfone: {error}")
+                try:
+                    stream.close()
+                except Exception as error:
+                    print(f"[AUDIO] Erro ao fechar microfone: {error}")
+            print("[AUDIO] Reprodução encerrada; voltando à escuta.")
 
 
 # === Main speech function with GUI support ===
@@ -263,15 +255,18 @@ def say(text, lang="pt-BR", gender="MALE"):
         audio_content = base64.b64decode(response.json()["audioContent"])
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as out:
             out.write(audio_content)
-            out.flush()
-            avatar.speak_start(out.name, clean_text)  # boca do avatar segue o áudio
+            audio_path = out.name
+        # Fechar antes de ffplay/ffmpeg lerem o arquivo no Windows.
+        try:
+            avatar.speak_start(audio_path, clean_text)
+            if _play_interruptible(audio_path, clean_text):
+                silenced = True
+        finally:
+            avatar.speak_stop()
             try:
-                if _play_interruptible(out.name, clean_text):
-                    silenced = True
-            finally:
-                avatar.speak_stop()
-
-        os.remove(out.name)
+                os.remove(audio_path)
+            except OSError as error:
+                print(f"[AUDIO] Não consegui remover o áudio temporário: {error}")
 
     else:
         print(f"❌ Erro: {response.status_code}")
@@ -345,7 +340,10 @@ def listen():
         return ""
     finally:
         if stream:
-            stream.stop()
+            try:
+                stream.stop()
+            finally:
+                stream.close()
 
     audio_np = np.concatenate(audio, axis=0)
     average_volume = np.abs(audio_np).mean()

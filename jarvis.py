@@ -10,7 +10,7 @@ from jarvis_commands import process_command
 from commands.commands_systeme import shutdown_command
 from core.initializer import (
     is_already_running,
-    start_llava,
+    start_ollama,
     remove_lock,
     passive_mode,
     start_stable_diffusion,
@@ -64,7 +64,7 @@ def main():
     if AVATAR_AUTO_OPEN:
         avatar.show()
 
-    start_llava()
+    start_ollama()
     start_stable_diffusion()
 
     # Hello Pedro! =)

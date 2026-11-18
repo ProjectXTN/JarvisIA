@@ -7,7 +7,7 @@ import threading
 import psutil
 from brain.audio import listen
 from brain.utils.utils import normalize_text, sounds_like_jarvis
-from core.settings import LOCK_FILE, OLLAMA_HOST, DEFAULT_MODEL, OLLAMA_KEEP_ALIVE
+from core.settings import LOCK_FILE, OLLAMA_HOST, DEFAULT_MODEL, OLLAMA_KEEP_ALIVE, OLLAMA_NUM_CTX
 stable_diffusion_process = None
 stable_diffusion_pid = None
 
@@ -77,7 +77,7 @@ def remove_lock():
             pass
 
 
-def start_llava():
+def start_ollama():
     try:
         requests.get(OLLAMA_HOST, timeout=3)
     except requests.exceptions.RequestException:
@@ -87,31 +87,38 @@ def start_llava():
         )
         time.sleep(5)
 
-    # Só o modelo de conversa é pré-carregado. Antes eram carregados também o
-    # modelo de visão de 90B e o llama3.3 de 70B (cerca de 100 GB), que não
-    # cabem na GPU e deixavam a primeira pergunta esperando minutos na fila.
-    # Os outros modelos agora carregam sozinhos quando forem usados.
-    models = subprocess.run(["ollama", "list"], capture_output=True, text=True)
-    if DEFAULT_MODEL not in models.stdout:
-        print(f"⬇️ Downloading model {DEFAULT_MODEL}...")
-        subprocess.run(["ollama", "pull", DEFAULT_MODEL])
-
+    # Consulta o mesmo servidor HTTP usado na inferência, nunca outro CLI/host.
+    try:
+        response = requests.get(f"{OLLAMA_HOST}/api/tags", timeout=5)
+        response.raise_for_status()
+        names = {m["name"] for m in response.json()["models"]}
+        if DEFAULT_MODEL not in names and DEFAULT_MODEL + ":latest" not in names:
+            print(f"[OLLAMA] Modelo {DEFAULT_MODEL} não instalado em {OLLAMA_HOST}.")
+            return
+    except Exception as error:
+        print(f"[OLLAMA] Não consegui consultar modelos: {error}")
+        return
     threading.Thread(target=warmup_model, args=(DEFAULT_MODEL,), daemon=True).start()
+
+
+# Compatibilidade para consumidores antigos.
+start_llava = start_ollama
 
 
 def warmup_model(model):
     """Carrega o modelo na GPU (prompt vazio) e o mantém carregado."""
-    print(f"🔥 Carregando o modelo {model}...")
+    print(f"[OLLAMA] Carregando o modelo {model}...")
     start = time.time()
     try:
         requests.post(
-            f"{OLLAMA_HOST}/api/generate",
-            json={"model": model, "keep_alive": OLLAMA_KEEP_ALIVE},
+            f"{OLLAMA_HOST}/api/chat",
+            json={"model": model, "messages": [], "stream": False, "think": False,
+                  "options": {"num_ctx": OLLAMA_NUM_CTX}, "keep_alive": OLLAMA_KEEP_ALIVE},
             timeout=(5, 600),
         ).raise_for_status()
-        print(f"✅ Modelo {model} pronto em {time.time() - start:.1f}s.")
+        print(f"[OLLAMA] Modelo {model} pronto em {time.time() - start:.1f}s.")
     except Exception as e:
-        print(f"⚠️ Não consegui pré-carregar {model}: {e}")
+        print(f"[OLLAMA] Não consegui pré-carregar {model}: {e}")
 
 
 def passive_mode():

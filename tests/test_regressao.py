@@ -311,11 +311,11 @@ class LlamaQueryTest(unittest.TestCase):
 
     def test_temperatura_vai_em_options_e_tem_timeout(self):
         reply = mock.Mock()
-        reply.json.return_value = {"response": "Olá"}
+        reply.json.return_value = {"message": {"content": "Olá"}}
         with mock.patch.object(memory.session, "post", return_value=reply) as post:
             self.assertEqual(memory.llama_query("oi", mode="site"), "Olá")
         kwargs = post.call_args.kwargs
-        self.assertEqual(kwargs["json"]["options"], {"temperature": 0.2})
+        self.assertEqual(kwargs["json"]["options"]["temperature"], 0.2)
         self.assertNotIn("temperature", kwargs["json"])
         self.assertIsNotNone(kwargs["timeout"])
 

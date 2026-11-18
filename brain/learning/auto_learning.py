@@ -22,7 +22,7 @@ def generate_dynamic_topics():
         "Liste 5 tópicos interessantes para aprender, sobre qualquer área (história, tecnologia, arte, ciências humanas, filosofia, negócios, etc). "
         "Cada tópico deve ter no máximo 3 palavras. Não inclua explicações, apenas a lista simples separada por vírgulas."
     )
-    response = llama_query(prompt)
+    response = llama_query(prompt, direct_mode=True)
 
     if not isinstance(response, str):
         return []

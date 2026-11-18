@@ -29,12 +29,12 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 
 - [ ] 15. Baixar `qwen3.8:27b` e `gemma4:26b`, comparar em português e escolher
 - [ ] 16. Remover `llama3.2`, `llama3.3`, `codestral`, `llava`, `llama3.2-vision:90b`
-- [ ] 17. Reescrever `llama_query` para `/api/chat` (system, histórico, `options`, `keep_alive`, `think: false`)
-- [ ] 18. Unificar os prompts de sistema num "Jarvis de voz"
-- [ ] 19. Ligar o histórico de conversa no fluxo de voz
-- [x] 20. Trocar `start_llava()` por um aquecimento HTTP do modelo escolhido (feito para o modelo atual; trocar o nome quando o novo for escolhido)
-- [ ] 21. Visão: enviar imagem em base64 pelo `/api/chat`
-- [ ] 22. Modelo reserva de código quando o principal recusar
+- [x] 17. Reescrever `llama_query` para `/api/chat` (system, histórico, `options`, `keep_alive`, `think: false`)
+- [x] 18. Unificar os prompts de sistema num "Jarvis de voz"
+- [x] 19. Ligar o histórico de conversa no fluxo de voz
+- [x] 20. Trocar `start_llava()` por um aquecimento HTTP do modelo escolhido (HTTP /api/chat; Qwen configurado provisoriamente)
+- [x] 21. Visão: enviar imagem em base64 pelo `/api/chat`
+- [x] 22. Modelo reserva de código quando o principal recusar
 
 ## Fase 3 — Velocidade e naturalidade da voz
 
@@ -205,3 +205,66 @@ O modelo do Ollama não muda sozinho ao ler a internet: os pesos são fixos. O q
 - Modelo na GPU: `large-v3-turbo` (ouve e interrompe); na CPU continua o `medium`.
 - `import whisper` e `import torch` saíram do `audio.py`, o que também deixa a abertura mais rápida.
 - Pendente do Pedro: `venv\Scripts\python.exe -m pip install nvidia-cublas-cu12 "nvidia-cudnn-cu12==9.*"`.
+
+
+### 2026-11-17 - Fase 2: integração pronta; comparação aguardando Gemma
+
+Trabalho no branch `refactor-2026`. **A Fase 2 ainda não está inteiramente concluída.**
+
+- **Servidor confirmado:** Ollama `0.40.16`, em `http://127.0.0.1:11500`, conforme o `.env`. A porta 11434 não está em uso. O Qwen já estava instalado; o Gemma não constava em `/api/tags`.
+- **Modelos:** `qwen3.8:27b` como principal provisório, também para visão e perguntas complexas; `gemma4:26b` como reserva de código assim que o download terminar. Os nomes continuam configuráveis em `core/settings.py`/`.env`. Nenhum modelo antigo foi apagado: item 16 depende da validação dos substitutos.
+- **Chat (17–18):** `brain/memory/memory.py` usa `/api/chat`, mensagens system/user/assistant, `think: false`, `options`, `keep_alive`, limite de saída e um único prompt Jarvis de voz. Falhas retornam `None`; código preserva linhas e indentação. `JARVIS_NUM_CTX` controla o contexto (4096 por padrão), `JARVIS_OLLAMA_TIMEOUT` controla a espera (180 s por padrão).
+- **Histórico (19):** o fallback de voz passou a guardar cinco turnos. Respostas de busca web guardam a pergunta original, sem gravar os documentos recuperados. API, traduções, visão e geração autônoma de temas ficam isoladas. O cache por texto foi retirado da conversa por voz porque devolvia respostas antigas para perguntas dependentes do contexto. Pedidos de código recebem o histórico de voz e guardam o resultado final.
+- **Aquecimento (20):** `start_ollama()` consulta os modelos no mesmo servidor HTTP e aquece somente o principal, com o mesmo contexto da inferência. Não baixa modelos silenciosamente na abertura. `start_llava` permanece como alias de compatibilidade.
+- **Visão (21):** `jarvis_vision.py` lê a imagem e envia bytes em base64 em `messages[].images`; respeita a pergunta do usuário, limita o arquivo a 20 MB e devolve `None` em falhas de leitura/inferência.
+- **Reserva (22):** programação começa no principal e tenta a reserva uma única vez após recusa explícita. Respostas normais e erros de rede não acionam outro modelo. Se a reserva estiver ausente ou falhar, preserva a resposta original. Fluxo validado com testes simulados; validação real com Gemma ainda pendente.
+
+#### Teste real do Qwen
+
+Pedro confirmou que estava jogando AION 2 simultaneamente. Portanto, **os tempos não medem a velocidade com a GPU livre**. Testes iniciais em GPU automática excederam 180 s; não foi aplicado um ajuste permanente baseado nessa disputa de recursos. Para terminar a validação funcional durante o jogo, o script de teste usou `--num-gpu 32` e geração especulativa desligada somente nessa execução. A configuração normal do Jarvis mantém a alocação automática da GPU.
+
+| Caso | Resultado observado | Tempo total |
+| --- | --- | --- |
+| Português | Explicação correta do céu azul em duas frases | 44,73 s (13,79 s de carga) |
+| Cálculo | **Errou:** respondeu R$ 14,257; correto: 35/1000 × 109 + 0,447 = R$ 4,262 (R$ 4,26 arredondados) | 10,88 s |
+| Histórico | Recuperou corretamente “Aurora” e “76 milímetros” | 7,54 s |
+| Código | Gerou `soma_pares` com `sum(n for n in numeros if n % 2 == 0)` | 18,16 s |
+| Visão | Identificou corretamente um quadrado vermelho em imagem sintética enviada em base64 | 13,16 s |
+
+Resultados brutos em `logs/fase2_qwen.json`. Teste reproduzível: `venv\Scripts\python.exe -X utf8 -m tests.benchmark_ollama`. A opção `--num-gpu` só afeta o teste, não as configurações do aplicativo. Não declarar vencedor antes de comparar o Gemma; não confiar no cálculo de custos sem validação determinística.
+
+#### Download e próximos passos
+
+- Gemma: download iniciado pelo servidor configurado (aproximadamente 18 GB). Mantido em processo de segundo plano com `tests/pull_ollama_model.py gemma4:26b --benchmark`.
+- Acompanhar `logs/gemma4_download.log`; erros em `logs/gemma4_download_error.log`. Ao concluir, o processo testa português, cálculo, histórico, código e visão e grava `logs/fase2_gemma.json`. Esse processo não altera modelos escolhidos nem marca tarefas como concluídas automaticamente.
+- **Item 15 pendente:** terminar o download, conferir os resultados do Gemma, comparar e confirmar modelo principal/reserva. Os testes do Gemma usarão a configuração normal da GPU; repetir medidas de velocidade sem o jogo se for necessário compará-las.
+- **Item 16 pendente:** só remover os modelos antigos listados no item após confirmar os substitutos.
+- Teste completo com microfone/alto-falantes ainda não realizado nesta etapa. As alterações passam a valer na próxima inicialização do Jarvis.
+
+#### Validação automatizada
+
+42 testes: `tests.test_regressao` + `tests.test_fase2`, cobrindo erros, papéis de chat, histórico, isolamento da API, limite da memória, reserva de código, base64, aquecimento e cache de voz. No ambiente restrito do Codex/Windows, `TemporaryDirectory` com modo 0700 impediu acesso aos próprios diretórios de teste; a execução final usou um wrapper apenas de teste que cria esses diretórios com o modo padrão 0777. Nenhum ajuste de permissões foi aplicado ao aplicativo. Executar normalmente no terminal local: `venv\Scripts\python.exe -X utf8 -m unittest tests.test_regressao tests.test_fase2 -v`.
+
+
+### 2026-11-17 - Travamento após falar a data: reprodução e interrupção
+
+Pedro relatou que, após responder “Hoje é 17/11/2026”, o console não voltou a “Listening with VAD”. A data é um comando local: essa resposta não depende da inferência do Qwen. O log não inclui stack trace, portanto não prova em qual chamada nativa a instância parou.
+
+- **Caminho de bloqueio identificado:** `_play_interruptible` executava a transcrição de interrupção sincronamente, dentro do laço do player, e compartilhava `transcribe_lock` com a escuta principal. Uma transcrição lenta podia impedir o retorno mesmo após terminar o som. A captura também usava `stream.read` bloqueante.
+- **Correção:** `brain/playback.py` isola o reconhecimento em no máximo um worker daemon. O laço acompanha o fim de `ffplay`, recebe frames por callback/fila limitada e não espera a inferência. Cada pedido possui fila própria; resultados atrasados são descartados. Após 2 s, uma transcrição pendente é ignorada para aquela fala. O modelo de interrupção não segura mais o lock do modelo principal.
+- **Limites e limpeza:** reprodução tem prazo proporcional ao texto (20–180 s); encerramento do player usa terminate/kill com waits de 2 s. A entrada do microfone de interrupção é abortada/fechada; `listen()` também fecha o stream ao concluir. O MP3 temporário é fechado antes de passar ao ffmpeg/ffplay e removido em `finally`. Console informa `[AUDIO] Reprodução encerrada; voltando à escuta.`
+- **Whisper:** o erro `CAS service / IncompleteBody` do log foi falha de download, não evidência de CUDA ausente (o modelo base de interrupção chegou a funcionar na GPU). O aviso agora distingue modelo ausente/download de erros de DLL. Por padrão, a abertura usa somente modelos já em cache e volta ao medium CPU se o modelo GPU estiver incompleto, evitando novo download de vários minutos durante a inicialização. Para permitir o comportamento antigo: `JARVIS_WHISPER_ALLOW_DOWNLOAD=1`.
+- **Preparação separada:** `venv\Scripts\python.exe -X utf8 -m tests.prepare_whisper` baixa o modelo configurado com até três tentativas. A tentativa iniciada pelo Codex falhou por conexão recusada ao proxy de rede deste ambiente; o modelo grande continua incompleto. O comando deve ser executado no PowerShell local com acesso ao Hugging Face. O script não altera as bibliotecas instaladas nem instala CUDA.
+- **Validação:** 52 testes de regressão/Fase 2/reprodução/carregamento do Whisper passaram (mesmo wrapper de diretórios temporários descrito acima). Incluem transcrição presa após fim do áudio, resultado atrasado, ausência de frames, ordem de parar, timeout e kill do player, e cache incompleto sem aviso incorreto de CUDA. Sintaxe dos sete arquivos desta correção validada. Ainda é necessário repetir a conversa no PC com microfone/alto-falantes; nenhuma instância do Jarvis do usuário foi encerrada automaticamente.
+
+
+### 2026-11-17 - Espera nas notícias após busca web/RAG
+
+O novo log confirma que a reprodução voltou à escuta. A espera seguinte ocorre no caminho busca → RAG → Qwen. O log do Ollama consultado nesta sessão registrou uma tentativa recente de `/api/chat` cancelada após 4m10s, antes de terminar o carregamento do runner; não é prova de qual instância originou a chamada. O servidor estava sem modelos carregados ao consultar `/api/ps`.
+
+- **Notícias:** novo `brain/websearch/news.py`, usado tanto pelo pipeline de atualidades quanto pelo comando explícito de busca. Busca até três títulos/resumos no índice de notícias da Brave, com `params=` e limite de rede. Pedidos de notícias do dia/hoje usam `freshness=pd`; o filtro não comprova que todos os fatos ocorreram hoje. Se o índice de notícias retornar 401/403/404, tenta o índice web. Texto é limpo e limitado por item; URLs são registradas no console.
+- **Sem RAG para notícias:** não carrega embeddings nem consulta documentos internos nesse caminho. As demais consultas mantêm o comportamento anterior.
+- **Resumo limitado:** modo `news` pede até 192 tokens e usa timeout de leitura de 45 s por padrão (`JARVIS_NEWS_LLM_TIMEOUT`). Se o LLM falhar/demorar, a resposta usa os títulos realmente retornados, informando que o resumo não ficou pronto. Se a busca falhar, informa indisponibilidade e não pede ao modelo que invente notícias. O histórico de voz recebe só a resposta entregue.
+- **Progresso:** chamadas ao LLM agora mostram quantidade de caracteres, aviso a cada dez segundos e tempo até receber a resposta. Isso não acelera o carregamento nem resolve a disputa de GPU com o jogo; torna a espera visível.
+- **Validação:** 59 testes passaram, incluindo sete novos casos de notícias: desvio do RAG, fallback sem LLM, busca vazia, limite dos trechos, parâmetros/recência, timeout do resumo e fallback do índice. Mesma adaptação de diretórios temporários da execução anterior. Sintaxe validada. Não foi realizada uma nova conversa pelo microfone nem uma consulta real à Brave nesta etapa.
+- Reiniciar a instância do Jarvis para carregar as correções. A tarefa geral de otimização da busca (item 35) permanece pendente para os outros tipos de consulta.

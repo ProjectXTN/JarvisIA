@@ -25,18 +25,20 @@ def _normalize_host(value):
 # === Ollama ===
 OLLAMA_HOST = _normalize_host(os.getenv("OLLAMA_HOST"))
 # (conexão, leitura) em segundos
-OLLAMA_TIMEOUT = (5, 180)
+OLLAMA_TIMEOUT = (5, int(os.getenv("JARVIS_OLLAMA_TIMEOUT", "180")))
 # Quanto tempo o modelo fica carregado na GPU depois de usado
 OLLAMA_KEEP_ALIVE = "30m"
+OLLAMA_NUM_CTX = int(os.getenv("JARVIS_NUM_CTX", "4096"))
 # Tempo máximo de espera pela consulta aos documentos internos (RAG)
 RAG_TIMEOUT = 15
+NEWS_LLM_TIMEOUT = int(os.getenv("JARVIS_NEWS_LLM_TIMEOUT", "45"))
 
-# === Modelos (serão trocados na Fase 2 do PLANO.md) ===
-DEFAULT_MODEL = os.getenv("JARVIS_MODEL", "llama3.2")
-DEFAULT_MODEL_HIGH = os.getenv("JARVIS_MODEL_HIGH", "llama3.3")
-DEFAULT_MODEL_CODE = os.getenv("JARVIS_MODEL_CODE", "codestral")
-VISION_MODEL_LOW = os.getenv("JARVIS_VISION_MODEL_LOW", "llava:13b")
-VISION_MODEL_HIGH = os.getenv("JARVIS_VISION_MODEL_HIGH", "llama3.2-vision:90b")
+# === Modelos da Fase 2 (podem ser trocados no .env) ===
+DEFAULT_MODEL = os.getenv("JARVIS_MODEL", "qwen3.8:27b")
+DEFAULT_MODEL_HIGH = os.getenv("JARVIS_MODEL_HIGH", DEFAULT_MODEL)
+DEFAULT_MODEL_CODE = os.getenv("JARVIS_MODEL_CODE", "gemma4:26b")
+VISION_MODEL_LOW = os.getenv("JARVIS_VISION_MODEL_LOW", DEFAULT_MODEL)
+VISION_MODEL_HIGH = os.getenv("JARVIS_VISION_MODEL_HIGH", VISION_MODEL_LOW)
 EMBEDDING_MODEL = os.getenv("JARVIS_EMBEDDING_MODEL", "nomic-embed-text")
 
 # === Voz ===
@@ -45,6 +47,8 @@ EMBEDDING_MODEL = os.getenv("JARVIS_EMBEDDING_MODEL", "nomic-embed-text")
 WHISPER_MODEL = os.getenv("JARVIS_WHISPER_MODEL", "large-v3-turbo")
 WHISPER_MODEL_CPU = os.getenv("JARVIS_WHISPER_MODEL_CPU", "medium")
 WHISPER_BEAM_SIZE = 5
+# Downloads grandes são preparados separadamente para não travar a abertura.
+WHISPER_ALLOW_DOWNLOAD = os.getenv("JARVIS_WHISPER_ALLOW_DOWNLOAD", "0") == "1"
 
 # Interromper o Jarvis por voz enquanto ele fala ("pare", "pode parar", "chega")
 INTERRUPT_ENABLED = os.getenv("JARVIS_INTERRUPT", "1") == "1"
