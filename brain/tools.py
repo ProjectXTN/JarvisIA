@@ -196,12 +196,15 @@ def tocar_no_youtube(busca):
         video_id = match.group(1) if match else None
     except Exception as error:
         print(f"[YOUTUBE] Busca falhou: {error}")
+    from brain.media_window import open_media
+
+    # Sempre na mesma janela: o vídeo novo substitui o anterior
     if video_id:
         _say(f"Tocando {busca} no YouTube.")
-        webbrowser.open(f"https://www.youtube.com/watch?v={video_id}", new=2)
+        open_media(f"https://www.youtube.com/watch?v={video_id}")
         return f"tocar_no_youtube({busca}): {video_id}"
     _say("Não achei o vídeo direto; abri a busca no YouTube.")
-    webbrowser.open(search_url, new=2)
+    open_media(search_url)
     return f"tocar_no_youtube({busca}): só a busca"
 
 

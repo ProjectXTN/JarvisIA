@@ -139,7 +139,7 @@ class ToolsTest(unittest.TestCase):
         page = mock.Mock(text='... "videoId":"fJ9rUzIMcZQ" ... "videoId":"outro123456"')
         opened = []
         with mock.patch("requests.get", return_value=page) as get, \
-             mock.patch("webbrowser.open", side_effect=lambda url, new=0: opened.append(url)), \
+             mock.patch("brain.media_window.open_media", side_effect=opened.append), \
              mock.patch.object(tools, "_say"):
             tools.tocar_no_youtube("queen bohemian rhapsody")
         self.assertEqual(opened, ["https://www.youtube.com/watch?v=fJ9rUzIMcZQ"])
@@ -148,7 +148,7 @@ class ToolsTest(unittest.TestCase):
     def test_tocar_no_youtube_sem_video_abre_a_busca(self):
         opened = []
         with mock.patch("requests.get", side_effect=OSError("sem rede")), \
-             mock.patch("webbrowser.open", side_effect=lambda url, new=0: opened.append(url)), \
+             mock.patch("brain.media_window.open_media", side_effect=opened.append), \
              mock.patch.object(tools, "_say"):
             tools.tocar_no_youtube("queen")
         self.assertEqual(opened, ["https://www.youtube.com/results?search_query=queen"])

@@ -90,6 +90,9 @@ KOKORO_SPEED = float(os.getenv("JARVIS_KOKORO_SPEED", "1.1"))
 KOKORO_LANG = "pt-br"
 GOOGLE_TTS_VOICE = os.getenv("JARVIS_GOOGLE_VOICE", "pt-BR-Wavenet-B")
 
+# Janela de mídia do Jarvis (YouTube): porta de controle, só em 127.0.0.1
+MEDIA_BROWSER_PORT = int(os.getenv("JARVIS_MEDIA_PORT", "9223"))
+
 # Fala em fluxo: a primeira frase toca enquanto o modelo ainda escreve o resto
 STREAMING_ENABLED = os.getenv("JARVIS_STREAMING", "1") == "1"
 
