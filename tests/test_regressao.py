@@ -264,6 +264,9 @@ class SpeechTextTest(unittest.TestCase):
             self.assertNotIn(unwanted, spoken)
         self.assertEqual(spoken.count("O Ranger ataca à distância"), 1)
         self.assertEqual(prepare_for_speech("Agora são 08:32."), "Agora são 08:32.")
+        # trecho cortado na vírgula continua com vírgula (entonação de meio de frase)
+        self.assertEqual(prepare_for_speech("A fotossíntese é o processo pelo qual plantas,"),
+                         "A fotossíntese é o processo pelo qual plantas,")
         self.assertLessEqual(len(prepare_for_speech("Frase longa. " * 300, 500)), 500)
 
 

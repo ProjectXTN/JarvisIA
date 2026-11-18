@@ -154,6 +154,23 @@ def abrir_programa(programa):
     return f"abrir_programa({programa})"
 
 
+def abrir_site(endereco):
+    """Abre um site no navegador padrão. Só http/https."""
+    import webbrowser
+    from urllib.parse import urlparse
+
+    url = endereco.strip()
+    if not url.lower().startswith(("http://", "https://")):
+        url = "https://" + url.lstrip("/")
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or "." not in parsed.netloc:
+        _say("Não entendi o endereço do site.")
+        return f"abrir_site({endereco}): endereço inválido"
+    _say(f"Abrindo {parsed.netloc.removeprefix('www.')}.")
+    webbrowser.open(url, new=2)
+    return f"abrir_site({url})"
+
+
 def abrir_pasta(nome):
     from brain.system import open_folder
 
@@ -286,6 +303,11 @@ TOOLS = [
     # ação
     Tool("abrir_programa", "Abre um programa no computador.", abrir_programa,
          {"programa": _text(enum=PROGRAMS)}, ["programa"]),
+    Tool("abrir_site",
+         "Abre um site no navegador. Use o endereço completo, por exemplo "
+         "https://www.youtube.com. Para pesquisar dentro de um site, monte a URL de busca "
+         "dele, por exemplo https://www.youtube.com/results?search_query=queen.",
+         abrir_site, {"endereco": _text(description="URL do site")}, ["endereco"]),
     Tool("abrir_pasta", "Abre uma pasta do computador pelo nome (ex.: Downloads, Documentos).",
          abrir_pasta, {"nome": _text()}, ["nome"]),
     Tool("musica", "Controla a música no Apple Music: tocar uma busca, pausar, próxima, anterior ou abrir a biblioteca.",

@@ -26,7 +26,13 @@ def _normalize(text):
 
 
 def prepare_for_speech(text, max_chars=1200):
-    """Texto pronto para o TTS: sem marcações, links, símbolos ou repetições."""
+    """Texto pronto para o TTS: sem marcações, links, símbolos ou repetições.
+
+    Um trecho que termina em vírgula (o primeiro pedaço de uma frase longa,
+    cortado para a fala começar cedo) continua terminando em vírgula: com
+    ponto, a voz fazia entonação de fim de frase no meio da ideia.
+    """
+    continues = bool(re.search(r"[,;:]\s*$", text))
     text = _TAG.sub(". ", text)                                # marcação = fim de frase
     text = _URL.sub(" ", text)
     for symbol, replacement in _SYMBOLS.items():
@@ -38,8 +44,8 @@ def prepare_for_speech(text, max_chars=1200):
     text = re.sub(r"\s+([,.;:!?])", r"\1", text)
     text = re.sub(r"\s+", " ", text).strip(" ,.")
     if text:
-        text += "."
-    text = re.sub(r"([.!?])\.$", r"\1", text)
+        text += "," if continues else "."
+    text = re.sub(r"([.!?])[.,]$", r"\1", text)
 
     # Frases repetidas (o extrator de páginas costuma duplicar blocos)
     sentences = re.split(r"(?<=[.!?])\s+", text)

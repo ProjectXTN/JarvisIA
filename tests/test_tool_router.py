@@ -124,6 +124,17 @@ class ToolsTest(unittest.TestCase):
             self.assertEqual(tools.run_tool("teste", '{"consulta": "x", "extra": 1}'), ("ok", True))
         self.assertEqual(received, {"consulta": "x"})
 
+    def test_abrir_site_monta_a_url_e_recusa_lixo(self):
+        opened = []
+        with mock.patch("webbrowser.open", side_effect=lambda url, new=0: opened.append(url)), \
+             mock.patch.object(tools, "_say"):
+            tools.abrir_site("www.youtube.com")
+            tools.abrir_site("https://www.youtube.com/results?search_query=queen")
+            result = tools.abrir_site("javascript:alert(1)")
+        self.assertEqual(opened, ["https://www.youtube.com",
+                                  "https://www.youtube.com/results?search_query=queen"])
+        self.assertIn("inválido", result)
+
     def test_ferramenta_desconhecida_ou_com_erro_vira_texto(self):
         self.assertIn("desconhecida", tools.run_tool("nao_existe", {})[0])
         broken = tools.Tool("quebrada", "d", lambda: 1 / 0)

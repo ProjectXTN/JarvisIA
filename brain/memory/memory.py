@@ -93,8 +93,10 @@ def open_chat(messages, model=None, tools=None, num_predict=512, timeout=None):
     }
     if tools:
         payload["tools"] = tools
+    started = time.monotonic()
     response = session.post(f"{OLLAMA_HOST}/api/chat", json=payload,
                             timeout=timeout or _read_timeout("web"), stream=True)
+    response.jarvis_started = started  # para medir o tempo até as primeiras palavras
     if response.status_code >= 400:
         detail = response.text[:300]
         response.close()
@@ -105,7 +107,7 @@ def open_chat(messages, model=None, tools=None, num_predict=512, timeout=None):
 def iter_chat(response, tool_calls=None, parts=None):
     """Lê o stream aberto por open_chat: devolve os pedaços de texto e guarda
     as chamadas de ferramenta em tool_calls e o texto inteiro em parts."""
-    started = time.monotonic()
+    started = getattr(response, "jarvis_started", None) or time.monotonic()
     first = True
     try:
         for line in response.iter_lines():
@@ -115,8 +117,9 @@ def iter_chat(response, tool_calls=None, parts=None):
             if data.get("error"):
                 raise RuntimeError(data["error"])
             message = data.get("message", {})
-            if tool_calls is not None:
-                tool_calls.extend(message.get("tool_calls") or [])
+            if tool_calls is not None and message.get("tool_calls"):
+                tool_calls.extend(message["tool_calls"])
+                print(f"[LLM] Ferramentas escolhidas em {time.monotonic()-started:.1f}s.")
             piece = message.get("content", "")
             if piece:
                 if first:

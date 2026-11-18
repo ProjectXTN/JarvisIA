@@ -419,3 +419,12 @@ Confirmado antes: o `gemma4:26b` tem a capacidade "tools" no Ollama.
 - Para desligar o roteador: `JARVIS_TOOL_ROUTER=0` no `.env`.
 - 13 testes novos (`tests/test_tool_router.py`) com respostas simuladas do Ollama; testes antigos que chamam `process_command` passaram a desligar o roteador para não chamar o modelo de verdade. Falta o teste por voz.
 - Pendências: não existe comando de volume; "registrar_meu_dia" e "traduzir_legenda" ainda usam as funções antigas, sem teste com o modelo.
+
+### 2026-11-18 — Teste por voz da Fase 4
+
+Funcionou: fotossíntese respondida direto; "o que é esse apagão que estão falando" chamou `buscar_noticias`; "vai chover amanhã" chamou `previsao_do_tempo(periodo='amanha')`; Steam, Queen e Chrome com a ferramenta certa; memorizar, consultar e esquecer a impressora; "Já entendi" interrompeu. Transcrições de 0,1 a 0,4 s.
+
+Corrigido:
+- O primeiro trecho cortado na vírgula terminava com ponto ("...pelo qual plantas.") e a voz fazia entonação de fim de frase. Agora termina com vírgula.
+- "Abra o site do YouTube": não havia ferramenta para sites, e o modelo disse "eu abri o navegador para você" sem ter chamado nada. Nova ferramenta `abrir_site` (só http/https; para buscar dentro de um site, o modelo monta a URL de busca).
+- O log "Primeiras palavras em 0.0s" media a partir da resposta HTTP. Agora mede desde o pedido, e mostra também "Ferramentas escolhidas em X s".
