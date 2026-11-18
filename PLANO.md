@@ -50,7 +50,7 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 ## Fase 4 — Inteligência: ferramentas no lugar de regex
 
 - [ ] 31. Transformar cada comando em ferramenta com descrição
-- [ ] 32. Roteamento por tool calling em `process_command`
+- [ ] 32. Roteamento por tool calling em `process_command` (parcial: o modelo já decide se precisa buscar na internet)
 - [ ] 33. Atalhos sem LLM para música, volume e desligar
 - [ ] 34. Comandos encadeados via múltiplas ferramentas; apagar `commands_multiples.py`
 - [x] 35. Busca web: `params=`, `User-Agent`, 4 páginas com prazo de 2,5 s, resumos da Brave
@@ -351,3 +351,12 @@ Sintomas: "procure sobre a nova versão do ChatGPT Astra 6.2" foi respondida da 
 - O console mostrava "voltando à escuta" depois de cada frase; agora mostra "Frase concluída".
 - **Busca:** antes lia 10 páginas com até 5 s cada (2,8 a 3,2 s no total). Agora usa os resumos que a Brave já devolve (chegam com os links) e lê só 4 páginas em paralelo, com prazo total de 2,5 s; as que passam do prazo ficam de fora. Consulta com `params=` (acentos e símbolos corretos) e User-Agent de navegador. Ajustes: `JARVIS_WEB_MAX_PAGES` e `JARVIS_WEB_FETCH_BUDGET`.
 - 46 testes de regressão passando; falta medir por voz.
+
+### 2026-11-18 — Busca medida por voz e roteador de busca (começo do item 32)
+
+- Medido por voz: 4 páginas lidas em 1,3 s (antes cerca de 3 s); "procure uma build de PvP" começou a falar menos de 2 s depois da pergunta.
+- Falha: "O que é esse apagão que estão falando...?" foi tratada como atemporal e respondida da memória ("não tenho informações concretas"). Não tinha "procure" nem palavras da lista de assuntos atuais.
+- **Roteador:** quando as regras fixas dizem "atemporal", `needs_web` (`jarvis_commands.py`) pergunta ao modelo, com a data de hoje e as duas últimas trocas, se a resposta precisa da internet. Ele responde uma palavra (BUSCAR ou RESPONDER; até 4 tokens, limite de 8 s). Em falha, responde sem buscar. O console mostra `[ROTA] Modelo decidiu: ...`.
+- Custo: uma chamada curta (cerca de 0,2 a 0,3 s com o Gemma) só nas perguntas que as regras não classificam como atuais. Para desligar: `JARVIS_WEB_ROUTER=0`.
+- É o primeiro passo do item 32; a troca dos comandos por ferramentas continua pendente.
+- 50 testes de regressão passando.

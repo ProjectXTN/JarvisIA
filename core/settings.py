@@ -32,6 +32,10 @@ OLLAMA_NUM_CTX = int(os.getenv("JARVIS_NUM_CTX", "4096"))
 # Tempo máximo de espera pela consulta aos documentos internos (RAG)
 RAG_TIMEOUT = 15
 NEWS_LLM_TIMEOUT = int(os.getenv("JARVIS_NEWS_LLM_TIMEOUT", "45"))
+# Quando as regras fixas dizem "pergunta atemporal", pergunta ao modelo (uma
+# palavra, ~0,3 s) se a resposta precisa de informação atual da internet
+WEB_ROUTER_ENABLED = os.getenv("JARVIS_WEB_ROUTER", "1") == "1"
+
 # Busca na web: páginas lidas além dos resumos da Brave, e prazo total para
 # baixá-las (as que não chegarem a tempo ficam de fora)
 WEB_MAX_PAGES = int(os.getenv("JARVIS_WEB_MAX_PAGES", "4"))

@@ -380,6 +380,7 @@ class StreamingVoiceTest(unittest.TestCase):
              mock.patch.object(jarvis_commands, "is_code_request", return_value=False), \
              mock.patch.object(jarvis_commands, "is_explicit_search", return_value=False), \
              mock.patch.object(jarvis_commands, "is_query_time_sensitive", return_value=False), \
+             mock.patch.object(jarvis_commands, "needs_web", return_value=False), \
              mock.patch.object(jarvis_commands, "llama_stream", side_effect=fake_stream), \
              mock.patch.object(jarvis_commands, "log_interaction") as log, \
              mock.patch.object(jarvis_commands, "should_save_to_file", return_value=False):
@@ -395,6 +396,7 @@ class StreamingVoiceTest(unittest.TestCase):
              mock.patch.object(jarvis_commands, "is_code_request", return_value=False), \
              mock.patch.object(jarvis_commands, "is_explicit_search", return_value=False), \
              mock.patch.object(jarvis_commands, "is_query_time_sensitive", return_value=False), \
+             mock.patch.object(jarvis_commands, "needs_web", return_value=False), \
              mock.patch.object(jarvis_commands, "llama_stream", return_value=iter([])):
             jarvis_commands.process_command("me explica algo")
         self.assertIn("Desculpe, não consegui responder agora.", spoken)
@@ -403,6 +405,7 @@ class StreamingVoiceTest(unittest.TestCase):
         with mock.patch.object(jarvis_commands, "is_code_request", return_value=False), \
              mock.patch.object(jarvis_commands, "is_explicit_search", return_value=False), \
              mock.patch.object(jarvis_commands, "is_query_time_sensitive", return_value=False), \
+             mock.patch.object(jarvis_commands, "needs_web", return_value=False), \
              mock.patch.object(jarvis_commands, "llama_stream", side_effect=AssertionError("stream na API")), \
              mock.patch.object(jarvis_commands, "llama_query", return_value="ok"):
             self.assertEqual(jarvis_commands.generate_response("oi", api=True, stream=True), "ok")
@@ -448,6 +451,39 @@ class WebSearchSpeedTest(unittest.TestCase):
         self.assertIn("Resumos da busca", text)
         self.assertIn("Resumo 0", text)
         self.assertNotIn("<strong>", text)
+
+
+class WebRouterTest(unittest.TestCase):
+    def _route(self, model_answer):
+        with mock.patch.object(jarvis_commands, "WEB_ROUTER_ENABLED", True), \
+             mock.patch.object(jarvis_commands, "llama_query", return_value=model_answer) as llm:
+            return jarvis_commands.needs_web("o que é esse apagão que estão falando"), llm
+
+    def test_modelo_manda_buscar(self):
+        decided, llm = self._route("BUSCAR")
+        self.assertTrue(decided)
+        self.assertEqual(llm.call_args.kwargs["mode"], "route")
+        self.assertIn("Hoje é", llm.call_args.args[0])
+
+    def test_modelo_manda_responder_ou_falha(self):
+        self.assertFalse(self._route("RESPONDER")[0])
+        self.assertFalse(self._route(None)[0])
+
+    def test_pergunta_que_o_modelo_manda_buscar_vai_para_a_web(self):
+        with mock.patch.object(jarvis_commands, "is_code_request", return_value=False), \
+             mock.patch.object(jarvis_commands, "is_explicit_search", return_value=False), \
+             mock.patch.object(jarvis_commands, "is_query_time_sensitive", return_value=False), \
+             mock.patch.object(jarvis_commands, "needs_web", return_value=True), \
+             mock.patch.object(jarvis_commands, "super_jarvis_query", return_value="achei") as web:
+            self.assertEqual(jarvis_commands.generate_response("o que é esse apagão"), "achei")
+        web.assert_called_once()
+
+    def test_regras_fixas_dispensam_o_roteador(self):
+        with mock.patch.object(jarvis_commands, "is_code_request", return_value=False), \
+             mock.patch.object(jarvis_commands, "is_explicit_search", return_value=True), \
+             mock.patch.object(jarvis_commands, "needs_web", side_effect=AssertionError("chamou o roteador")), \
+             mock.patch.object(jarvis_commands, "super_jarvis_query", return_value="achei"):
+            self.assertEqual(jarvis_commands.generate_response("procure isso"), "achei")
 
 
 class HandlerFlowTest(unittest.TestCase):

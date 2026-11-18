@@ -55,6 +55,8 @@ def _read_timeout(mode):
         return (OLLAMA_TIMEOUT[0], min(OLLAMA_TIMEOUT[1], WEB_LLM_TIMEOUT))
     if mode == "rewrite":
         return (OLLAMA_TIMEOUT[0], 15)
+    if mode == "route":
+        return (OLLAMA_TIMEOUT[0], 8)
     return OLLAMA_TIMEOUT
 
 
@@ -176,7 +178,7 @@ def llama_query(prompt, model=None, direct_mode=False, mode=None, lang="pt",
                 json={"model": candidate, "messages": messages, "stream": False,
                       "think": False, "keep_alive": OLLAMA_KEEP_ALIVE,
                       "options": {"temperature": 0.2, "num_ctx": OLLAMA_NUM_CTX,
-                                  "num_predict": {"code": 2048, "news": 192, "rewrite": 64}.get(mode, 512)}},
+                                  "num_predict": {"code": 2048, "news": 192, "rewrite": 64, "route": 4}.get(mode, 512)}},
                 timeout=_read_timeout(mode))
             response.raise_for_status()
             print(f"[LLM] Resposta recebida em {time.monotonic()-started:.1f}s.")

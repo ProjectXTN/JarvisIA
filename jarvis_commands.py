@@ -18,7 +18,8 @@ from commands.commands_avatar import generate_avatar, avatar_view_commands
 from commands.commands_systeme import system_command, shutdown_command
 from brain.weatherAPI.weatherAPI import handle_weather_query
 from brain.storage.file_saver import save_response_to_file, should_save_to_file
-from core.settings import STREAMING_ENABLED
+from core.settings import STREAMING_ENABLED, WEB_ROUTER_ENABLED
+from brain.pipeline.super_jarvis import today_line
 from brain.memory.memory import llama_stream
 from brain.memory.memory import llama_query, memory_context, remember_turn
 from brain.pipeline.super_jarvis import super_jarvis_query
@@ -119,6 +120,39 @@ def is_explicit_search(query):
     return bool(EXPLICIT_SEARCH.search(query.lower()))
 
 
+def needs_web(query, history=None):
+    """Pergunta ao modelo se a resposta depende de informação atual.
+
+    Usado quando as regras fixas acham a pergunta atemporal. Exemplo que elas
+    perdiam: "o que é esse apagão que estão falando?". Em falha, não busca.
+    """
+    if not WEB_ROUTER_ENABLED:
+        return False
+    try:
+        turns = "".join(
+            f"Pedro: {q[:200]}\nJarvis: {a[:200]}\n" for q, a in list(history or [])[-2:]
+        )
+        prompt = (
+            f"{today_line('pt')}\n"
+            "Decida se a pergunta precisa de busca na internet para ser respondida corretamente. "
+            "Responda BUSCAR se ela depende de fatos atuais ou recentes: notícias, boatos, "
+            "eventos, lançamentos, versões de produtos, preços, resultados, quem ocupa um "
+            "cargo hoje, coisas 'que estão falando', ou qualquer assunto que possa ter mudado "
+            "depois do seu treinamento. Responda RESPONDER se é conhecimento estável "
+            "(definições, explicações, história, ciência, matemática, conselhos), conversa, "
+            "opinião ou assunto pessoal.\n"
+            + (f"Conversa recente:\n{turns}" if turns else "")
+            + f"Pergunta: {query}\nResponda só com uma palavra: BUSCAR ou RESPONDER."
+        )
+        answer = llama_query(prompt, direct_mode=True, mode="route", remember=False)
+    except Exception as error:
+        print(f"[ROTA] Falha ao decidir, respondendo sem buscar: {error}")
+        return False
+    decision = bool(answer and "BUSCAR" in answer.upper())
+    print(f"[ROTA] Modelo decidiu: {'buscar na internet' if decision else 'responder direto'}.")
+    return decision
+
+
 def generate_response(query, lang="pt", api=False, stream=False):
     """Resposta do LLM (com busca web quando o assunto é atual), ou None.
 
@@ -136,7 +170,8 @@ def generate_response(query, lang="pt", api=False, stream=False):
                                    history=[] if api else list(memory_context), remember=False)
             if response and not api:
                 remember_turn(query, response)
-        elif is_explicit_search(query) or is_query_time_sensitive(query):
+        elif (is_explicit_search(query) or is_query_time_sensitive(query)
+              or needs_web(query, [] if api else list(memory_context))):
             print("[DEBUG] Busca na internet (pedido explícito ou assunto atual).")
             response = super_jarvis_query(query, lang=lang, conversation=not api, stream=stream)
         else:
