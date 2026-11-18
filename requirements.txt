@@ -1,5 +1,7 @@
 # === CORE (voice, TTS, VAD, transcription) ===
 faster-whisper
+# Voz local (TTS) pelo ONNX Runtime, na CPU
+kokoro-onnx
 # Bibliotecas de GPU para o Whisper (CTranslate2) no Windows
 nvidia-cublas-cu12
 nvidia-cudnn-cu12==9.*

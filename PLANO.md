@@ -40,7 +40,7 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 
 - [x] 23. Whisper `large-v3-turbo` na GPU, com volta automática para a CPU (`brain/whisper_loader.py`)
 - [ ] 24. Manter o microfone aberto entre escutas
-- [ ] 25. TTS local com Kokoro (`brain/tts.py`), Google TTS como reserva
+- [x] 25. TTS local com Kokoro (`brain/tts.py`), Google TTS como reserva (falta baixar o modelo e ouvir no PC)
 - [x] 26. Streaming LLM → TTS frase a frase (`brain/speech_stream.py`; falta confirmar por voz)
 - [ ] 27. Tocar áudio com `sounddevice`, sem `ffplay`
 - [x] 28. Interrupção por voz enquanto o Jarvis fala (só com ordem de parar; perguntas não interrompem)
@@ -360,3 +360,12 @@ Sintomas: "procure sobre a nova versão do ChatGPT Astra 6.2" foi respondida da 
 - Custo: uma chamada curta (cerca de 0,2 a 0,3 s com o Gemma) só nas perguntas que as regras não classificam como atuais. Para desligar: `JARVIS_WEB_ROUTER=0`.
 - É o primeiro passo do item 32; a troca dos comandos por ferramentas continua pendente.
 - 50 testes de regressão passando.
+
+### 2026-11-18 — Voz local Kokoro (item 25)
+
+- `brain/tts.py`: Kokoro (`kokoro-onnx`, ONNX Runtime na CPU) é o motor padrão; o Google TTS fica de reserva. Se o pacote faltar, o modelo não estiver baixado ou uma frase falhar, aquela fala sai pelo Google.
+- Roda na CPU para não disputar a memória da placa com o Gemma. Carrega em segundo plano na abertura.
+- Voz padrão `pm_alex` (masculina); também há `pm_santa` e `pf_dora`. Velocidade 1,1. Ajustes no `.env`: `JARVIS_TTS=kokoro|google`, `JARVIS_KOKORO_VOICE`, `JARVIS_KOKORO_SPEED`.
+- O console mostra qual motor gerou cada frase: `⏱️ Áudio gerado em X s (N caracteres, Kokoro)`.
+- Instalação: `venv\Scripts\python.exe -m pip install kokoro-onnx` e `venv\Scripts\python.exe -X utf8 -m tests.prepare_kokoro` (baixa cerca de 340 MB para `models/kokoro/`, fora do git, e grava `logs/kokoro_teste.wav` com as três vozes).
+- 4 testes novos (`tests/test_tts_engine.py`) para a escolha do motor e a reserva.

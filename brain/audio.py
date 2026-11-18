@@ -12,6 +12,7 @@ import collections
 import queue
 from brain.playback import InterruptRecognizer, monitor_playback, finish_player
 from brain.speech_stream import run_pipeline
+from brain import tts
 import threading
 import time
 import requests
@@ -59,6 +60,7 @@ if getattr(sys, "frozen", False):
 model, _whisper_desc = load_whisper(WHISPER_MODEL, WHISPER_MODEL_CPU, compute_type=WHISPER_COMPUTE_TYPE)
 current_audio_process = None
 print(f"🎙️ {_whisper_desc}.")
+tts.preload()  # carrega a voz local em segundo plano
 
 # === Interrupção por voz ===
 # Comando dito junto com o pedido de parar ("para, que horas são?"); o
@@ -243,38 +245,8 @@ def _clean_for_speech(text, budget=MAX_SPOKEN_CHARS):
 
 
 def _synthesize(clean_text, gender="MALE"):
-    """Google TTS: devolve o caminho de um MP3 temporário, ou None em erro."""
-    url = f"https://texttospeech.googleapis.com/v1/text:synthesize?key={API_KEY_GOOGLE_SPEECH}"
-    body = {
-        "input": {"text": clean_text},
-        "voice": {
-            "languageCode": "pt-BR",
-            "name": "pt-BR-Wavenet-B",
-            "ssmlGender": gender,
-        },
-        "audioConfig": {"audioEncoding": "MP3", "speakingRate": 1.10, "pitch": -2.0},
-    }
-    start_time = time.time()
-    try:
-        response = requests.post(
-            url,
-            headers={"Content-Type": "application/json; charset=utf-8"},
-            data=json.dumps(body),
-            timeout=30,
-        )
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Erro de rede no TTS: {e}")
-        return None
-    if response.status_code != 200:
-        print(f"❌ Erro no TTS: {response.status_code}")
-        print(response.text[:300])
-        return None
-    print(f"⏱️ Áudio gerado em {time.time() - start_time:.2f}s ({len(clean_text)} caracteres).")
-    audio_content = base64.b64decode(response.json()["audioContent"])
-    # Fechado antes de ffplay/ffmpeg lerem o arquivo no Windows
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as out:
-        out.write(audio_content)
-        return out.name
+    """Áudio da frase: Kokoro local, com o Google como reserva (brain/tts.py)."""
+    return tts.synthesize(clean_text, gender)
 
 
 def _discard_audio(path):

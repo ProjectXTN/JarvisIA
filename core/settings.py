@@ -75,6 +75,17 @@ WHISPER_BEAM_SIZE = 5
 # Downloads grandes são preparados separadamente para não travar a abertura.
 WHISPER_ALLOW_DOWNLOAD = os.getenv("JARVIS_WHISPER_ALLOW_DOWNLOAD", "0") == "1"
 
+# === Voz (síntese) ===
+# "kokoro": voz local, sem internet (padrão); "google": Google TTS na nuvem.
+# Se o Kokoro faltar ou falhar, a frase sai pelo Google automaticamente.
+TTS_ENGINE = os.getenv("JARVIS_TTS", "kokoro").lower()
+KOKORO_DIR = os.path.join(BASE_DIR, "models", "kokoro")
+# Vozes em português do Brasil: pm_alex e pm_santa (masculinas), pf_dora (feminina)
+KOKORO_VOICE = os.getenv("JARVIS_KOKORO_VOICE", "pm_alex")
+KOKORO_SPEED = float(os.getenv("JARVIS_KOKORO_SPEED", "1.1"))
+KOKORO_LANG = "pt-br"
+GOOGLE_TTS_VOICE = os.getenv("JARVIS_GOOGLE_VOICE", "pt-BR-Wavenet-B")
+
 # Fala em fluxo: a primeira frase toca enquanto o modelo ainda escreve o resto
 STREAMING_ENABLED = os.getenv("JARVIS_STREAMING", "1") == "1"
 
