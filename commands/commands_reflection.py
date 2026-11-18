@@ -4,21 +4,22 @@ from datetime import datetime
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from brain.audio import say, listen
+from brain.audio import say, listen, ask
 from brain.learning.insert_emotion import register_emotion
 from brain.learning.normalize_emotions import normalize_emotion
 
 def iniciar_reflexao(conteudo):
     try:
-        say("Vamos registrar seu dia. Como você se sentiu hoje?")
-        emocao_raw = listen()
+        emocao_raw = ask("Vamos registrar seu dia. Como você se sentiu hoje?")
+        if not emocao_raw:
+            return True
         emocao = normalize_emotion(emocao_raw)
 
-        say("O que mais te marcou hoje?")
-        evento = listen()
+        evento = ask("O que mais te marcou hoje?")
+        if not evento:
+            return True
 
-        say("Quer adicionar alguma tag? Pode ser algo como trabalho, pessoal, estudo...")
-        tags = listen()
+        tags = ask("Quer adicionar alguma tag? Pode ser algo como trabalho, pessoal, estudo...")
 
         data = datetime.now().strftime("%Y-%m-%d")
 

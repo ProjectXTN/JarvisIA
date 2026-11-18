@@ -382,3 +382,13 @@ Sintomas: "procure sobre a nova versão do ChatGPT Astra 6.2" foi respondida da 
 - MP3 do Google (reserva) continua pelo `ffplay`. Se a placa de som der erro, o WAV também volta para o `ffplay`.
 - Avatar: o volume do WAV é medido direto, sem `ffmpeg`, e o atraso da boca usa 40 ms para a placa de som e 180 ms para o `ffplay`.
 - 7 testes novos (`tests/test_player.py`) com uma placa de som simulada. Falta ouvir no PC.
+
+### 2026-11-18 — Comando engolido após interrupção; aprender só quando pedido
+
+Sintoma: "Pesquise sobre a Bolsa de Valores" caiu no comando antigo de aprendizado, que perguntava "Deseja que eu memorize isso?". Pedro interrompeu (a pergunta foi descartada), mas o comando ficou esperando resposta, e "Faça a pesquisa sobre o caso do CEO da Nvidia" foi tomado como "não".
+
+- `ask()` em `brain/audio.py`: se a pergunta foi descartada por interrupção, não espera resposta. Usado na análise de imagem, no registro do dia e no clima.
+- `learn_from_web` (`commands/commands_memorie.py`) só aciona com pedido explícito ("pesquise sobre X e aprenda", "aprenda/estude/memorize sobre X") e guarda sem perguntar. "Pesquise sobre X" vai para a busca normal, com contexto, data e fala em fluxo.
+- Primeira frase longa: o primeiro trecho é cortado na primeira vírgula depois de ~35 caracteres, para o áudio começar mais cedo (Kokoro na CPU leva ~1 s para 120 caracteres).
+- Observado: "Interrupção lenta" voltou a aparecer. Hipótese: o Kokoro e o Whisper de interrupção disputam a CPU. A interrupção funcionou mesmo assim; acompanhar.
+- 52 testes de regressão e 7 de fala em fluxo passando.

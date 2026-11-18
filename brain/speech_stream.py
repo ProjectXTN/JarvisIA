@@ -18,9 +18,11 @@ import threading
 # Fim de frase: . ! ? … seguido de espaço (aspas/parênteses no meio são aceitos).
 # "6.2" e "R$ 4,26" não cortam porque não há espaço depois do ponto.
 _SENTENCE_END = re.compile(r"[.!?…]+[\"'”’)\]]*\s+")
+# Pausa dentro da frase, usada só no primeiro trecho quando a frase é longa
+_CLAUSE_END = re.compile(r"[,;:]\s+")
 
 
-def iter_sentences(pieces, first_min=1, second_min=40, min_len=90):
+def iter_sentences(pieces, first_min=1, second_min=40, min_len=90, first_clause_min=35):
     """Junta pedaços de texto e devolve frases completas assim que ficam prontas.
 
     A primeira frase sai assim que termina, para a fala começar logo. A segunda
@@ -41,6 +43,13 @@ def iter_sentences(pieces, first_min=1, second_min=40, min_len=90):
                 if match.end() >= threshold:
                     cut = match.end()
                     break
+            if cut is None and emitted == 0:
+                # Primeira frase longa: corta na primeira vírgula depois de
+                # ~35 caracteres, para o áudio começar mais cedo
+                for match in _CLAUSE_END.finditer(buffer):
+                    if match.end() >= first_clause_min:
+                        cut = match.end()
+                        break
             if cut is None:
                 break
             sentence, buffer = buffer[:cut].strip(), buffer[cut:]

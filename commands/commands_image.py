@@ -1,6 +1,6 @@
 import os
 import re
-from brain.audio import say, listen
+from brain.audio import say, listen, ask
 from brain.memory.memory import llama_query, DEFAULT_MODEL, DEFAULT_MODEL_HIGH
 from commands.commands_dispatch_image import dispatch_image_command
 from jarvis_vision import describe_image
@@ -34,9 +34,8 @@ def image_command(query):
         for ext in formats:
             path = os.path.join(folder, f"{base_name}.{ext}")
             if os.path.exists(path):
-                say(f'Você quer que eu analise visualmente a imagem "{base_name}" ?')
                 try:
-                    response = listen()
+                    response = ask(f'Você quer que eu analise visualmente a imagem "{base_name}" ?')
                     if not response:
                         say(
                             "Não entendi sua resposta. Vou deixar essa imagem para depois."

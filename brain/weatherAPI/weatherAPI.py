@@ -4,7 +4,7 @@ import re
 import difflib
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-from brain.audio import say, listen
+from brain.audio import say, listen, ask
 from brain.utils.utils import normalize_text
 from core import config
 from core.settings import HOME_CITY, HOME_COUNTRY
@@ -421,8 +421,7 @@ def handle_weather_query(query, lang="pt"):
     location = resolve_location(city) if city else HOME_LOCATION
 
     if location is None and not config.IS_API_REQUEST:
-        say(f"Não encontrei a cidade {city}. Pode repetir só o nome da cidade?")
-        city_retry = listen().strip(" .,!?").title()
+        city_retry = ask(f"Não encontrei a cidade {city}. Pode repetir só o nome da cidade?").strip(" .,!?").title()
         location = resolve_location(city_retry) if city_retry else None
 
     if location is None:

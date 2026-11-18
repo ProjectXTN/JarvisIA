@@ -18,6 +18,13 @@ class SentenceSplitTest(unittest.TestCase):
             "Além disso, cria documentos. Fim",
         ])
 
+    def test_primeira_frase_longa_corta_na_virgula(self):
+        text = ("O caso envolve o CEO da Nvidia, Jensen Huang, que admitiu ter sido infiel "
+                "à esposa em meio a suspeitas de espionagem. Segundo o G1, a empresa abriu uma investigação.")
+        parts = list(iter_sentences([text[i:i + 7] for i in range(0, len(text), 7)]))
+        self.assertEqual(parts[0], "O caso envolve o CEO da Nvidia, Jensen Huang,")
+        self.assertEqual(" ".join(parts), text)
+
     def test_numeros_com_ponto_nao_cortam(self):
         self.assertEqual(list(iter_sentences(["Custa R$ 4.26 e a versão é 6.2 hoje."])),
                          ["Custa R$ 4.26 e a versão é 6.2 hoje."])

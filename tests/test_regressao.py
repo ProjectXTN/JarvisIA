@@ -73,6 +73,7 @@ def _fake_speak_stream(pieces, *a, **k):
 
 
 fake_audio.speak_stream = _fake_speak_stream
+fake_audio.ask = lambda question: (spoken.append(question), "")[1]
 sys.modules["brain.audio"] = fake_audio
 
 from brain.memory import memory  # noqa: E402
@@ -484,6 +485,31 @@ class WebRouterTest(unittest.TestCase):
              mock.patch.object(jarvis_commands, "needs_web", side_effect=AssertionError("chamou o roteador")), \
              mock.patch.object(jarvis_commands, "super_jarvis_query", return_value="achei"):
             self.assertEqual(jarvis_commands.generate_response("procure isso"), "achei")
+
+
+class LearnFromWebTest(unittest.TestCase):
+    def test_pesquise_sobre_simples_nao_e_aprendizado(self):
+        from commands import commands_memorie
+
+        with mock.patch.object(commands_memorie, "execute_search", side_effect=AssertionError("aprendeu")):
+            self.assertFalse(commands_memorie.learn_from_web("pesquise sobre a bolsa de valores"))
+
+    def test_aprende_quando_pedido_sem_perguntar(self):
+        from commands import commands_memorie
+
+        spoken.clear()
+        with mock.patch.object(commands_memorie, "execute_search", return_value=("resumo", "G1")) as search, \
+             mock.patch.object(commands_memorie, "insert_memory", return_value=True) as insert, \
+             mock.patch.object(commands_memorie, "listen", side_effect=AssertionError("ficou esperando resposta")):
+            self.assertTrue(commands_memorie.learn_from_web("pesquise sobre a bolsa de valores e aprenda"))
+        search.assert_called_once_with("O que é a bolsa de valores?")
+        self.assertEqual(insert.call_args.args[:3], ("a bolsa de valores", "resumo", "G1"))
+        self.assertEqual(spoken, ["Guardei isso sobre a bolsa de valores."])
+
+        with mock.patch.object(commands_memorie, "execute_search", return_value=("resumo", "G1")) as search, \
+             mock.patch.object(commands_memorie, "insert_memory", return_value=True):
+            commands_memorie.learn_from_web("aprenda sobre redes neurais")
+        search.assert_called_once_with("O que é redes neurais?")
 
 
 class HandlerFlowTest(unittest.TestCase):

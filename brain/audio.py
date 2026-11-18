@@ -292,6 +292,22 @@ def speak_stream(pieces, gender="MALE"):
     return spoken
 
 
+def ask(question):
+    """Faz uma pergunta e devolve a resposta falada.
+
+    Se você interrompeu o Jarvis antes (a pergunta é descartada), não fica
+    esperando resposta: devolve "" e o próximo comando volta ao fluxo normal.
+    Antes, a frase seguinte era tomada como resposta da pergunta descartada.
+    """
+    if silenced:
+        print(f"[DEBUG] Pergunta descartada (você interrompeu): {question[:80]}")
+        return ""
+    say(question)
+    if silenced:  # interrompeu durante a própria pergunta
+        return ""
+    return listen()
+
+
 # === Public speech function ===
 def say(text, lang="pt-BR", gender="MALE"):
     if not text or not str(text).strip():

@@ -93,38 +93,35 @@ def list_all(content):
         say("Ainda não aprendi nada.")
     return True
 
+# Só aprende quando você pede: "pesquise sobre X e aprenda", "aprenda sobre X",
+# "estude sobre X". Um "pesquise sobre X" simples vai para a busca normal (com
+# contexto da conversa e fala em fluxo). Antes este comando pegava qualquer
+# "pesquise sobre" e ainda perguntava se devia memorizar.
+LEARN_FROM_WEB = re.compile(
+    r"(?:(?:pesquise|procure|busque)\s+sobre\s+(?P<a>.+?)\s+e\s+(?:aprenda|memorize|guarde)(?:\s+isso)?"
+    r"|(?:aprenda|estude|memorize)\s+(?:sobre|a respeito de)\s+(?P<b>.+?))[\s.!?]*$",
+    re.IGNORECASE,
+)
+
+
 def learn_from_web(content):
-    match = re.search(r"(pesquise|procure|busque)\s+sobre\s+(.+?)(?:\s+e\s+(aprenda|aprenda isso))?$", content, re.IGNORECASE)
-    if match:
-        subject = match.group(2).strip()
+    match = LEARN_FROM_WEB.search(content)
+    if not match:
+        return False
+    subject = (match.group("a") or match.group("b")).strip()
 
-        # Now returns (response, main_source)
-        response, source = execute_search(f"O que é {subject}?")
-        if not response or "Erro" in response:
-            say("Não consegui encontrar nada relevante na internet.")
-            return True
+    # Fala o resumo e devolve (resumo, fonte principal)
+    response, source = execute_search(f"O que é {subject}?")
+    if not response or "Erro" in response:
+        return True  # execute_search já avisou que não encontrou
 
-        say(f"Deseja que eu memorize isso como conhecimento sobre {subject}?")
-
-        confirmation = listen().lower()
-        if "sim" in confirmation or "pode" in confirmation:
-            date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            # Clean title
-            clean_title = subject.strip().lower()
-            clean_title = re.sub(r"\be\b$", "", clean_title).strip()
-            clean_title = clean_title.strip(string.punctuation)
-
-            success = insert_memory(clean_title, response, source, date)
-
-            if success:
-                say(f"Informação aprendida com sucesso a partir da fonte {source}.")
-            else:
-                say("Não consegui armazenar essa informação.")
-        else:
-            say("Tudo bem, não vou memorizar isso.")
-        return True
-    return False
+    date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    clean_title = subject.strip().lower().strip(string.punctuation)
+    if insert_memory(clean_title, response, source, date):
+        say(f"Guardei isso sobre {clean_title}.")
+    else:
+        say("Não consegui guardar essa informação.")
+    return True
 
 def learnings_today(content):
     titles = aprendizados_de_hoje()
@@ -145,7 +142,12 @@ comandos_memoria = {
     "esqueça": forget,
     "liste tudo o que você sabe": list_all,
     "liste tudo que você sabe": list_all,
-    "pesquise sobre": learn_from_web,
+    "aprenda sobre": learn_from_web,
+    "estude sobre": learn_from_web,
+    "memorize sobre": learn_from_web,
+    "e aprenda": learn_from_web,
+    "e memorize": learn_from_web,
+    "e guarde": learn_from_web,
     "o que você aprendeu hoje": learnings_today,
     "o que você aprendeu": learnings_today,
     "e você aprendeu": learnings_today 
