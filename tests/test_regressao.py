@@ -223,7 +223,7 @@ class SpeechTextTest(unittest.TestCase):
 
         for phrase in [
             "Pare!", "pare", "para", "Entendi, pode parar.", "parar de falar",
-            "chega", "já entendi", "Jarvis, para.", "Pare. Que horas são?",
+            "chega", "já entendi", "Jarvis, para.", "Pare. Que horas são?", "Pari.",
             "Para, que horas são?",
         ]:
             self.assertTrue(is_interrupt(phrase, self.SPOKEN), phrase)
@@ -406,6 +406,48 @@ class StreamingVoiceTest(unittest.TestCase):
              mock.patch.object(jarvis_commands, "llama_stream", side_effect=AssertionError("stream na API")), \
              mock.patch.object(jarvis_commands, "llama_query", return_value="ok"):
             self.assertEqual(jarvis_commands.generate_response("oi", api=True, stream=True), "ok")
+
+
+class WebSearchSpeedTest(unittest.TestCase):
+    def test_paginas_lentas_ficam_de_fora_e_a_ordem_se_mantem(self):
+        import asyncio
+        import time as _time
+        from brain.websearch import websearch
+
+        delays = {"a": 0.05, "lenta": 3, "erro": 0.02, "b": 0.1}
+
+        async def fake_fetch(session, url):
+            await asyncio.sleep(delays[url])
+            return url, None if url == "erro" else f"texto {url}"
+
+        started = _time.monotonic()
+        with mock.patch.object(websearch, "fetch_page", fake_fetch):
+            result = asyncio.run(websearch.fetch_multiple_pages(["a", "lenta", "erro", "b"], budget=0.5))
+        self.assertLess(_time.monotonic() - started, 1.5)
+        self.assertEqual(result, [("a", "texto a"), ("erro", None), ("b", "texto b")])
+
+    def test_busca_usa_resumos_da_brave_e_poucas_paginas(self):
+        from brain.websearch import websearch
+
+        brave = mock.Mock()
+        brave.json.return_value = {"web": {"results": [
+            {"title": f"<b>Ranger</b> {i}", "url": f"https://site{i}.com/x",
+             "description": f"Resumo <strong>{i}</strong>", "extra_snippets": ["Detalhe"]}
+            for i in range(8)
+        ]}}
+
+        async def fake_pages(links, budget=None):
+            return [(link, "Texto da página " * 20) for link in links]
+
+        with mock.patch.object(websearch, "BRAVE_API_KEY", "x"), \
+             mock.patch.object(websearch.requests, "get", return_value=brave) as get, \
+             mock.patch.object(websearch, "fetch_multiple_pages", side_effect=fake_pages) as pages:
+            text, sources = websearch.search_web("build ranger aion 2")
+        self.assertEqual(get.call_args.kwargs["params"]["q"], "build ranger aion 2")
+        self.assertLessEqual(len(pages.call_args.args[0]), websearch.WEB_MAX_PAGES)
+        self.assertIn("Resumos da busca", text)
+        self.assertIn("Resumo 0", text)
+        self.assertNotIn("<strong>", text)
 
 
 class HandlerFlowTest(unittest.TestCase):

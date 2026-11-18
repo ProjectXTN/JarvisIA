@@ -164,7 +164,7 @@ def _play_interruptible(path, spoken_text):
                     stream.close()
                 except Exception as error:
                     print(f"[AUDIO] Erro ao fechar microfone: {error}")
-            print("[AUDIO] Reprodução encerrada; voltando à escuta.")
+            print("[AUDIO] Frase concluída.")
 
 
 # === Main speech function with GUI support ===

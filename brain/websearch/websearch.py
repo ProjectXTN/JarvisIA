@@ -3,10 +3,12 @@ import requests
 import asyncio
 import aiohttp
 import datetime
+import time
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 from brain.memory.memory import llama_query, DEFAULT_MODEL
 from dotenv import load_dotenv
+from core.settings import WEB_MAX_PAGES, WEB_FETCH_BUDGET
 
 load_dotenv()
 BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")
@@ -129,77 +131,109 @@ def parse_html_universal(html, url=None, lang="pt", max_blocks=10, min_block_len
     return "\n\n".join(final_blocks)
 
 
+# Navegador comum: muitos sites recusam pedidos sem User-Agent
+_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/131.0 Safari/537.36"
+    ),
+    "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+}
+
+
 async def fetch_page(session, url):
     try:
-        async with session.get(url, timeout=5) as response:
+        async with session.get(url) as response:
             if response.status == 200:
-                html = await response.text()
-                parsed_text = parse_html_universal(html, url)
-                return url, parsed_text
+                html = await response.text(errors="ignore")
+                return url, parse_html_universal(html, url)
+            print(f"[WEB] {url} respondeu {response.status}")
+    except asyncio.CancelledError:
+        raise
     except Exception as e:
-        print(f"[ERRO] Falha ao buscar {url}: {e}")
-        return url, None
+        print(f"[WEB] Falha ao buscar {url}: {type(e).__name__} {e}")
+    return url, None
 
 
-async def fetch_multiple_pages(links):
-    async with aiohttp.ClientSession() as session:
-        tasks = [fetch_page(session, link) for link in links]
-        return await asyncio.gather(*tasks)
+async def fetch_multiple_pages(links, budget=WEB_FETCH_BUDGET):
+    """Baixa as páginas em paralelo, com prazo total: as que não chegarem a
+    tempo ficam de fora em vez de atrasar a resposta. Mantém a ordem da busca."""
+    timeout = aiohttp.ClientTimeout(total=budget)
+    async with aiohttp.ClientSession(headers=_HEADERS, timeout=timeout) as session:
+        tasks = [asyncio.create_task(fetch_page(session, link)) for link in links]
+        done, pending = await asyncio.wait(tasks, timeout=budget)
+        for task in pending:
+            task.cancel()
+        if pending:
+            print(f"[WEB] {len(pending)} página(s) passaram de {budget:.1f}s e ficaram de fora.")
+        results = []
+        for task in tasks:
+            if task in done and not task.cancelled() and task.exception() is None:
+                results.append(task.result())
+        return results
 
 
-def search_web(query, min_length=80, total_limit=5000, max_links=10):
+def _brave_snippets(results, limit=6):
+    """Resumos que a própria Brave devolve: chegam com os links, sem custo extra."""
+    lines = []
+    for result in results[:limit]:
+        title = BeautifulSoup(result.get("title", ""), "html.parser").get_text(" ", strip=True)
+        parts = [result.get("description", "")] + list(result.get("extra_snippets") or [])[:2]
+        text = " ".join(BeautifulSoup(p, "html.parser").get_text(" ", strip=True) for p in parts if p)
+        age = result.get("age") or result.get("page_age") or ""
+        if title or text:
+            lines.append(f"- {title} ({extract_readable_source(result.get('url', ''))}{', ' + age if age else ''}): {text}")
+    return "\n".join(lines)
+
+
+def search_web(query, min_length=80, total_limit=5000, max_links=WEB_MAX_PAGES):
     if not BRAVE_API_KEY:
         return "API KEY da Brave Search não encontrada.", "internet"
 
     try:
+        started = time.monotonic()
         print(f"[🔎] Pesquisando na internet sobre: {query}")
 
-        url = f"https://api.search.brave.com/res/v1/web/search?q={query}"
         headers = {"Accept": "application/json", "X-Subscription-Token": BRAVE_API_KEY}
-        response = requests.get(url, headers=headers, timeout=10)
-        data = response.json()
-        results = data.get("web", {}).get("results", [])
+        response = requests.get(
+            "https://api.search.brave.com/res/v1/web/search",
+            params={"q": query[:400], "count": 8, "extra_snippets": "true"},
+            headers=headers,
+            timeout=(3, 8),
+        )
+        response.raise_for_status()
+        results = response.json().get("web", {}).get("results", [])
 
         if not results:
             return "Nenhum resultado encontrado na web.", "internet"
 
+        snippets = _brave_snippets(results)
         links = [result["url"] for result in results[:max_links]]
-        print(f"[🔗] Links encontrados: {links}")
+        print(f"[🔗] Lendo {len(links)} páginas: {links}")
 
         pages_data = asyncio.run(fetch_multiple_pages(links))
 
         links_with_text = []
-        for result in pages_data:
-            if not result:
-                continue
-
-            url, text = result
+        for url, text in pages_data:
             if text and len(text) > min_length:
-                print(f"Conteúdo válido encontrado em: {url}")
                 links_with_text.append((url, text[:10000]))
             else:
-                print(f"Conteúdo ignorado (curto ou vazio): {url}")
+                print(f"[WEB] Conteúdo curto ou vazio: {url}")
 
-        if not links_with_text:
-            return "Não consegui acessar nenhum conteúdo relevante.", "internet"
-
-        # Set up web context
-        combined_texts = ""
+        # Resumos da busca primeiro (sempre há), depois o texto das páginas
+        combined_texts = f"Resumos da busca:\n{snippets}\n\n---\n\n" if snippets else ""
         for _, text in links_with_text:
             if len(combined_texts) + len(text) > total_limit:
-                combined_texts += text[: total_limit - len(combined_texts)]
+                combined_texts += text[: max(0, total_limit - len(combined_texts))]
                 break
             combined_texts += text + "\n\n---\n\n"
 
-        sources = "\n".join(
-            [f"{extract_readable_source(link)}" for link, _ in links_with_text]
-        )
-        main_source = (
-            extract_readable_source(links_with_text[0][0])
-            if links_with_text
-            else "internet"
-        )
+        if not combined_texts.strip():
+            return "Não consegui acessar nenhum conteúdo relevante.", "internet"
 
+        used = [link for link, _ in links_with_text] or [r.get("url", "") for r in results[:3]]
+        sources = "\n".join(extract_readable_source(link) for link in used)
+        print(f"[WEB] {len(links_with_text)} página(s) lidas em {time.monotonic() - started:.1f}s.")
         return combined_texts.strip(), sources
 
     except Exception as e:

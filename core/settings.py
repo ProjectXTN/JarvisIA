@@ -32,6 +32,10 @@ OLLAMA_NUM_CTX = int(os.getenv("JARVIS_NUM_CTX", "4096"))
 # Tempo máximo de espera pela consulta aos documentos internos (RAG)
 RAG_TIMEOUT = 15
 NEWS_LLM_TIMEOUT = int(os.getenv("JARVIS_NEWS_LLM_TIMEOUT", "45"))
+# Busca na web: páginas lidas além dos resumos da Brave, e prazo total para
+# baixá-las (as que não chegarem a tempo ficam de fora)
+WEB_MAX_PAGES = int(os.getenv("JARVIS_WEB_MAX_PAGES", "4"))
+WEB_FETCH_BUDGET = float(os.getenv("JARVIS_WEB_FETCH_BUDGET", "2.5"))
 # Limite para respostas com busca na web; depois disso o Jarvis desiste e avisa
 WEB_LLM_TIMEOUT = int(os.getenv("JARVIS_WEB_LLM_TIMEOUT", "60"))
 # Consulta aos documentos internos (RAG). Desligada até a Fase 5: o índice só

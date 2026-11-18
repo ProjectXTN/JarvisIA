@@ -66,6 +66,8 @@ _STOP = re.compile(
     r"pode parar|parar de falar|para de falar|pare de falar|pode calar|"
     r"para jarvis|jarvis para|para ai|para por favor|"
     r"pare|parar|chega|ja entendi|entendi|ta bom|ta certo|"
+    # o Whisper pequeno da interrupção às vezes escreve "pare" assim
+    r"pari|pa re|parre|"
     r"silencio|cala a boca|fica quieto|stop|interrompa|cancela|esquece"
     r")\b"
 )

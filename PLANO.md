@@ -53,7 +53,7 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 - [ ] 32. Roteamento por tool calling em `process_command`
 - [ ] 33. Atalhos sem LLM para música, volume e desligar
 - [ ] 34. Comandos encadeados via múltiplas ferramentas; apagar `commands_multiples.py`
-- [ ] 35. Busca web: `params=`, `User-Agent`, 3 páginas, resumos do Brave
+- [x] 35. Busca web: `params=`, `User-Agent`, 4 páginas com prazo de 2,5 s, resumos da Brave
 - [ ] 36. Cache com validade e limite de tamanho
 
 ## Fase 5 — Memória e RAG
@@ -343,3 +343,11 @@ Sintomas: "procure sobre a nova versão do ChatGPT Astra 6.2" foi respondida da 
 - **Console:** `[LLM] Primeiras palavras em X s` e `⏱️ Áudio gerado em X s` por frase.
 - Para desligar: `JARVIS_STREAMING=0` no `.env`.
 - 44 testes de regressão e 6 de fala em fluxo passando, com modelo e áudio simulados. Falta o teste por voz no PC.
+
+### 2026-11-18 — Teste da fala em fluxo e busca mais rápida (item 35)
+
+- Teste por voz da fala em fluxo: primeiras palavras do modelo em 0,4 a 0,5 s, primeira frase em áudio logo depois; as frases seguintes ficaram prontas antes da anterior acabar. "Pode parar. Já entendi" interrompeu.
+- O Whisper pequeno da interrupção escreveu "pare" como "Pari." e foi ignorado: "pari" passou a contar como ordem de parar.
+- O console mostrava "voltando à escuta" depois de cada frase; agora mostra "Frase concluída".
+- **Busca:** antes lia 10 páginas com até 5 s cada (2,8 a 3,2 s no total). Agora usa os resumos que a Brave já devolve (chegam com os links) e lê só 4 páginas em paralelo, com prazo total de 2,5 s; as que passam do prazo ficam de fora. Consulta com `params=` (acentos e símbolos corretos) e User-Agent de navegador. Ajustes: `JARVIS_WEB_MAX_PAGES` e `JARVIS_WEB_FETCH_BUDGET`.
+- 46 testes de regressão passando; falta medir por voz.
