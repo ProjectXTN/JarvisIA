@@ -305,6 +305,47 @@ class WebPathTest(unittest.TestCase):
         self.assertEqual(llm.call_args.kwargs["mode"], "web")
 
 
+class SearchContextTest(unittest.TestCase):
+    def test_procure_sempre_busca_na_web(self):
+        for phrase in [
+            "procure sobre a nova versão do chat gpt astra 6.2",
+            "pesquise o preço da rtx 5090",
+            "busca as atualizações da openai",
+        ]:
+            self.assertTrue(jarvis_commands.is_explicit_search(phrase), phrase)
+        self.assertFalse(jarvis_commands.is_explicit_search("me explica como funciona um motor"))
+
+    def test_procure_vai_para_a_busca_e_nao_para_a_memoria(self):
+        with mock.patch.object(jarvis_commands, "super_jarvis_query", return_value="achei") as web, \
+             mock.patch.object(jarvis_commands, "llama_query", side_effect=AssertionError("respondeu sem buscar")), \
+             mock.patch.object(jarvis_commands, "is_code_request", return_value=False), \
+             mock.patch.object(jarvis_commands, "is_query_time_sensitive", return_value=False):
+            self.assertEqual(jarvis_commands.generate_response("procure sobre o chatgpt astra"), "achei")
+        web.assert_called_once()
+
+    def test_continuacao_usa_o_assunto_da_conversa(self):
+        from brain.pipeline import super_jarvis
+
+        history = [(
+            "procure sobre a nova versão do chat gpt astra 6.2",
+            "Não encontrei essa versão. Quer que eu procure as atualizações mais recentes da OpenAI?",
+        )]
+        rewritten = "atualizações mais recentes da OpenAI"
+        with mock.patch.object(super_jarvis, "memory_context", history), \
+             mock.patch.object(super_jarvis, "RAG_ENABLED", False), \
+             mock.patch.object(super_jarvis, "search_web", return_value=("texto", "fonte")) as search, \
+             mock.patch.object(super_jarvis, "remember_turn"), \
+             mock.patch.object(super_jarvis, "llama_query", side_effect=[rewritten, "resposta"]):
+            super_jarvis.super_jarvis_query("procure pelas atualizações mais recentes", conversation=True)
+        search.assert_called_once_with(rewritten)
+
+    def test_sem_conversa_nao_reescreve(self):
+        from brain.pipeline import super_jarvis
+
+        with mock.patch.object(super_jarvis, "llama_query", side_effect=AssertionError("não devia chamar")):
+            self.assertEqual(super_jarvis.contextualize_search("preço do bitcoin", []), "preço do bitcoin")
+
+
 class HandlerFlowTest(unittest.TestCase):
     def test_comando_que_devolve_false_nao_encerra(self):
         # "atualize o sistema" casa com a chave "atualize", mas o comando de

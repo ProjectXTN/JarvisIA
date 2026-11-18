@@ -35,10 +35,41 @@ PROMPT_TEMPLATES = {
 }
 
 
+def contextualize_search(user_prompt, history):
+    """Transforma uma continuação ("procure as mais recentes") numa busca completa.
+
+    Usa as últimas trocas da conversa para trazer o assunto ("...da OpenAI").
+    Se a fala já é completa ou o modelo falhar, devolve a fala original.
+    """
+    if not history:
+        return user_prompt
+    turns = "\n".join(f"Pedro: {q[:300]}\nJarvis: {a[:400]}" for q, a in history[-3:])
+    prompt = (
+        f"Conversa recente:\n{turns}\n\n"
+        f"Nova fala do Pedro: \"{user_prompt}\"\n\n"
+        "Escreva a consulta de busca na internet que atende a nova fala. Se ela "
+        "depende da conversa (\"isso\", \"as mais recentes\", \"sim, quero\", "
+        "\"e sobre ele\"), inclua o assunto da conversa. Se for um assunto novo e "
+        "completo, devolva a fala sem mudanças. Responda só com a consulta, "
+        "em uma linha, sem aspas e sem explicações."
+    )
+    rewritten = llama_query(prompt, direct_mode=True, mode="rewrite", lang="pt", remember=False)
+    if not rewritten:
+        return user_prompt
+    rewritten = rewritten.strip().splitlines()[0].strip(" \"'.")
+    if not rewritten or len(rewritten) > 200:
+        return user_prompt
+    if rewritten.lower() != user_prompt.lower():
+        print(f"[BUSCA] Pergunta com o contexto da conversa: {rewritten}")
+    return rewritten
+
+
 def super_jarvis_query(user_prompt, lang="pt", conversation=False):
-    if is_news_request(user_prompt):
-        return news_response(user_prompt, lang=lang, conversation=conversation)
-    web_context, web_sources = search_web(user_prompt)
+    history = list(memory_context) if conversation else []
+    search_query = contextualize_search(user_prompt, history)
+    if is_news_request(search_query):
+        return news_response(search_query, lang=lang, conversation=conversation)
+    web_context, web_sources = search_web(search_query)
     local_context = ""
     if RAG_ENABLED:
         print("[RAG] Consultando documentos internos...")
@@ -56,7 +87,9 @@ def super_jarvis_query(user_prompt, lang="pt", conversation=False):
         f"{pt['context']}\n{web_context}\n\n"
         f"{pt['sources']}\n{web_sources}\n\n"
         f"{pt['internal']}\n{local_context}\n\n"
-        f"{pt['user_question']} {user_prompt}\n"
+        f"{pt['user_question']} {user_prompt}"
+        + (f" (busca feita: {search_query})" if search_query != user_prompt else "")
+        + "\n"
         f"{pt['answer_instruction']}"
     )
 

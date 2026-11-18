@@ -104,6 +104,19 @@ def run_command_handlers(query, blocked=()):
     return False, None
 
 
+# Pedidos explícitos de busca: sempre vão à internet, mesmo sem "na internet".
+# Antes "procure sobre a nova versão do ChatGPT" era respondida só da memória
+# do modelo, que ainda dizia ter pesquisado.
+EXPLICIT_SEARCH = re.compile(
+    r"\b(pesquise|pesquisa|pesquisar|procure|procura|procurar|busque|busca|buscar|"
+    r"consulte|veja na internet|olhe na internet|search|look up)\b"
+)
+
+
+def is_explicit_search(query):
+    return bool(EXPLICIT_SEARCH.search(query.lower()))
+
+
 def generate_response(query, lang="pt", api=False):
     """Resposta do LLM (com busca web quando o assunto é atual), ou None."""
     start_time = time.time()
@@ -115,8 +128,8 @@ def generate_response(query, lang="pt", api=False):
                                    history=[] if api else list(memory_context), remember=False)
             if response and not api:
                 remember_turn(query, response)
-        elif is_query_time_sensitive(query):
-            print("[DEBUG] Query depends on current data. Using RAG+Web.")
+        elif is_explicit_search(query) or is_query_time_sensitive(query):
+            print("[DEBUG] Busca na internet (pedido explícito ou assunto atual).")
             response = super_jarvis_query(query, lang=lang, conversation=not api)
         else:
             print("[DEBUG] Timeless query. Using only LLaMA memory.")
@@ -153,10 +166,6 @@ def process_command(query, lang="pt"):
     except Exception as e:
         print(f"[ERROR] Clima falhou: {e}")
 
-    if re.search(r"\b(pesquise|procure|busque)\s+(na\s+)?(internet|web)\b", query):
-        # execute_search já fala o resultado (ou o erro) por conta própria
-        execute_search(query)
-        return True
 
     handled, result = run_command_handlers(query)
     if handled:

@@ -48,15 +48,22 @@ def cuda_available():
         return False
 
 
-def load_whisper(gpu_model, cpu_model, label="Whisper"):
-    """Devolve (modelo, descrição). Tenta a GPU e confere com uma transcrição de teste."""
+def load_whisper(gpu_model, cpu_model, label="Whisper", compute_type="float16", prefer_gpu=True):
+    """Devolve (modelo, descrição). Tenta a GPU e confere com uma transcrição de teste.
+
+    prefer_gpu=False carrega direto na CPU (para modelos pequenos que não
+    precisam disputar a memória de vídeo com o modelo principal).
+    """
+    if not prefer_gpu:
+        model = faster_whisper.WhisperModel(cpu_model, device="cpu", compute_type="int8", local_files_only=not WHISPER_ALLOW_DOWNLOAD)
+        return model, f"{label} {cpu_model} na CPU"
     if cuda_available():
         try:
-            model = faster_whisper.WhisperModel(gpu_model, device="cuda", compute_type="float16", local_files_only=not WHISPER_ALLOW_DOWNLOAD)
+            model = faster_whisper.WhisperModel(gpu_model, device="cuda", compute_type=compute_type, local_files_only=not WHISPER_ALLOW_DOWNLOAD)
             # Erros de DLL ausente só aparecem na primeira transcrição
             segments, _ = model.transcribe(np.zeros(16000, dtype=np.float32), language="pt", beam_size=1)
             list(segments)
-            return model, f"{label} {gpu_model} na GPU"
+            return model, f"{label} {gpu_model} na GPU ({compute_type})"
         except Exception as e:
             print(f"[WHISPER] {label}: modelo GPU indisponível ({e}).")
             reason = str(e).lower()

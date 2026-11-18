@@ -59,6 +59,10 @@ EMBEDDING_MODEL = os.getenv("JARVIS_EMBEDDING_MODEL", "nomic-embed-text")
 # o Jarvis volta para o modelo de CPU.
 WHISPER_MODEL = os.getenv("JARVIS_WHISPER_MODEL", "large-v3-turbo")
 WHISPER_MODEL_CPU = os.getenv("JARVIS_WHISPER_MODEL_CPU", "medium")
+# int8_float16 usa cerca de metade da memória de vídeo do float16, com perda
+# de precisão desprezível. Com o Gemma (~19 GB) na mesma placa, a memória
+# sobrando é pouca: quando acaba, o driver usa a RAM do PC e tudo fica lento.
+WHISPER_COMPUTE_TYPE = os.getenv("JARVIS_WHISPER_COMPUTE", "int8_float16")
 WHISPER_BEAM_SIZE = 5
 # Downloads grandes são preparados separadamente para não travar a abertura.
 WHISPER_ALLOW_DOWNLOAD = os.getenv("JARVIS_WHISPER_ALLOW_DOWNLOAD", "0") == "1"
@@ -71,6 +75,9 @@ INTERRUPT_ENABLED = os.getenv("JARVIS_INTERRUPT", "1") == "1"
 # Modelo pequeno e rápido, só para reconhecer o pedido de parar
 INTERRUPT_WHISPER_MODEL = os.getenv("JARVIS_INTERRUPT_MODEL", "base")
 INTERRUPT_WHISPER_MODEL_CPU = os.getenv("JARVIS_INTERRUPT_MODEL_CPU", "base")
+# O Whisper de interrupção ouve trechos curtos ("pare"): na CPU ele é rápido
+# o bastante e deixa a memória da GPU para o modelo principal.
+INTERRUPT_ON_GPU = os.getenv("JARVIS_INTERRUPT_GPU", "0") == "1"
 # Limite de caracteres de cada fala (o resto aparece só no console)
 MAX_SPOKEN_CHARS = 1200
 

@@ -21,6 +21,8 @@ from brain import avatar
 from brain.whisper_loader import load_whisper
 from core.settings import (
     ACTIVATION_SOUND,
+    WHISPER_COMPUTE_TYPE,
+    INTERRUPT_ON_GPU,
     WHISPER_MODEL,
     WHISPER_MODEL_CPU,
     INTERRUPT_WHISPER_MODEL_CPU,
@@ -53,7 +55,7 @@ if getattr(sys, "frozen", False):
 
 # === Transcription model ===
 # GPU com large-v3-turbo; sem GPU utilizável, volta para a CPU (ver whisper_loader.py)
-model, _whisper_desc = load_whisper(WHISPER_MODEL, WHISPER_MODEL_CPU)
+model, _whisper_desc = load_whisper(WHISPER_MODEL, WHISPER_MODEL_CPU, compute_type=WHISPER_COMPUTE_TYPE)
 current_audio_process = None
 print(f"🎙️ {_whisper_desc}.")
 
@@ -73,7 +75,8 @@ def _load_interrupt_model():
     global _interrupt_model
     try:
         _interrupt_model, desc = load_whisper(
-            INTERRUPT_WHISPER_MODEL, INTERRUPT_WHISPER_MODEL_CPU, "Interrupção: Whisper"
+            INTERRUPT_WHISPER_MODEL, INTERRUPT_WHISPER_MODEL_CPU, "Interrupção: Whisper",
+            prefer_gpu=INTERRUPT_ON_GPU,
         )
         print(f"✅ Interrupção por voz pronta ({desc}).")
     except Exception as e:

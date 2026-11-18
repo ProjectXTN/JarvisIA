@@ -319,3 +319,12 @@ Sintoma: notícias responderam em 1 s, mas a pergunta seguinte ficou mais de 90 
 - Resolvido com `venv\Scripts\python.exe -X utf8 -m tests.prepare_whisper` (1,62 GB).
 - Abertura confirmada no PC do Pedro: `Whisper large-v3-turbo na GPU` e `Interrupção: Whisper base na GPU`; Gemma pronto na abertura.
 - O aviso de symlinks do Hugging Face no Windows é inofensivo (o cache só ocupa mais espaço).
+
+### 2026-11-18 — Busca que não buscava, contexto perdido e Whisper lento na GPU
+
+Sintomas: "procure sobre a nova versão do ChatGPT Astra 6.2" foi respondida da memória do modelo, que disse ter pesquisado; "procure pelas atualizações mais recentes" buscou notícias gerais em vez da OpenAI; transcrições de 15 a 18 s.
+
+- **Busca explícita:** "procure", "pesquise", "busque", "consulte" sempre vão à internet (`is_explicit_search` em `jarvis_commands.py`), sem precisar de "na internet".
+- **Contexto da conversa:** antes de buscar, `contextualize_search` (`brain/pipeline/super_jarvis.py`) usa as últimas três trocas para completar continuações ("as mais recentes" vira "atualizações mais recentes da OpenAI"). Custa uma chamada curta ao modelo (até 64 tokens, limite de 15 s) e só acontece quando há conversa. O console mostra `[BUSCA] Pergunta com o contexto da conversa: ...`.
+- **Whisper lento na GPU:** hipótese de falta de memória de vídeo (Gemma ~19 GB, dois Whispers, Windows e avatar). Quando acaba, o driver da NVIDIA usa a RAM do PC e fica muito lento. Whisper principal em `int8_float16` (cerca de metade da memória, `JARVIS_WHISPER_COMPUTE`) e Whisper de interrupção na CPU (`JARVIS_INTERRUPT_GPU=0`). Confirmar com `nvidia-smi` com o Jarvis aberto.
+- 37 testes de regressão passando; falta o teste por voz.
