@@ -218,20 +218,31 @@ def _chunks(text, size=900, overlap=150):
         start = max(end - overlap, start + 1)
 
 
+_DOC_EXTENSIONS = (".txt", ".md", ".pdf")
+
+
+def _document_files(folders):
+    """(nome, caminho) dos documentos das pastas (separadas por ";"), sem subpastas."""
+    if isinstance(folders, str):
+        folders = [f.strip() for f in folders.split(";") if f.strip()]
+    for folder in folders:
+        if not os.path.isdir(folder):
+            os.makedirs(folder, exist_ok=True)
+            continue
+        for name in sorted(os.listdir(folder)):
+            path = os.path.join(folder, name)
+            if os.path.isfile(path) and name.lower().endswith(_DOC_EXTENSIONS):
+                yield name, path
+
+
 def index_documents(folder=DOCS_DIR):
-    """Indexa .txt, .md e .pdf da pasta. Só reprocessa arquivos que mudaram."""
-    if not os.path.isdir(folder):
-        os.makedirs(folder, exist_ok=True)
-        return 0
+    """Indexa .txt, .md e .pdf das pastas. Só reprocessa arquivos que mudaram."""
     added = 0
     with _lock, _connect() as conn:
         known = dict(conn.execute(
             "SELECT fonte, hash FROM memorias WHERE tipo = 'documento' GROUP BY fonte").fetchall())
     present = set()
-    for name in sorted(os.listdir(folder)):
-        path = os.path.join(folder, name)
-        if not os.path.isfile(path):
-            continue
+    for name, path in _document_files(folder):
         present.add(name)
         with open(path, "rb") as f:
             digest = hashlib.sha1(f.read()).hexdigest()
@@ -261,12 +272,12 @@ def search_documents(pergunta, k=4):
 
 
 def prepare():
-    """Na abertura: importa as memórias antigas e atualiza o índice de documentos."""
+    """Na abertura: atualiza o índice de documentos e importa as memórias antigas."""
     started = time.monotonic()
     try:
-        migrate_old_memories()
-        added = index_documents()
+        added = index_documents()  # primeiro os documentos: são poucos e rápidos
         if added:
             print(f"[DOCUMENTOS] {added} trechos novos em {time.monotonic() - started:.1f}s.")
+        migrate_old_memories()
     except Exception as error:
         print(f"[MEMÓRIA] Preparação falhou: {error}")

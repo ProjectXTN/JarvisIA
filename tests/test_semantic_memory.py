@@ -99,6 +99,15 @@ class SemanticMemoryTest(unittest.TestCase):
             sm.index_documents(docs)
             self.assertEqual(sm.search_documents("senha do wifi"), [])
 
+    def test_varias_pastas_e_ignora_outros_formatos(self):
+        a, b = os.path.join(self.dir, "a"), os.path.join(self.dir, "b")
+        os.makedirs(a); os.makedirs(b)
+        open(os.path.join(a, "wifi.txt"), "w", encoding="utf-8").write("senha do roteador wifi")
+        open(os.path.join(b, "rex.md"), "w", encoding="utf-8").write("o cachorro rex")
+        open(os.path.join(b, "foto.jpg"), "wb").write(b"x")
+        self.assertEqual(sm.index_documents(f"{a};{b}"), 2)
+        self.assertEqual(sm.search_documents("cachorro")[0]["fonte"], "rex.md")
+
     def test_trechos_longos_sao_divididos(self):
         text = ". ".join(f"Frase número {i} sobre o assunto" for i in range(200))
         chunks = list(sm._chunks(text))

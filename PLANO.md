@@ -475,3 +475,10 @@ Corrigido:
 - Embeddings agora rodam na CPU (`num_gpu: 0`, contexto 2048). Para voltar à GPU: `JARVIS_EMBEDDING_GPU=1`.
 - `open_chat` avisa quando o Ollama demora mais de 3 s para começar a responder.
 - Migração das memórias antigas agora é marcada na tabela `memorias_info` (antes, 3 linhas gravadas por um teste fizeram ela achar que já tinha rodado; linhas removidas).
+
+### 2026-11-18 — Teste por voz da Fase 5 e ajustes
+
+- Validado por voz: "guarde que a senha do wifi é teste 123" → "qual é a senha da internet?" respondeu certo (busca por semelhança). 110 memórias antigas importadas, 3 puladas.
+- Documentos: o índice roda antes da importação das memórias antigas (antes, um arquivo novo só entrava depois de importar tudo). Aceita várias pastas em `JARVIS_DOCS_DIR`, separadas por `;`; ignora formatos que não sejam .txt, .md e .pdf.
+- `should_save_to_file` (`brain/storage/file_saver.py`): só salva resposta em arquivo quando Pedro pede ("salve em um arquivo", "crie um documento..."). Antes qualquer frase com "documento", "receita" ou "escreva" virava um .txt em Documentos.
+- Embeddings na CPU levam ~1 s por consulta; fica de olho se isso pesar na resposta.

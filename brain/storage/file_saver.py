@@ -5,16 +5,18 @@ import unidecode
 
 from brain.audio import say
 
+# Só salva quando Pedro pede para salvar. Antes bastava a fala ter "documento",
+# "receita" ou "escreva", e perguntas sobre os documentos dele viravam arquivos.
+_SAVE_REQUEST = re.compile(
+    r"\b(salv[ae]r?|salve|grav[ae]r?|grave)\b.*\b(arquivo|documento|txt|pasta|documentos)\b"
+    r"|\b(em|num|n[uo]m?) (um )?arquivo\b"
+    r"|\b(crie|cria|criar|faca|faz|fazer|escreva|escreve) (um|uma) (documento|arquivo|relatorio)\b"
+)
+
+
 def should_save_to_file(query):
-    triggers = [
-        "receita",
-        "escreva",
-        "passo a passo",
-        "relatorio",
-        "documento",
-    ]
     normalized_query = unidecode.unidecode(query.lower())
-    return any(trigger in normalized_query for trigger in triggers)
+    return bool(_SAVE_REQUEST.search(normalized_query))
 
 
 def save_response_to_file(question, response):
