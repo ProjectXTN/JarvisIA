@@ -46,6 +46,15 @@ def previous_music(_):
     keyboard.send("previous track")
     return True
 
+# Atalhos sem modelo (Fase 4, item 33): só frases inequívocas de controle
+music_control_commands = [
+    (r"\b(pausar|pause|parar|interromper)\s+(a\s+)?música\b", pause_music),
+    (r"\b(próxima|avançar|pular|trocar)\s+(faixa|música)\b", next_music),
+    (r"\b(troca|passa)\s+(a\s+)?música\b", next_music),
+    (r"\b(voltar|anterior|volte)\s+(a\s+)?(faixa|música)\b", previous_music),
+    (r"\bmúsica anterior\b", previous_music),
+]
+
 music_commands = [
     (r"\b(tocar|toque|quero ouvir)\b", search_and_play_apple_music),
     # "coloque" sozinho abria o Apple Music para qualquer pedido

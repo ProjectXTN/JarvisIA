@@ -3,12 +3,11 @@ import string
 import time
 
 from commands.commands_day_time import datetime_commands
-from commands.commands_music import music_commands
+from commands.commands_music import music_commands, music_control_commands
 from commands.commands_browser import browser_commands
 from commands.commands_image import image_commands
 from commands.commands_folders import comandos_pastas
 from commands.comandos_software import software_commands
-from commands.commands_multiples import multiple_commands
 from commands.commands_memorie import comandos_memoria
 from commands.commands_emotions import emotional_commands
 from commands.commands_reflection import comandos_reflexao
@@ -18,7 +17,8 @@ from commands.commands_avatar import generate_avatar, avatar_view_commands
 from commands.commands_systeme import system_command, shutdown_command
 from brain.weatherAPI.weatherAPI import handle_weather_query
 from brain.storage.file_saver import save_response_to_file, should_save_to_file
-from core.settings import STREAMING_ENABLED, WEB_ROUTER_ENABLED
+from core.settings import STREAMING_ENABLED, WEB_ROUTER_ENABLED, TOOL_ROUTER_ENABLED
+from brain import tool_router
 from brain.pipeline.super_jarvis import today_line
 from brain.memory.memory import llama_stream
 from brain.memory.memory import llama_query, memory_context, remember_turn
@@ -30,13 +30,40 @@ from brain.utils.inputs import markdown_instruction
 from brain.audio import say, speak_stream
 from brain.utils.utils import log_interaction
 
-# Cache for responses to accelerate
-response_cache = {}
+class ResponseCache:
+    """Cache da API do site: respostas valem 10 minutos e no máximo 200 ficam
+    guardadas. Antes não havia validade nem limite: uma resposta sobre
+    notícias do dia ficava guardada para sempre."""
+
+    def __init__(self, ttl=600, max_items=200):
+        self.ttl, self.max_items = ttl, max_items
+        self._items = {}
+
+    def get(self, key):
+        item = self._items.get(key)
+        if item is None:
+            return None
+        saved_at, value = item
+        if time.monotonic() - saved_at > self.ttl:
+            del self._items[key]
+            return None
+        return value
+
+    def __setitem__(self, key, value):
+        self._items.pop(key, None)
+        self._items[key] = (time.monotonic(), value)
+        while len(self._items) > self.max_items:
+            del self._items[next(iter(self._items))]  # o mais antigo sai primeiro
+
+    def __len__(self):
+        return len(self._items)
+
+
+response_cache = ResponseCache()
 
 # Join all command handlers with internal regex detection
 COMMAND_HANDLERS = [
     avatar_view_commands,
-    multiple_commands,
     software_commands,
     datetime_commands,
     music_commands,
@@ -49,6 +76,13 @@ COMMAND_HANDLERS = [
     comandos_reflexao,
     emotional_commands,
     generate_avatar,
+]
+
+# Atalhos que rodam antes do modelo (item 33): frases inequívocas e rápidas
+SHORTCUT_HANDLERS = [
+    datetime_commands,
+    music_control_commands,
+    avatar_view_commands,
 ]
 
 BLOCKED_COMMANDS_API = [
@@ -73,9 +107,9 @@ def clean_query(query):
     return query.rstrip(string.punctuation)
 
 
-def _matching_handlers(query, blocked=()):
+def _matching_handlers(query, blocked=(), handlers=None):
     """Gera as funções de comando cujo gatilho aparece na frase."""
-    for group in COMMAND_HANDLERS:
+    for group in COMMAND_HANDLERS if handlers is None else handlers:
         if any(group is b for b in blocked):
             continue
         if isinstance(group, dict):
@@ -88,7 +122,7 @@ def _matching_handlers(query, blocked=()):
                     yield func
 
 
-def run_command_handlers(query, blocked=()):
+def run_command_handlers(query, blocked=(), handlers=None):
     """Executa o primeiro comando que aceitar a frase.
 
     Devolve (True, resultado) se algum comando tratou a frase, ou
@@ -96,7 +130,7 @@ def run_command_handlers(query, blocked=()):
     "não era comigo": a busca continua e, no fim, a frase vai para o LLM.
     (Antes esse False era confundido com pedido de desligar.)
     """
-    for func in _matching_handlers(query, blocked):
+    for func in _matching_handlers(query, blocked, handlers):
         try:
             result = func(query)
         except Exception as e:
@@ -210,6 +244,27 @@ def process_command(query, lang="pt"):
     if shutdown_command(query) is False:
         return False
 
+    # Atalhos sem modelo: instantâneos e sem ambiguidade (hora, data, música, avatar)
+    handled, result = run_command_handlers(query, handlers=SHORTCUT_HANDLERS)
+    if handled:
+        return True
+
+    # Fase 4: o modelo decide (responder, buscar, abrir, tocar...)
+    if TOOL_ROUTER_ENABLED:
+        try:
+            answer = tool_router.handle(query, lang=lang)
+        except tool_router.RouterUnavailable as error:
+            print(f"[ROTEADOR] Indisponível ({error}); usando as regras antigas.")
+        else:
+            if answer:
+                log_interaction(query, answer)
+                if should_save_to_file(query):
+                    save_response_to_file(query, answer)
+            else:
+                say("Desculpe, não consegui responder agora.")
+            return True
+
+    # Caminho antigo (regras de palavras), usado se o roteador estiver desligado ou falhar
     try:
         if handle_weather_query(query):
             return True

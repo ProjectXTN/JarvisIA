@@ -376,6 +376,7 @@ class StreamingVoiceTest(unittest.TestCase):
 
         spoken.clear()
         with mock.patch.object(jarvis_commands, "STREAMING_ENABLED", True), \
+             mock.patch.object(jarvis_commands, "TOOL_ROUTER_ENABLED", False), \
              mock.patch.object(jarvis_commands, "run_command_handlers", return_value=(False, None)), \
              mock.patch.object(jarvis_commands, "handle_weather_query", return_value=False), \
              mock.patch.object(jarvis_commands, "is_code_request", return_value=False), \
@@ -392,6 +393,7 @@ class StreamingVoiceTest(unittest.TestCase):
     def test_stream_vazio_avisa_que_nao_conseguiu(self):
         spoken.clear()
         with mock.patch.object(jarvis_commands, "STREAMING_ENABLED", True), \
+             mock.patch.object(jarvis_commands, "TOOL_ROUTER_ENABLED", False), \
              mock.patch.object(jarvis_commands, "run_command_handlers", return_value=(False, None)), \
              mock.patch.object(jarvis_commands, "handle_weather_query", return_value=False), \
              mock.patch.object(jarvis_commands, "is_code_request", return_value=False), \

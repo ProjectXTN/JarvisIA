@@ -49,12 +49,12 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 
 ## Fase 4 — Inteligência: ferramentas no lugar de regex
 
-- [ ] 31. Transformar cada comando em ferramenta com descrição
-- [ ] 32. Roteamento por tool calling em `process_command` (parcial: o modelo já decide se precisa buscar na internet)
-- [ ] 33. Atalhos sem LLM para música, volume e desligar
-- [ ] 34. Comandos encadeados via múltiplas ferramentas; apagar `commands_multiples.py`
+- [x] 31. Transformar cada comando em ferramenta com descrição (`brain/tools.py`, 20 ferramentas)
+- [x] 32. Roteamento por tool calling em `process_command` (`brain/tool_router.py`)
+- [x] 33. Atalhos sem LLM: desligar, hora, data, controle de música, avatar (volume ainda não existe)
+- [x] 34. Comandos encadeados via múltiplas ferramentas; apagar `commands_multiples.py`
 - [x] 35. Busca web: `params=`, `User-Agent`, 4 páginas com prazo de 2,5 s, resumos da Brave
-- [ ] 36. Cache com validade e limite de tamanho
+- [x] 36. Cache com validade e limite de tamanho (API do site: 10 min, 200 respostas)
 
 ## Fase 5 — Memória e RAG
 
@@ -402,3 +402,20 @@ Sintoma: "Pesquise sobre a Bolsa de Valores" caiu no comando antigo de aprendiza
 **Item 30 descartado.** Com o Whisper turbo na GPU, transcrever cada fala no modo passivo custa ~0,4 s e já reconhece "Jarvis, que horas são?" numa frase só. O modelo pronto do openWakeWord é "hey jarvis": exigiria mudar o jeito de chamar o Jarvis e treinar um modelo próprio para "Jarvis" sozinho, além de mais uma dependência, para um ganho pequeno (menos processamento com o PC parado). Se o reconhecimento passivo der problema (ruído de TV, por exemplo), reavaliar.
 
 **Fase 3 encerrada:** Whisper turbo na GPU (23), microfone aberto (24), voz local Kokoro (25), fala em fluxo (26), áudio pela placa de som (27), interrupção por voz (28), bip de ativação (29).
+
+### 2026-11-18 — Fase 4: o modelo escolhe as ferramentas (itens 31 a 34 e 36)
+
+Confirmado antes: o `gemma4:26b` tem a capacidade "tools" no Ollama.
+
+- **Fluxo de uma fala** (`process_command`):
+  1. Desligar e **atalhos sem modelo** (`SHORTCUT_HANDLERS`): hora, data, pausar/próxima/anterior música, mostrar/esconder avatar.
+  2. **Roteador** (`brain/tool_router.py`): uma chamada ao Gemma com a conversa, a data e as 20 ferramentas, em stream. Resposta em texto já vai sendo falada.
+  3. Ferramentas pedidas rodam na ordem ("abra o Steam e toque Queen" = duas chamadas). Ferramentas de **informação** (busca, notícias, clima, data, status do PC, memória, emoções) voltam para o Gemma numa segunda chamada, sem ferramentas, que formula a resposta falada. Ferramentas de **ação** (programa, pasta, música, imagem, memorizar, avatar...) executam e confirmam sozinhas.
+  4. Se o Ollama recusar ferramentas ou der erro antes de começar (`RouterUnavailable`), usa o **caminho antigo** de regras de palavras, que continua no código.
+- **Ferramentas** (`brain/tools.py`): buscar_na_internet, buscar_noticias, previsao_do_tempo, data_e_hora, status_do_computador, consultar_memoria, listar_memorias, consultar_emocoes, abrir_programa, abrir_pasta, musica, criar_imagem, descrever_imagem, memorizar, esquecer, aprender_da_internet, registrar_emocao, registrar_meu_dia, traduzir_legenda, avatar. Reaproveitam as funções dos comandos antigos.
+- Se Pedro disser "pare" durante a parte inicial falada, as ferramentas pedidas não rodam.
+- `commands_multiples.py` apagado (item 34). O gatilho dele ("comando_multiplo") nunca aparecia em frase nenhuma.
+- **Cache da API (item 36):** validade de 10 min e no máximo 200 respostas.
+- Para desligar o roteador: `JARVIS_TOOL_ROUTER=0` no `.env`.
+- 13 testes novos (`tests/test_tool_router.py`) com respostas simuladas do Ollama; testes antigos que chamam `process_command` passaram a desligar o roteador para não chamar o modelo de verdade. Falta o teste por voz.
+- Pendências: não existe comando de volume; "registrar_meu_dia" e "traduzir_legenda" ainda usam as funções antigas, sem teste com o modelo.

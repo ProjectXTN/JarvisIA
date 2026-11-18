@@ -82,7 +82,7 @@ class ChatTest(unittest.TestCase):
         self.assertEqual(memory.memory_context, [])
 
     def test_voz_nao_usa_cache_por_texto(self):
-        with mock.patch.object(jarvis_commands, 'shutdown_command', return_value=True), mock.patch.object(jarvis_commands, 'handle_weather_query', return_value=False), mock.patch.object(jarvis_commands, 'run_command_handlers', return_value=(False,None)), mock.patch.object(jarvis_commands, 'generate_response', return_value='Nova resposta') as generate, mock.patch.object(jarvis_commands, 'log_interaction'), mock.patch.object(jarvis_commands, 'should_save_to_file', return_value=False):
+        with mock.patch.object(jarvis_commands, 'TOOL_ROUTER_ENABLED', False), mock.patch.object(jarvis_commands, 'shutdown_command', return_value=True), mock.patch.object(jarvis_commands, 'handle_weather_query', return_value=False), mock.patch.object(jarvis_commands, 'run_command_handlers', return_value=(False,None)), mock.patch.object(jarvis_commands, 'generate_response', return_value='Nova resposta') as generate, mock.patch.object(jarvis_commands, 'log_interaction'), mock.patch.object(jarvis_commands, 'should_save_to_file', return_value=False):
             jarvis_commands.response_cache['teste'] = 'Velha'
             jarvis_commands.process_command('teste')
             generate.assert_called_once()

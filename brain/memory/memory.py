@@ -79,6 +79,58 @@ def _build_messages(prompt, lang, history, use_voice_history, images=None):
     return messages
 
 
+def open_chat(messages, model=None, tools=None, num_predict=512, timeout=None):
+    """Abre uma conversa em stream com o Ollama e confere a resposta HTTP.
+
+    É síncrono de propósito: um erro (Ollama fora do ar, modelo que não aceita
+    ferramentas) aparece aqui, antes de a fala começar, para quem chamou poder
+    usar outro caminho. Devolve a resposta HTTP aberta; leia com iter_chat().
+    """
+    payload = {
+        "model": model or DEFAULT_MODEL, "messages": messages, "stream": True,
+        "think": False, "keep_alive": OLLAMA_KEEP_ALIVE,
+        "options": {"temperature": 0.2, "num_ctx": OLLAMA_NUM_CTX, "num_predict": num_predict},
+    }
+    if tools:
+        payload["tools"] = tools
+    response = session.post(f"{OLLAMA_HOST}/api/chat", json=payload,
+                            timeout=timeout or _read_timeout("web"), stream=True)
+    if response.status_code >= 400:
+        detail = response.text[:300]
+        response.close()
+        raise RuntimeError(f"Ollama respondeu {response.status_code}: {detail}")
+    return response
+
+
+def iter_chat(response, tool_calls=None, parts=None):
+    """Lê o stream aberto por open_chat: devolve os pedaços de texto e guarda
+    as chamadas de ferramenta em tool_calls e o texto inteiro em parts."""
+    started = time.monotonic()
+    first = True
+    try:
+        for line in response.iter_lines():
+            if not line:
+                continue
+            data = json.loads(line)
+            if data.get("error"):
+                raise RuntimeError(data["error"])
+            message = data.get("message", {})
+            if tool_calls is not None:
+                tool_calls.extend(message.get("tool_calls") or [])
+            piece = message.get("content", "")
+            if piece:
+                if first:
+                    print(f"[LLM] Primeiras palavras em {time.monotonic()-started:.1f}s.")
+                    first = False
+                if parts is not None:
+                    parts.append(piece)
+                yield piece
+            if data.get("done"):
+                break
+    finally:
+        response.close()
+
+
 def llama_stream(prompt, model=None, direct_mode=False, mode=None, lang="pt",
                  history=None, remember=None, on_complete=None):
     """Como llama_query, mas devolve a resposta em pedaços, à medida que o
