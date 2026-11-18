@@ -292,11 +292,29 @@ def musica(acao, busca=""):
     return f"musica({acao}, {busca})"
 
 
-def criar_imagem(descricao):
-    from commands.commands_dispatch_image import dispatch_image_command
+def criar_imagem(descricao, prompt_em_ingles="", formato="quadrada"):
+    from core.settings import IMAGE_ENGINE
 
-    dispatch_image_command(f"crie uma imagem de {descricao}")
-    return f"criar_imagem({descricao})"
+    if IMAGE_ENGINE != "flux":
+        from commands.commands_dispatch_image import dispatch_image_command
+
+        dispatch_image_command(f"crie uma imagem de {descricao}")
+        return f"criar_imagem({descricao})"
+
+    from brain import image_gen
+
+    _say("Criando a imagem. Leva uns segundos.")
+    try:
+        path = image_gen.generate(prompt_em_ingles or descricao, formato)
+    except image_gen.ImageError as error:
+        _say(str(error))
+        return f"criar_imagem({descricao}): {error}"
+    except Exception as error:
+        print(f"[IMAGEM] Falhou: {error}")
+        _say("Tive um problema e não consegui criar a imagem.")
+        return f"criar_imagem({descricao}): erro"
+    _say("Pronto, abri a imagem. Ela fica na pasta Imagens, em Jarvis.")
+    return f"criar_imagem({descricao}): {path}"
 
 
 def descrever_imagem(arquivo, pergunta=""):
@@ -438,8 +456,14 @@ TOOLS = [
          {"acao": _text(enum=["tocar", "pausar", "proxima", "anterior", "biblioteca"]),
           "busca": _text(description="Música, artista ou álbum, quando a ação é tocar")},
          ["acao"]),
-    Tool("criar_imagem", "Gera uma imagem a partir de uma descrição.", criar_imagem,
-         {"descricao": _text()}, ["descricao"]),
+    Tool("criar_imagem", "Gera uma imagem a partir de uma descrição (desenhe, crie uma imagem, gere uma foto).",
+         criar_imagem,
+         {"descricao": _text(description="O pedido de Pedro, em português"),
+          "prompt_em_ingles": _text(description="O pedido reescrito em inglês como prompt detalhado: "
+                                    "assunto, cenário, estilo, luz e enquadramento, em 1 a 3 frases"),
+          "formato": {"type": "string", "enum": ["quadrada", "retrato", "paisagem"],
+                      "description": "retrato para pessoas em pé ou celular, paisagem para cenários"}},
+         ["descricao", "prompt_em_ingles"]),
     Tool("descrever_imagem", "Analisa uma imagem da pasta Imagens de Pedro pelo nome do arquivo.",
          descrever_imagem,
          {"arquivo": _text(description="Nome do arquivo, sem a pasta"), "pergunta": _text()}, ["arquivo"]),

@@ -66,7 +66,7 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 
 ## Fase 6 — Imagem, API e acabamento
 
-- [ ] 42. Stable Diffusion sob demanda, alternando VRAM com o LLM
+- [x] 42. Stable Diffusion sob demanda, alternando VRAM com o LLM (feito com o FLUX, item 51)
 - [x] 43. `server.py`: token obrigatório, `hmac.compare_digest`, sem global, sem `lower()`
 - [x] 44. Servir a API com `waitress` e restringir o CORS
 - [ ] 45. `logging` com níveis e medição de tempo por etapa
@@ -106,7 +106,7 @@ Depende da Fase 2 (modelo com ferramentas). Hoje o pedido de código só gera te
 - [x] 48. Avatar holográfico 3D que fala (`brain/avatar/`, `commands/commands_avatar.py`)
 - [x] 49. Avatar com anatomia humana: crânio, maxilar, nariz, lábios, pálpebras, orelhas e cabelo
 - [x] 50. Avatar trocado por um núcleo neural de partículas (original), aberto sempre junto com o Jarvis
-- [ ] 51. Novo gerador de imagens: ComfyUI com FLUX.2 [klein] 4B no lugar do Stable Diffusion 1.5
+- [x] 51. Novo gerador de imagens: ComfyUI com FLUX.2 [klein] 4B no lugar do Stable Diffusion 1.5 (código pronto; falta Pedro instalar o ComfyUI e baixar os modelos)
 
 ## Registro
 
@@ -490,3 +490,13 @@ Corrigido:
 - `core/config.py`: `IS_API_REQUEST` vale só para a thread do pedido (`with config.api_request():`). Os módulos que leem `config.IS_API_REQUEST` não mudaram.
 - Serve com `waitress` (adicionado ao requirements.txt); sem ele, cai para o servidor do Flask com aviso.
 - Testes: `tests/test_server.py` (5).
+
+### 2026-11-18 — Fase 6: imagens com ComfyUI + FLUX.2 [klein] 4B (itens 42 e 51)
+
+- Novo `brain/image_gen.py`: monta o grafo do ComfyUI (formato API) igual ao modelo oficial de texto para imagem do klein 4B destilado: UNETLoader, CLIPLoader (`qwen_3_4b`, tipo `flux2`), VAELoader, CLIPTextEncode, ConditioningZeroOut, CFGGuider (cfg 1), KSamplerSelect (euler), Flux2Scheduler (4 passos), RandomNoise, EmptyFlux2LatentImage, SamplerCustomAdvanced, VAEDecode, SaveImage.
+- VRAM: antes de gerar, tira o gemma4:26b da placa (`keep_alive: 0`); depois pede `/free` ao ComfyUI e recarrega o gemma4 em segundo plano. Também em caso de erro.
+- Abre o ComfyUI sozinho se não estiver aberto (`JARVIS_COMFYUI_DIR`, padrão `C:\ComfyUI`, versão portátil ou com venv), só em 127.0.0.1:8188. Escolhe o arquivo klein 4B que existir na pasta.
+- Ferramenta `criar_imagem`: o modelo de conversa já escreve o prompt em inglês detalhado (`prompt_em_ingles`) e escolhe o formato (quadrada 1024², retrato 832×1216, paisagem 1216×832). A imagem é salva em `Imagens\Jarvis` e aberta.
+- `JARVIS_IMAGE_ENGINE=sd` volta ao Stable Diffusion antigo.
+- `tests/prepare_flux.py` baixa os 3 arquivos (modelo fp8, codificador de texto, VAE) para a pasta models do ComfyUI.
+- Testes: `tests/test_image_gen.py` (4).
