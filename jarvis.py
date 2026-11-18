@@ -5,7 +5,7 @@ import re
 from brain.initiate.personalized_greeting import personalized_greeting
 from datetime import datetime, timedelta
 from threading import Thread
-from brain.audio import say, listen
+from brain.audio import say, listen, activation_sound
 from jarvis_commands import process_command
 from commands.commands_systeme import shutdown_command
 from core.initializer import (
@@ -85,7 +85,7 @@ def main():
         matched, activator_word = sounds_like_jarvis(query)
         if matched:
             print("[DEBUG] Activator recognized:", query)
-            say("Jarvis Ativado...")
+            activation_sound()
             last_command_time = datetime.now()
 
             # Remove trigger word and comma/space if present
@@ -123,7 +123,6 @@ def main():
                 if result is False:
                     sys.exit()
 
-                time.sleep(0.5)
                 last_command_time = datetime.now()
 
 

@@ -50,6 +50,9 @@ WHISPER_BEAM_SIZE = 5
 # Downloads grandes são preparados separadamente para não travar a abertura.
 WHISPER_ALLOW_DOWNLOAD = os.getenv("JARVIS_WHISPER_ALLOW_DOWNLOAD", "0") == "1"
 
+# Som ao ouvir "Jarvis": "bip" (instantâneo) ou "voz" (fala "Jarvis Ativado", ~1 s)
+ACTIVATION_SOUND = os.getenv("JARVIS_ACTIVATION_SOUND", "bip")
+
 # Interromper o Jarvis por voz enquanto ele fala ("pare", "pode parar", "chega")
 INTERRUPT_ENABLED = os.getenv("JARVIS_INTERRUPT", "1") == "1"
 # Modelo pequeno e rápido, só para reconhecer o pedido de parar

@@ -44,7 +44,7 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 - [ ] 26. Streaming LLM → TTS frase a frase
 - [ ] 27. Tocar áudio com `sounddevice`, sem `ffplay`
 - [x] 28. Interrupção por voz enquanto o Jarvis fala (só com ordem de parar; perguntas não interrompem)
-- [ ] 29. Bip local no lugar de "Jarvis Ativado..." e remover `sleep(0.5)`
+- [x] 29. Bip local no lugar de "Jarvis Ativado..." e remover `sleep(0.5)`
 - [ ] 30. Hotword dedicada com `openWakeWord`
 
 ## Fase 4 — Inteligência: ferramentas no lugar de regex
@@ -268,3 +268,17 @@ O novo log confirma que a reprodução voltou à escuta. A espera seguinte ocorr
 - **Progresso:** chamadas ao LLM agora mostram quantidade de caracteres, aviso a cada dez segundos e tempo até receber a resposta. Isso não acelera o carregamento nem resolve a disputa de GPU com o jogo; torna a espera visível.
 - **Validação:** 59 testes passaram, incluindo sete novos casos de notícias: desvio do RAG, fallback sem LLM, busca vazia, limite dos trechos, parâmetros/recência, timeout do resumo e fallback do índice. Mesma adaptação de diretórios temporários da execução anterior. Sintaxe validada. Não foi realizada uma nova conversa pelo microfone nem uma consulta real à Brave nesta etapa.
 - Reiniciar a instância do Jarvis para carregar as correções. A tarefa geral de otimização da busca (item 35) permanece pendente para os outros tipos de consulta.
+
+### 2026-11-18 — Bip de ativação (item 29)
+
+- Ao ouvir "Jarvis", toca um bip local de 0,19 s (dois tons subindo) em vez de falar "Jarvis Ativado..." pelo Google TTS, que custava mais de 1 s por comando.
+- O bip termina antes de o microfone abrir, para não ser ouvido como fala.
+- Saiu o `time.sleep(0.5)` depois de cada comando.
+- Para voltar à frase falada: `JARVIS_ACTIVATION_SOUND=voz` no `.env`.
+- Testes automáticos passando; falta ouvir no PC.
+
+### 2026-11-18 — Pendências do item 15
+
+- O download do `gemma4:26b` parou em 92% em 17/11 (`logs/gemma4_download.log`) e o teste dele não rodou.
+- O teste do Qwen em `logs/fase2_qwen.json` foi feito com o AION 2 aberto e `num_gpu: 32` (só parte do modelo na GPU): 2 a 3 tokens/s. Não serve para comparar.
+- Próximo passo: com o jogo fechado, terminar o download e rodar `venv\Scripts\python.exe -X utf8 -m tests.benchmark_ollama` (os dois modelos, GPU inteira), que grava `logs/fase2_modelos.json`.

@@ -20,6 +20,7 @@ from brain.utils.utils import clean_output
 from brain import avatar
 from brain.whisper_loader import load_whisper
 from core.settings import (
+    ACTIVATION_SOUND,
     WHISPER_MODEL,
     WHISPER_MODEL_CPU,
     INTERRUPT_WHISPER_MODEL_CPU,
@@ -200,6 +201,33 @@ async def speak_with_gui(text):
 
 
 # === Public speech function ===
+def _make_beep(rate=44100):
+    """Dois tons curtos subindo (~0,2 s), com entrada e saída suaves."""
+    parts = []
+    for freq, dur in ((880, 0.07), (1320, 0.09)):
+        t = np.arange(int(rate * dur)) / rate
+        tone = np.sin(2 * np.pi * freq * t)
+        fade = np.minimum(1, np.minimum(t, dur - t) / 0.012)  # evita estalo
+        parts.append(tone * fade)
+        parts.append(np.zeros(int(rate * 0.015)))
+    return (np.concatenate(parts) * 0.25).astype(np.float32), rate
+
+
+_BEEP, _BEEP_RATE = _make_beep()
+
+
+def activation_sound():
+    """Aviso de que o Jarvis ouviu o nome: bip local, sem internet."""
+    if ACTIVATION_SOUND == "voz":
+        say("Jarvis Ativado...")
+        return
+    try:
+        sd.play(_BEEP, _BEEP_RATE)
+        sd.wait()  # termina antes de abrir o microfone, para não se ouvir
+    except Exception as e:
+        print(f"⚠️ Não consegui tocar o bip: {e}")
+
+
 def say(text, lang="pt-BR", gender="MALE"):
     global silenced
 
