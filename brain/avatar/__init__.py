@@ -146,13 +146,18 @@ def start():
 
 
 def _browser_for_app_window():
-    """Edge ou Chrome, para abrir a página como janela própria, sem abas."""
-    candidates = [shutil.which("msedge"), shutil.which("chrome"), shutil.which("google-chrome")]
-    for base in (os.environ.get("ProgramFiles(x86)"), os.environ.get("ProgramFiles"), os.environ.get("LocalAppData")):
-        if base:
-            candidates.append(os.path.join(base, "Microsoft", "Edge", "Application", "msedge.exe"))
-            candidates.append(os.path.join(base, "Google", "Chrome", "Application", "chrome.exe"))
-    for path in candidates:
+    """Chrome (preferido) ou Edge, para abrir janelas próprias do Jarvis.
+
+    O Edge só é usado se o Chrome não estiver instalado.
+    """
+    bases = [os.environ.get(name) for name in ("ProgramFiles", "ProgramFiles(x86)", "LocalAppData")]
+    chrome = [shutil.which("chrome"), shutil.which("google-chrome")] + [
+        os.path.join(base, "Google", "Chrome", "Application", "chrome.exe") for base in bases if base
+    ]
+    edge = [shutil.which("msedge")] + [
+        os.path.join(base, "Microsoft", "Edge", "Application", "msedge.exe") for base in bases if base
+    ]
+    for path in chrome + edge:
         if path and os.path.isfile(path):
             return path
     return None

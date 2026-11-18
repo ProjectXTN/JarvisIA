@@ -438,7 +438,8 @@ Corrigido:
 ### 2026-11-18 — Janela de mídia: um vídeo por vez
 
 - Confirmado por voz: "quero ouvir Bohemian Rhapsody no YouTube" e "quero ouvir Empty Machines do Linkin Park" chamaram `tocar_no_youtube` e tocaram. Problema: cada pedido abria uma aba nova.
-- `brain/media_window.py`: o Jarvis abre o próprio Edge/Chrome com perfil separado (`data/browser-media/`, fora do git) e controle remoto só em 127.0.0.1 (porta 9223, `JARVIS_MEDIA_PORT`). No primeiro pedido abre a janela com o vídeo; nos seguintes, abre o vídeo novo e fecha o anterior. Reprodução automática ligada nessa janela.
+- `brain/media_window.py`: o Jarvis abre o próprio Chrome (Edge só sem Chrome) com perfil separado (`data/browser-media/`, fora do git) e controle remoto só em 127.0.0.1 (porta 9223, `JARVIS_MEDIA_PORT`). No primeiro pedido abre a janela com o vídeo; nos seguintes, abre o vídeo novo e fecha o anterior. Reprodução automática ligada nessa janela.
 - Perfil separado: o YouTube começa deslogado; entrar na conta uma vez nessa janela fica lembrado.
 - Se não houver Edge/Chrome ou o controle falhar, abre no navegador padrão, como antes.
 - 4 testes novos (`tests/test_media_window.py`). Falta testar no PC.
+- A pedido do Pedro, as janelas do Jarvis (mídia e avatar) usam o Chrome; o Edge só entra se o Chrome não estiver instalado (`_browser_for_app_window`).
