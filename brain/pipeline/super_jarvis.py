@@ -1,6 +1,7 @@
 from brain.websearch.websearch import search_web
 from brain.rag.query_rag import query_rag
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from brain.memory.memory import llama_query, DEFAULT_MODEL, memory_context, remember_turn
 from core.settings import RAG_TIMEOUT, RAG_ENABLED
 from brain.websearch.news import is_news_request, news_response
@@ -33,6 +34,25 @@ PROMPT_TEMPLATES = {
         "answer_instruction": "Répondez en vous basant sur les informations les plus récentes du jour. Priorisez les actualités datées ou mentionnant explicitement le jour en cours. Évitez les réponses génériques. Soyez spécifique et direct.",
     },
 }
+
+
+_WEEKDAYS = {
+    "pt": ["segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado", "domingo"],
+    "en": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+    "fr": ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"],
+}
+
+
+def today_line(lang="pt", now=None):
+    """Data de hoje para o modelo, que não sabe o dia e confundia a data das notícias."""
+    now = now or datetime.now()
+    day = _WEEKDAYS.get(lang, _WEEKDAYS["pt"])[now.weekday()]
+    date = now.strftime("%d/%m/%Y")
+    return {
+        "pt": f"Hoje é {day}, {date}. Ao falar de datas das fontes, diga a data exata e só use \"hoje\" se for {date}.",
+        "en": f"Today is {day}, {now.strftime('%Y-%m-%d')}. When mentioning source dates, say the exact date and only say \"today\" if it matches.",
+        "fr": f"Nous sommes le {day} {date}. Pour les dates des sources, donnez la date exacte et ne dites « aujourd'hui » que si elle correspond.",
+    }.get(lang, f"Hoje é {date}.")
 
 
 def contextualize_search(user_prompt, history):
@@ -84,6 +104,7 @@ def super_jarvis_query(user_prompt, lang="pt", conversation=False):
 
     prompt = (
         f"{pt['lang_instruction']}\n"
+        f"{today_line(lang)}\n"
         f"{pt['context']}\n{web_context}\n\n"
         f"{pt['sources']}\n{web_sources}\n\n"
         f"{pt['internal']}\n{local_context}\n\n"

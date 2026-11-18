@@ -328,3 +328,8 @@ Sintomas: "procure sobre a nova versão do ChatGPT Astra 6.2" foi respondida da 
 - **Contexto da conversa:** antes de buscar, `contextualize_search` (`brain/pipeline/super_jarvis.py`) usa as últimas três trocas para completar continuações ("as mais recentes" vira "atualizações mais recentes da OpenAI"). Custa uma chamada curta ao modelo (até 64 tokens, limite de 15 s) e só acontece quando há conversa. O console mostra `[BUSCA] Pergunta com o contexto da conversa: ...`.
 - **Whisper lento na GPU:** hipótese de falta de memória de vídeo (Gemma ~19 GB, dois Whispers, Windows e avatar). Quando acaba, o driver da NVIDIA usa a RAM do PC e fica muito lento. Whisper principal em `int8_float16` (cerca de metade da memória, `JARVIS_WHISPER_COMPUTE`) e Whisper de interrupção na CPU (`JARVIS_INTERRUPT_GPU=0`). Confirmar com `nvidia-smi` com o Jarvis aberto.
 - 37 testes de regressão passando; falta o teste por voz.
+
+### 2026-11-18 — Resultado do teste por voz e data de hoje
+
+- Confirmado por voz: transcrição de 0,41 a 0,46 s (antes 15 a 18 s), "procure..." pesquisa de verdade e a continuação foi reescrita como "atualizações mais recentes sobre o GPT-6.2 Astra da OpenAI". Respostas completas em 3 a 4 s.
+- O modelo disse "lançou hoje, dia 17" no dia 18: ele não sabe a data. A resposta com busca passa a receber a data do dia (`today_line` em `super_jarvis.py`); o caminho de notícias já recebia.

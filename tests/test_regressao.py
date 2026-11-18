@@ -339,6 +339,18 @@ class SearchContextTest(unittest.TestCase):
             super_jarvis.super_jarvis_query("procure pelas atualizações mais recentes", conversation=True)
         search.assert_called_once_with(rewritten)
 
+    def test_resposta_com_busca_sabe_a_data_de_hoje(self):
+        from datetime import datetime
+        from brain.pipeline import super_jarvis
+
+        line = super_jarvis.today_line("pt", datetime(2026, 11, 18))
+        self.assertIn("quarta-feira, 18/11/2026", line)
+        with mock.patch.object(super_jarvis, "RAG_ENABLED", False), \
+             mock.patch.object(super_jarvis, "search_web", return_value=("texto", "fonte")), \
+             mock.patch.object(super_jarvis, "llama_query", return_value="ok") as llm:
+            super_jarvis.super_jarvis_query("procure o lançamento do gpt")
+        self.assertIn("Hoje é", llm.call_args.args[0])
+
     def test_sem_conversa_nao_reescreve(self):
         from brain.pipeline import super_jarvis
 
