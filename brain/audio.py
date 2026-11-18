@@ -12,6 +12,7 @@ import collections
 import queue
 from brain.playback import InterruptRecognizer, monitor_playback, finish_player
 from brain.speech_stream import run_pipeline
+from brain.player import open_player, expected_delay_ms
 from brain import tts
 import threading
 import time
@@ -115,10 +116,10 @@ def _play_interruptible(path, spoken_text):
     """O fim do player devolve o controle mesmo se o Whisper estiver ocupado."""
     global current_audio_process, pending_command
     stream = None
-    proc = subprocess.Popen(
-        ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", path],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
+    # Avatar primeiro (mede o volume do arquivo), depois o som começa.
+    # WAV do Kokoro toca direto na placa de som; MP3 do Google pelo ffplay.
+    avatar.speak_start(path, spoken_text, expected_delay_ms(path))
+    proc, _ = open_player(path)
     current_audio_process = proc
     frames = queue.Queue(maxsize=100)
     fs, frame = 16000, 480
@@ -257,7 +258,7 @@ def _discard_audio(path):
 
 
 def _play_sentence(path, text):
-    avatar.speak_start(path, text)  # boca e legenda do avatar seguem cada frase
+    # boca e legenda do avatar seguem cada frase (avisado em _play_interruptible)
     return _play_interruptible(path, text)
 
 

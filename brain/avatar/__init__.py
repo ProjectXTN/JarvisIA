@@ -216,10 +216,18 @@ def set_state(mode):
 
 def _volume_envelope(audio_path):
     """Volume da fala a cada FRAME_MS, de 0 a 1, ou None se não der para medir."""
+    import numpy as np
+
+    if audio_path.lower().endswith(".wav"):
+        # WAV do Kokoro: lido direto, sem precisar do ffmpeg
+        from brain.player import read_wav
+
+        data, wav_rate = read_wav(audio_path)
+        return _envelope_from_samples(data[:, 0].astype(np.float32), wav_rate)
+
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
         return None
-    import numpy as np
 
     rate = 8000
     raw = subprocess.run(
@@ -228,7 +236,14 @@ def _volume_envelope(audio_path):
         timeout=8,
     ).stdout
     samples = np.frombuffer(raw, dtype=np.int16).astype(np.float32)
-    step = rate * FRAME_MS // 1000
+    return _envelope_from_samples(samples, rate)
+
+
+def _envelope_from_samples(samples, rate):
+    """Volume (0 a 1) a cada FRAME_MS a partir das amostras de áudio."""
+    import numpy as np
+
+    step = int(rate) * FRAME_MS // 1000
     count = len(samples) // step
     if count < 2:
         return None
@@ -240,8 +255,11 @@ def _volume_envelope(audio_path):
 
 
 @_safe
-def speak_start(audio_path, text=""):
-    """Avise logo antes de tocar o áudio; a boca segue o volume do arquivo."""
+def speak_start(audio_path, text="", delay_ms=None):
+    """Avise logo antes de tocar o áudio; a boca segue o volume do arquivo.
+
+    delay_ms: quanto o som demora para sair depois do aviso (depende do player).
+    """
     global _last_mode
     _last_mode = "speaking"
     if not is_open():
@@ -256,7 +274,7 @@ def speak_start(audio_path, text=""):
             "type": "speak",
             "envelope": envelope,
             "frame_ms": FRAME_MS,
-            "delay_ms": AVATAR_AUDIO_DELAY_MS,
+            "delay_ms": AVATAR_AUDIO_DELAY_MS if delay_ms is None else delay_ms,
             "text": text,
         }
     )

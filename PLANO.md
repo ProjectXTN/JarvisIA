@@ -42,7 +42,7 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 - [ ] 24. Manter o microfone aberto entre escutas
 - [x] 25. TTS local com Kokoro (`brain/tts.py`), Google TTS como reserva
 - [x] 26. Streaming LLM → TTS frase a frase (`brain/speech_stream.py`; falta confirmar por voz)
-- [ ] 27. Tocar áudio com `sounddevice`, sem `ffplay`
+- [x] 27. Tocar áudio com `sounddevice`, sem `ffplay` (WAV do Kokoro; MP3 do Google continua no `ffplay`)
 - [x] 28. Interrupção por voz enquanto o Jarvis fala (só com ordem de parar; perguntas não interrompem)
 - [x] 29. Bip local no lugar de "Jarvis Ativado..." e remover `sleep(0.5)`
 - [ ] 30. Hotword dedicada com `openWakeWord`
@@ -374,3 +374,11 @@ Sintomas: "procure sobre a nova versão do ChatGPT Astra 6.2" foi respondida da 
 
 - Abertura: `Voz local Kokoro pronta (pm_alex) em 0.7s`; todas as frases geradas pelo Kokoro, 0,23 a 0,56 s nas curtas e 1,48 s numa de 161 caracteres (CPU).
 - A 1ª frase costuma ser curta ("Bom dia, Pedro.", ~1 s de áudio) e o 2º trecho tinha ~90+ caracteres: ele não ficava pronto a tempo e sobrava uma pausa. Agora o 2º trecho tem ~40 caracteres; a partir do 3º volta a ~90 (`iter_sentences` em `brain/speech_stream.py`).
+
+### 2026-11-18 — Voz pm_santa e áudio direto pela placa de som (item 27)
+
+- Voz padrão trocada para `pm_santa`, a pedido do Pedro.
+- `brain/player.py`: o WAV do Kokoro toca direto pela placa de som (`sounddevice`), sem abrir um processo `ffplay` por frase. O player imita `poll`/`terminate`/`kill`/`wait` do `Popen`, então o monitor de interrupção não mudou.
+- MP3 do Google (reserva) continua pelo `ffplay`. Se a placa de som der erro, o WAV também volta para o `ffplay`.
+- Avatar: o volume do WAV é medido direto, sem `ffmpeg`, e o atraso da boca usa 40 ms para a placa de som e 180 ms para o `ffplay`.
+- 7 testes novos (`tests/test_player.py`) com uma placa de som simulada. Falta ouvir no PC.
