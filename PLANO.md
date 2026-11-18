@@ -40,7 +40,7 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 
 - [x] 23. Whisper `large-v3-turbo` na GPU, com volta automática para a CPU (`brain/whisper_loader.py`)
 - [ ] 24. Manter o microfone aberto entre escutas
-- [x] 25. TTS local com Kokoro (`brain/tts.py`), Google TTS como reserva (falta baixar o modelo e ouvir no PC)
+- [x] 25. TTS local com Kokoro (`brain/tts.py`), Google TTS como reserva
 - [x] 26. Streaming LLM → TTS frase a frase (`brain/speech_stream.py`; falta confirmar por voz)
 - [ ] 27. Tocar áudio com `sounddevice`, sem `ffplay`
 - [x] 28. Interrupção por voz enquanto o Jarvis fala (só com ordem de parar; perguntas não interrompem)
@@ -369,3 +369,8 @@ Sintomas: "procure sobre a nova versão do ChatGPT Astra 6.2" foi respondida da 
 - O console mostra qual motor gerou cada frase: `⏱️ Áudio gerado em X s (N caracteres, Kokoro)`.
 - Instalação: `venv\Scripts\python.exe -m pip install kokoro-onnx` e `venv\Scripts\python.exe -X utf8 -m tests.prepare_kokoro` (baixa cerca de 340 MB para `models/kokoro/`, fora do git, e grava `logs/kokoro_teste.wav` com as três vozes).
 - 4 testes novos (`tests/test_tts_engine.py`) para a escolha do motor e a reserva.
+
+### 2026-11-18 — Kokoro confirmado no PC e pausa entre a 1ª e a 2ª frase
+
+- Abertura: `Voz local Kokoro pronta (pm_alex) em 0.7s`; todas as frases geradas pelo Kokoro, 0,23 a 0,56 s nas curtas e 1,48 s numa de 161 caracteres (CPU).
+- A 1ª frase costuma ser curta ("Bom dia, Pedro.", ~1 s de áudio) e o 2º trecho tinha ~90+ caracteres: ele não ficava pronto a tempo e sobrava uma pausa. Agora o 2º trecho tem ~40 caracteres; a partir do 3º volta a ~90 (`iter_sentences` em `brain/speech_stream.py`).

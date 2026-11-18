@@ -20,20 +20,22 @@ import threading
 _SENTENCE_END = re.compile(r"[.!?…]+[\"'”’)\]]*\s+")
 
 
-def iter_sentences(pieces, first_min=1, min_len=90):
+def iter_sentences(pieces, first_min=1, second_min=40, min_len=90):
     """Junta pedaços de texto e devolve frases completas assim que ficam prontas.
 
-    A primeira frase sai assim que termina, para a fala começar logo. As
-    seguintes são agrupadas até ~min_len caracteres, para não fazer uma
-    chamada de voz por frase curta (o que deixa a fala picotada).
+    A primeira frase sai assim que termina, para a fala começar logo. A segunda
+    é curta (~second_min), para ficar pronta antes de a primeira acabar de
+    tocar: a primeira costuma ser breve ("Bom dia, Pedro.") e um segundo trecho
+    longo deixava uma pausa. As seguintes são agrupadas até ~min_len, para a
+    fala não ficar picotada.
     """
-    buffer, first = "", True
+    buffer, emitted = "", 0
     for piece in pieces:
         if not piece:
             continue
         buffer += piece
         while True:
-            threshold = first_min if first else min_len
+            threshold = (first_min, second_min)[emitted] if emitted < 2 else min_len
             cut = None
             for match in _SENTENCE_END.finditer(buffer):
                 if match.end() >= threshold:
@@ -43,7 +45,7 @@ def iter_sentences(pieces, first_min=1, min_len=90):
                 break
             sentence, buffer = buffer[:cut].strip(), buffer[cut:]
             if sentence:
-                first = False
+                emitted += 1
                 yield sentence
     if buffer.strip():
         yield buffer.strip()

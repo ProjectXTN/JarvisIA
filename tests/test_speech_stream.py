@@ -12,8 +12,10 @@ class SentenceSplitTest(unittest.TestCase):
                   "de um terço do anterior e saiu em 17/11. Além disso", ", cria documentos. Fim"]
         self.assertEqual(list(iter_sentences(chunks)), [
             "A OpenAI lançou o GPT-6.2 Astra.",
-            # menos de 90 caracteres: "Fim" entra no mesmo grupo
-            "Ele custa menos de um terço do anterior e saiu em 17/11. Além disso, cria documentos. Fim",
+            # segundo trecho curto: sai na primeira frase com 40+ caracteres
+            "Ele custa menos de um terço do anterior e saiu em 17/11.",
+            # depois, agrupa até 90 caracteres; "Fim" entra junto
+            "Além disso, cria documentos. Fim",
         ])
 
     def test_numeros_com_ponto_nao_cortam(self):
