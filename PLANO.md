@@ -468,3 +468,10 @@ Corrigido:
 - Testes: `tests/test_semantic_memory.py` (7).
 - Para usar: `ollama pull qwen3-embedding:0.6b` e colocar arquivos em `brain/data_jarvis/`. Teste por voz: "guarde que a senha do wifi é ...", depois "qual é a senha da internet?"; "o que diz o meu documento sobre ...?".
 - Faltam na Fase 5: 40 e 41 (cobertos pelos itens 53–56 da Fase 7).
+
+### 2026-11-18 — Correção: Jarvis travava depois da Fase 5
+
+- Causa provável: o modelo de embeddings era carregado na GPU ao indexar os documentos na abertura, e o Ollama tirava o gemma4:26b da VRAM; a pergunta seguinte ficava esperando o modelo grande recarregar.
+- Embeddings agora rodam na CPU (`num_gpu: 0`, contexto 2048). Para voltar à GPU: `JARVIS_EMBEDDING_GPU=1`.
+- `open_chat` avisa quando o Ollama demora mais de 3 s para começar a responder.
+- Migração das memórias antigas agora é marcada na tabela `memorias_info` (antes, 3 linhas gravadas por um teste fizeram ela achar que já tinha rodado; linhas removidas).

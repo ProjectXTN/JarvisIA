@@ -97,6 +97,9 @@ def open_chat(messages, model=None, tools=None, num_predict=512, timeout=None):
     response = session.post(f"{OLLAMA_HOST}/api/chat", json=payload,
                             timeout=timeout or _read_timeout("web"), stream=True)
     response.jarvis_started = started  # para medir o tempo até as primeiras palavras
+    waited = time.monotonic() - started
+    if waited > 3:
+        print(f"[LLM] O Ollama levou {waited:.1f}s para começar (modelo saiu da VRAM e recarregou?).")
     if response.status_code >= 400:
         detail = response.text[:300]
         response.close()

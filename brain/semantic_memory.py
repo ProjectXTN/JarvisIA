@@ -27,6 +27,7 @@ import requests
 from core.settings import (
     DOCS_DIR,
     EMBEDDING_MODEL,
+    EMBEDDING_ON_GPU,
     MEMORY_DB,
     OLLAMA_HOST,
     OLLAMA_KEEP_ALIVE,
@@ -45,17 +46,25 @@ def embed(texts, query=False):
     if not texts:
         return []
     inputs = [(_QUERY_PREFIX + t) if query else t for t in texts]
+    options = {"num_ctx": 2048}
+    if not EMBEDDING_ON_GPU:
+        options["num_gpu"] = 0  # fica na CPU e não disputa a VRAM com o gemma4
+    started = time.monotonic()
     try:
         response = requests.post(
             f"{OLLAMA_HOST}/api/embed",
-            json={"model": EMBEDDING_MODEL, "input": inputs, "keep_alive": OLLAMA_KEEP_ALIVE},
-            timeout=(3, 60),
+            json={"model": EMBEDDING_MODEL, "input": inputs, "truncate": True,
+                  "options": options, "keep_alive": OLLAMA_KEEP_ALIVE},
+            timeout=(3, 30),
         )
         response.raise_for_status()
         vectors = np.asarray(response.json()["embeddings"], dtype=np.float32)
     except Exception as error:
         print(f"[MEMÓRIA] Embeddings indisponíveis ({EMBEDDING_MODEL}): {error}")
         return None
+    elapsed = time.monotonic() - started
+    if elapsed > 1:
+        print(f"[MEMÓRIA] Embeddings de {len(texts)} texto(s) em {elapsed:.1f}s.")
     norms = np.linalg.norm(vectors, axis=1, keepdims=True)
     return vectors / np.where(norms == 0, 1, norms)
 
@@ -159,12 +168,13 @@ def migrate_old_memories():
     Pula o lixo do estudo automático antigo (mensagens de erro, textos curtos).
     """
     with _lock, _connect() as conn:
-        done = conn.execute("SELECT COUNT(*) FROM memorias WHERE tipo IN ('fato','aprendido')").fetchone()[0]
+        conn.execute("CREATE TABLE IF NOT EXISTS memorias_info (chave TEXT PRIMARY KEY, valor TEXT)")
+        done = conn.execute("SELECT 1 FROM memorias_info WHERE chave = 'migrado'").fetchone()
         try:
             old = conn.execute("SELECT titulo, conteudo, fonte, data FROM conhecimento").fetchall()
         except sqlite3.OperationalError:
             old = []
-    if done or not old:
+    if done:
         return 0
     imported = 0
     for title, content, source, date in old:
@@ -174,7 +184,11 @@ def migrate_old_memories():
         tipo = "fato" if (source or "").lower() in ("pedro", "usuário", "usuario") else "aprendido"
         if add(title, content[:2000], (source or "").split("\n")[0], tipo):
             imported += 1
-    print(f"[MEMÓRIA] {imported} memórias antigas importadas ({len(old) - imported} puladas).")
+    with _lock, _connect() as conn:
+        conn.execute("INSERT OR REPLACE INTO memorias_info VALUES ('migrado', ?)",
+                     (datetime.now().strftime("%Y-%m-%d %H:%M:%S"),))
+    if old:
+        print(f"[MEMÓRIA] {imported} memórias antigas importadas ({len(old) - imported} puladas).")
     return imported
 
 

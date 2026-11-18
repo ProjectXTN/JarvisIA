@@ -66,6 +66,9 @@ VISION_MODEL_LOW = os.getenv("JARVIS_VISION_MODEL_LOW", DEFAULT_MODEL)
 VISION_MODEL_HIGH = os.getenv("JARVIS_VISION_MODEL_HIGH", VISION_MODEL_LOW)
 # Embeddings multilíngues (memória por semelhança e documentos): ollama pull qwen3-embedding:0.6b
 EMBEDDING_MODEL = os.getenv("JARVIS_EMBEDDING_MODEL", "qwen3-embedding:0.6b")
+# Embeddings na CPU: na GPU o Ollama tirava o gemma4:26b da VRAM para carregá-los
+# e a próxima pergunta esperava o modelo grande recarregar (Jarvis "travava")
+EMBEDDING_ON_GPU = os.getenv("JARVIS_EMBEDDING_GPU", "0") == "1"
 MEMORY_DB = os.path.join(BASE_DIR, "brain", "learning", "memoria_jarvis.db")
 # Pasta de documentos que o Jarvis consulta (.txt, .md, .pdf)
 DOCS_DIR = os.getenv("JARVIS_DOCS_DIR", os.path.join(BASE_DIR, "brain", "data_jarvis"))
