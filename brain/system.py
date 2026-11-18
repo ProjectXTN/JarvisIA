@@ -35,13 +35,32 @@ def open_folder(folder_name):
         return f'Não encontrei a pasta "{folder_name}" na sua máquina.'
 
 
+def open_in_chrome(url):
+    """Abre a URL no Chrome de Pedro (perfil normal, nova aba).
+
+    Preferência do Pedro: Chrome; o Edge só se não houver Chrome; se nenhum
+    for encontrado, o navegador padrão do Windows.
+    """
+    from brain.avatar import _browser_for_app_window
+
+    browser = _browser_for_app_window()
+    if browser:
+        try:
+            subprocess.Popen([browser, url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return
+        except OSError as error:
+            print(f"[NAVEGADOR] Não consegui abrir {browser}: {error}")
+    webbrowser.open(url, new=2)
+
+
 def open_browser():
-    webbrowser.open("https://www.google.com", new=2)
+    open_in_chrome("https://www.google.com")
 
 
 def search_google(query):
-    url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
-    webbrowser.open(url, new=2)
+    from urllib.parse import quote_plus
+
+    open_in_chrome("https://www.google.com/search?q=" + quote_plus(query))
 
 
 def open_vscode():

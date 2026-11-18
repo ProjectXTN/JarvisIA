@@ -89,6 +89,18 @@ class RouterTest(unittest.TestCase):
         self.assertEqual(chat.call_count, 1)
         self.assertIn("abrir_programa feito", answer)
 
+    def test_abrir_navegador_junto_com_pesquisa_nao_abre_janela_vazia(self):
+        replies = [tool_reply(("abrir_programa", {"programa": "navegador"}),
+                              ("pesquisar_no_google", {"consulta": "build ranger pvp aion 2"}))]
+        self.handle("abra o chrome e pesquise a build", replies)
+        self.assertEqual([name for name, _ in self.ran], ["pesquisar_no_google"])
+
+    def test_abrir_steam_junto_com_pesquisa_continua(self):
+        replies = [tool_reply(("abrir_programa", {"programa": "steam"}),
+                              ("pesquisar_no_google", {"consulta": "aion 2"}))]
+        self.handle("abra o steam e pesquise aion 2", replies)
+        self.assertEqual([name for name, _ in self.ran], ["abrir_programa", "pesquisar_no_google"])
+
     def test_erro_do_ollama_aciona_a_reserva(self):
         with self.assertRaises(tool_router.RouterUnavailable):
             self.handle("oi", [RuntimeError("model does not support tools")])
@@ -124,9 +136,16 @@ class ToolsTest(unittest.TestCase):
             self.assertEqual(tools.run_tool("teste", '{"consulta": "x", "extra": 1}'), ("ok", True))
         self.assertEqual(received, {"consulta": "x"})
 
+    def test_pesquisar_no_google_abre_os_resultados_no_chrome(self):
+        opened = []
+        with mock.patch("brain.system.open_in_chrome", side_effect=opened.append), \
+             mock.patch.object(tools, "_say"):
+            tools.pesquisar_no_google("build de ranger pvp aion 2")
+        self.assertEqual(opened, ["https://www.google.com/search?q=build+de+ranger+pvp+aion+2"])
+
     def test_abrir_site_monta_a_url_e_recusa_lixo(self):
         opened = []
-        with mock.patch("webbrowser.open", side_effect=lambda url, new=0: opened.append(url)), \
+        with mock.patch("brain.system.open_in_chrome", side_effect=opened.append), \
              mock.patch.object(tools, "_say"):
             tools.abrir_site("www.youtube.com")
             tools.abrir_site("https://www.youtube.com/results?search_query=queen")

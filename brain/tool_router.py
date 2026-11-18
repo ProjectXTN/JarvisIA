@@ -42,6 +42,17 @@ ANSWER_GUIDE = (
 )
 
 
+BROWSER_TOOLS = {"pesquisar_no_google", "abrir_site", "tocar_no_youtube"}
+
+
+def _opens_bare_browser(call):
+    function = call.get("function", {})
+    arguments = function.get("arguments") or {}
+    if isinstance(arguments, str):
+        return function.get("name") == "abrir_programa" and "navegador" in arguments
+    return function.get("name") == "abrir_programa" and arguments.get("programa") == "navegador"
+
+
 class RouterUnavailable(Exception):
     """O modelo não pôde decidir (Ollama fora, modelo sem ferramentas...)."""
 
@@ -80,6 +91,12 @@ def handle(query, lang="pt", speak=speak_stream, run_tool=toolbox.run_tool,
         if direct:
             remember_turn(query, direct)
         return direct
+
+    # Pesquisa, site ou vídeo já abrem o navegador: um "abrir o navegador" na
+    # mesma frase só criaria uma janela vazia a mais
+    names = {c.get("function", {}).get("name") for c in tool_calls}
+    if names & BROWSER_TOOLS:
+        tool_calls = [c for c in tool_calls if not _opens_bare_browser(c)]
 
     # Ferramentas, na ordem em que o modelo pediu
     results, actions = [], []

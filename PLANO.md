@@ -49,7 +49,7 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 
 ## Fase 4 — Inteligência: ferramentas no lugar de regex
 
-- [x] 31. Transformar cada comando em ferramenta com descrição (`brain/tools.py`, 22 ferramentas)
+- [x] 31. Transformar cada comando em ferramenta com descrição (`brain/tools.py`, 23 ferramentas)
 - [x] 32. Roteamento por tool calling em `process_command` (`brain/tool_router.py`)
 - [x] 33. Atalhos sem LLM: desligar, hora, data, controle de música, avatar (volume ainda não existe)
 - [x] 34. Comandos encadeados via múltiplas ferramentas; apagar `commands_multiples.py`
@@ -443,3 +443,10 @@ Corrigido:
 - Se não houver Edge/Chrome ou o controle falhar, abre no navegador padrão, como antes.
 - 4 testes novos (`tests/test_media_window.py`). Falta testar no PC.
 - A pedido do Pedro, as janelas do Jarvis (mídia e avatar) usam o Chrome; o Edge só entra se o Chrome não estiver instalado (`_browser_for_app_window`).
+
+### 2026-11-18 — Pesquisa visível no Chrome
+
+- Pedro quer VER a pesquisa quando pede "abra o Chrome e pesquise X". Antes o modelo abria o navegador vazio e fazia a busca por dentro (`buscar_na_internet`), só respondendo em voz.
+- Nova ferramenta `pesquisar_no_google`: abre a página de resultados do Google no Chrome de Pedro (perfil normal, nova aba). As descrições separam as duas: ver a pesquisa (`pesquisar_no_google`) e ouvir a resposta (`buscar_na_internet`).
+- `abrir_site`, abrir o navegador e a pesquisa usam o Chrome (`open_in_chrome` em `brain/system.py`); Edge só sem Chrome; navegador padrão como último recurso.
+- Se na mesma frase houver pesquisa, site ou vídeo, o roteador ignora o "abrir navegador" (evita uma janela vazia a mais).

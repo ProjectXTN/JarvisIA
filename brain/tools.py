@@ -169,8 +169,19 @@ def abrir_site(endereco):
     host = parsed.netloc.removeprefix("www.")
     is_search = "search" in parsed.path or "results" in parsed.path or "q=" in parsed.query
     _say(f"Abrindo a busca em {host}." if is_search else f"Abrindo {host}.")
-    webbrowser.open(url, new=2)
+    from brain.system import open_in_chrome
+
+    open_in_chrome(url)
     return f"abrir_site({url})"
+
+
+def pesquisar_no_google(consulta):
+    """Abre a página de resultados do Google no Chrome, para Pedro ver."""
+    from brain.system import search_google
+
+    _say(f"Abrindo a pesquisa no Google sobre {consulta}.")
+    search_google(consulta)
+    return f"pesquisar_no_google({consulta})"
 
 
 def tocar_no_youtube(busca):
@@ -315,9 +326,11 @@ def avatar(acao):
 TOOLS = [
     # informação
     Tool("buscar_na_internet",
-         "Pesquisa na internet. Use para fatos atuais ou que podem ter mudado: versões e "
-         "lançamentos, preços, eventos, pessoas e cargos atuais, guias de jogos, ou quando "
-         "Pedro pedir para pesquisar. Escreva a consulta completa, com o assunto da conversa.",
+         "Pesquisa na internet para VOCÊ ler e responder em voz. Use para fatos atuais ou "
+         "que podem ter mudado: versões e lançamentos, preços, eventos, pessoas e cargos "
+         "atuais, guias de jogos. Escreva a consulta completa, com o assunto da conversa. "
+         "Se Pedro quiser VER a pesquisa (abrir o Chrome/navegador e pesquisar, mostrar "
+         "na tela), use pesquisar_no_google.",
          buscar_na_internet, {"consulta": _text(description="O que pesquisar")}, ["consulta"], True),
     Tool("buscar_noticias", "Manchetes recentes sobre um assunto (notícias, boatos, acontecimentos do dia).",
          buscar_noticias, {"assunto": _text(description="Assunto das notícias")}, ["assunto"], True),
@@ -345,6 +358,11 @@ TOOLS = [
          "https://www.youtube.com. Para pesquisar dentro de um site, monte a URL de busca "
          "dele, por exemplo https://www.youtube.com/results?search_query=queen.",
          abrir_site, {"endereco": _text(description="URL do site")}, ["endereco"]),
+    Tool("pesquisar_no_google",
+         "Abre no Chrome a página de resultados do Google, para Pedro ver. Use quando ele "
+         "pedir para abrir o Chrome/navegador e pesquisar, ou para mostrar a pesquisa na "
+         "tela. Já abre o Chrome sozinha: não chame abrir_programa antes.",
+         pesquisar_no_google, {"consulta": _text(description="O que pesquisar no Google")}, ["consulta"]),
     Tool("tocar_no_youtube",
          "Toca um vídeo ou música no YouTube: procura e abre direto o primeiro vídeo "
          "encontrado. Use quando Pedro quer assistir ou ouvir algo no YouTube.",
