@@ -312,3 +312,10 @@ Sintoma: notícias responderam em 1 s, mas a pergunta seguinte ficou mais de 90 
 - **Limite de 60 s** para respostas com busca web (`JARVIS_WEB_LLM_TIMEOUT`); depois disso ele avisa que não conseguiu responder.
 - **"Novidades" e "últimas sobre"** vão para o caminho rápido de notícias (três manchetes da Brave e resumo curto).
 - 33 testes de regressão passando; falta repetir o teste por voz.
+
+### 2026-11-18 — Whisper na GPU confirmado (item 23)
+
+- O `large-v3-turbo` não estava no cache: com o download automático desligado (`JARVIS_WHISPER_ALLOW_DOWNLOAD=0`), o Jarvis voltava para o `medium` na CPU (3 a 4 s por frase).
+- Resolvido com `venv\Scripts\python.exe -X utf8 -m tests.prepare_whisper` (1,62 GB).
+- Abertura confirmada no PC do Pedro: `Whisper large-v3-turbo na GPU` e `Interrupção: Whisper base na GPU`; Gemma pronto na abertura.
+- O aviso de symlinks do Hugging Face no Windows é inofensivo (o cache só ocupa mais espaço).
