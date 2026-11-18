@@ -34,9 +34,13 @@ RAG_TIMEOUT = 15
 NEWS_LLM_TIMEOUT = int(os.getenv("JARVIS_NEWS_LLM_TIMEOUT", "45"))
 
 # === Modelos da Fase 2 (podem ser trocados no .env) ===
-DEFAULT_MODEL = os.getenv("JARVIS_MODEL", "qwen3.8:27b")
+# Escolha de 18/11/2026 (logs/fase2_modelos.json, GPU inteira):
+# gemma4:26b foi 2 a 3 vezes mais rápido (173-334 tokens/s contra 58-131) e
+# acertou o cálculo que o qwen3.8:27b errou. O Qwen fica como reserva de
+# código, usada só quando o principal recusa um pedido.
+DEFAULT_MODEL = os.getenv("JARVIS_MODEL", "gemma4:26b")
 DEFAULT_MODEL_HIGH = os.getenv("JARVIS_MODEL_HIGH", DEFAULT_MODEL)
-DEFAULT_MODEL_CODE = os.getenv("JARVIS_MODEL_CODE", "gemma4:26b")
+DEFAULT_MODEL_CODE = os.getenv("JARVIS_MODEL_CODE", "qwen3.8:27b")
 VISION_MODEL_LOW = os.getenv("JARVIS_VISION_MODEL_LOW", DEFAULT_MODEL)
 VISION_MODEL_HIGH = os.getenv("JARVIS_VISION_MODEL_HIGH", VISION_MODEL_LOW)
 EMBEDDING_MODEL = os.getenv("JARVIS_EMBEDDING_MODEL", "nomic-embed-text")

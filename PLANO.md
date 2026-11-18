@@ -27,7 +27,7 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 
 ## Fase 2 — Cérebro novo
 
-- [ ] 15. Baixar `qwen3.8:27b` e `gemma4:26b`, comparar em português e escolher
+- [x] 15. Baixar `qwen3.8:27b` e `gemma4:26b`, comparar em português e escolher (principal: `gemma4:26b`; reserva de código: `qwen3.8:27b`)
 - [ ] 16. Remover `llama3.2`, `llama3.3`, `codestral`, `llava`, `llama3.2-vision:90b`
 - [x] 17. Reescrever `llama_query` para `/api/chat` (system, histórico, `options`, `keep_alive`, `think: false`)
 - [x] 18. Unificar os prompts de sistema num "Jarvis de voz"
@@ -282,3 +282,22 @@ O novo log confirma que a reprodução voltou à escuta. A espera seguinte ocorr
 - O download do `gemma4:26b` parou em 92% em 17/11 (`logs/gemma4_download.log`) e o teste dele não rodou.
 - O teste do Qwen em `logs/fase2_qwen.json` foi feito com o AION 2 aberto e `num_gpu: 32` (só parte do modelo na GPU): 2 a 3 tokens/s. Não serve para comparar.
 - Próximo passo: com o jogo fechado, terminar o download e rodar `venv\Scripts\python.exe -X utf8 -m tests.benchmark_ollama` (os dois modelos, GPU inteira), que grava `logs/fase2_modelos.json`.
+
+### 2026-11-18 — Modelo escolhido (item 15)
+
+Teste com a GPU inteira, em `logs/fase2_modelos.json`:
+
+| Caso | qwen3.8:27b | gemma4:26b |
+| --- | --- | --- |
+| Velocidade | 58 a 131 tokens/s | 173 a 334 tokens/s |
+| Português | correto | correto |
+| Cálculo (R$ 4,26) | errou (R$ 14,26) | acertou |
+| Histórico | correto | correto |
+| Código | correto | correto |
+| Visão | correto | correto |
+| Primeira carga | 11,8 s | 20,9 s |
+
+- **Principal (conversa e visão):** `gemma4:26b`.
+- **Reserva de código:** `qwen3.8:27b`, usada só quando o principal recusa. Os dois não cabem juntos nos 24 GB; quando a reserva é chamada, o Ollama troca os modelos (alguns segundos a mais nesse caso).
+- Ressalva: são cinco perguntas, uma de cada tipo. Se o Gemma errar com frequência em uso real, dá para inverter no `.env` (`JARVIS_MODEL` e `JARVIS_MODEL_CODE`) sem mexer no código.
+- `tests/benchmark_ollama.py` não grava mais o aviso fixo "AION 2 aberto"; use `--note` quando houver algo a registrar.

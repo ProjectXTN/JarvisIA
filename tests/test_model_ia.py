@@ -1,11 +1,6 @@
+"""Teste manual: carrega o modelo principal do Jarvis no Ollama e faz uma pergunta."""
 import subprocess
 
-prompt = "me conte a historia de Adolf Hitler, em português."
-resultado = subprocess.run(
-    ["ollama", "run", "llama3.3"],
-    input=prompt,
-    capture_output=True,
-    encoding="utf-8"
-)
+from core.settings import DEFAULT_MODEL
 
-print(resultado.stdout)
+subprocess.run(["ollama", "run", DEFAULT_MODEL, "Responda só: ok"])

@@ -15,7 +15,7 @@ from core.settings import OLLAMA_HOST, OLLAMA_NUM_CTX
 from brain.memory.memory import system_prompt
 
 
-def run(model, num_gpu=None):
+def run(model, num_gpu=None, note=''):
     options = {'temperature': 0.2, 'num_ctx': OLLAMA_NUM_CTX, 'num_predict': 192}
     if num_gpu is not None:
         options.update(num_gpu=num_gpu, draft_num_predict=0)
@@ -48,7 +48,7 @@ def run(model, num_gpu=None):
     buffer=io.BytesIO();picture.save(buffer,format='PNG')
     ask('visao', [{'role':'user','content':'Qual a forma e a cor no centro desta imagem? Responda em uma frase.',
                     'images':[base64.b64encode(buffer.getvalue()).decode()]}])
-    return {'model':model,'options':options,'note':'AION 2 aberto durante os testes; não é benchmark isolado de velocidade.', 'results':records}
+    return {'model':model,'options':options,'note':note, 'results':records}
 
 
 if __name__=='__main__':
@@ -56,8 +56,9 @@ if __name__=='__main__':
     parser.add_argument('--models',nargs='+',default=['qwen3.8:27b','gemma4:26b'])
     parser.add_argument('--num-gpu',type=int)
     parser.add_argument('--output',default='logs/fase2_modelos.json')
+    parser.add_argument('--note',default='',help='ex.: "jogo aberto durante o teste"')
     args=parser.parse_args()
     results=[]
     for model in args.models:
-        results.append(run(model,args.num_gpu))
+        results.append(run(model,args.num_gpu,args.note))
         Path(args.output).write_text(json.dumps(results,ensure_ascii=False,indent=2),encoding='utf-8')
