@@ -135,6 +135,24 @@ class ToolsTest(unittest.TestCase):
                                   "https://www.youtube.com/results?search_query=queen"])
         self.assertIn("inválido", result)
 
+    def test_tocar_no_youtube_abre_o_primeiro_video(self):
+        page = mock.Mock(text='... "videoId":"fJ9rUzIMcZQ" ... "videoId":"outro123456"')
+        opened = []
+        with mock.patch("requests.get", return_value=page) as get, \
+             mock.patch("webbrowser.open", side_effect=lambda url, new=0: opened.append(url)), \
+             mock.patch.object(tools, "_say"):
+            tools.tocar_no_youtube("queen bohemian rhapsody")
+        self.assertEqual(opened, ["https://www.youtube.com/watch?v=fJ9rUzIMcZQ"])
+        self.assertIn("search_query=queen+bohemian+rhapsody", get.call_args.args[0])
+
+    def test_tocar_no_youtube_sem_video_abre_a_busca(self):
+        opened = []
+        with mock.patch("requests.get", side_effect=OSError("sem rede")), \
+             mock.patch("webbrowser.open", side_effect=lambda url, new=0: opened.append(url)), \
+             mock.patch.object(tools, "_say"):
+            tools.tocar_no_youtube("queen")
+        self.assertEqual(opened, ["https://www.youtube.com/results?search_query=queen"])
+
     def test_ferramenta_desconhecida_ou_com_erro_vira_texto(self):
         self.assertIn("desconhecida", tools.run_tool("nao_existe", {})[0])
         broken = tools.Tool("quebrada", "d", lambda: 1 / 0)

@@ -49,7 +49,7 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 
 ## Fase 4 — Inteligência: ferramentas no lugar de regex
 
-- [x] 31. Transformar cada comando em ferramenta com descrição (`brain/tools.py`, 20 ferramentas)
+- [x] 31. Transformar cada comando em ferramenta com descrição (`brain/tools.py`, 22 ferramentas)
 - [x] 32. Roteamento por tool calling em `process_command` (`brain/tool_router.py`)
 - [x] 33. Atalhos sem LLM: desligar, hora, data, controle de música, avatar (volume ainda não existe)
 - [x] 34. Comandos encadeados via múltiplas ferramentas; apagar `commands_multiples.py`
@@ -428,3 +428,9 @@ Corrigido:
 - O primeiro trecho cortado na vírgula terminava com ponto ("...pelo qual plantas.") e a voz fazia entonação de fim de frase. Agora termina com vírgula.
 - "Abra o site do YouTube": não havia ferramenta para sites, e o modelo disse "eu abri o navegador para você" sem ter chamado nada. Nova ferramenta `abrir_site` (só http/https; para buscar dentro de um site, o modelo monta a URL de busca).
 - O log "Primeiras palavras em 0.0s" media a partir da resposta HTTP. Agora mede desde o pedido, e mostra também "Ferramentas escolhidas em X s".
+
+### 2026-11-18 — YouTube
+
+- Confirmado por voz: "abre o site do YouTube", "procure vídeos do Queen no YouTube" e "quero ouvir Bohemian Rhapsody no YouTube" chamaram `abrir_site`, com a busca montada pelo modelo (ferramentas escolhidas em 0,3 a 0,5 s).
+- "Selecione o vídeo" não era possível, e o modelo disse isso em vez de fingir. Nova ferramenta `tocar_no_youtube`: lê a página de resultados, pega o primeiro vídeo e abre a página dele (o vídeo começa a tocar). Na Europa o YouTube pede consentimento; os cookies de consentimento vão junto. Se não achar o vídeo, abre a busca.
+- `abrir_site` diz "Abrindo a busca em youtube.com" quando o endereço é uma busca.

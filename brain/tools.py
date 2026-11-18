@@ -166,9 +166,43 @@ def abrir_site(endereco):
     if parsed.scheme not in ("http", "https") or "." not in parsed.netloc:
         _say("Não entendi o endereço do site.")
         return f"abrir_site({endereco}): endereço inválido"
-    _say(f"Abrindo {parsed.netloc.removeprefix('www.')}.")
+    host = parsed.netloc.removeprefix("www.")
+    is_search = "search" in parsed.path or "results" in parsed.path or "q=" in parsed.query
+    _say(f"Abrindo a busca em {host}." if is_search else f"Abrindo {host}.")
     webbrowser.open(url, new=2)
     return f"abrir_site({url})"
+
+
+def tocar_no_youtube(busca):
+    """Acha o primeiro vídeo da busca e abre a página dele (o vídeo começa a tocar)."""
+    import re
+    import webbrowser
+    from urllib.parse import quote_plus
+
+    import requests
+
+    search_url = "https://www.youtube.com/results?search_query=" + quote_plus(busca)
+    video_id = None
+    try:
+        page = requests.get(
+            search_url,
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0",
+                     "Accept-Language": "pt-BR,pt;q=0.9"},
+            # Sem estes cookies, na Europa o YouTube responde com a página de consentimento
+            cookies={"CONSENT": "YES+cb", "SOCS": "CAI"},
+            timeout=6,
+        ).text
+        match = re.search(r'"videoId":"([\w-]{11})"', page)
+        video_id = match.group(1) if match else None
+    except Exception as error:
+        print(f"[YOUTUBE] Busca falhou: {error}")
+    if video_id:
+        _say(f"Tocando {busca} no YouTube.")
+        webbrowser.open(f"https://www.youtube.com/watch?v={video_id}", new=2)
+        return f"tocar_no_youtube({busca}): {video_id}"
+    _say("Não achei o vídeo direto; abri a busca no YouTube.")
+    webbrowser.open(search_url, new=2)
+    return f"tocar_no_youtube({busca}): só a busca"
 
 
 def abrir_pasta(nome):
@@ -308,6 +342,10 @@ TOOLS = [
          "https://www.youtube.com. Para pesquisar dentro de um site, monte a URL de busca "
          "dele, por exemplo https://www.youtube.com/results?search_query=queen.",
          abrir_site, {"endereco": _text(description="URL do site")}, ["endereco"]),
+    Tool("tocar_no_youtube",
+         "Toca um vídeo ou música no YouTube: procura e abre direto o primeiro vídeo "
+         "encontrado. Use quando Pedro quer assistir ou ouvir algo no YouTube.",
+         tocar_no_youtube, {"busca": _text(description="Vídeo, música ou artista")}, ["busca"]),
     Tool("abrir_pasta", "Abre uma pasta do computador pelo nome (ex.: Downloads, Documentos).",
          abrir_pasta, {"nome": _text()}, ["nome"]),
     Tool("musica", "Controla a música no Apple Music: tocar uma busca, pausar, próxima, anterior ou abrir a biblioteca.",
