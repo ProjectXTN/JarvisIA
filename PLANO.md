@@ -67,8 +67,8 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 ## Fase 6 — Imagem, API e acabamento
 
 - [ ] 42. Stable Diffusion sob demanda, alternando VRAM com o LLM
-- [ ] 43. `server.py`: token obrigatório, `hmac.compare_digest`, sem global, sem `lower()`
-- [ ] 44. Servir a API com `waitress` e restringir o CORS
+- [x] 43. `server.py`: token obrigatório, `hmac.compare_digest`, sem global, sem `lower()`
+- [x] 44. Servir a API com `waitress` e restringir o CORS
 - [ ] 45. `logging` com níveis e medição de tempo por etapa
 - [ ] 46. Testes automáticos (desligamento, hotword, roteamento)
 - [ ] 47. Atualizar `README.md`, `Dockerfile` e `build_jarvis.bat`
@@ -482,3 +482,11 @@ Corrigido:
 - Documentos: o índice roda antes da importação das memórias antigas (antes, um arquivo novo só entrava depois de importar tudo). Aceita várias pastas em `JARVIS_DOCS_DIR`, separadas por `;`; ignora formatos que não sejam .txt, .md e .pdf.
 - `should_save_to_file` (`brain/storage/file_saver.py`): só salva resposta em arquivo quando Pedro pede ("salve em um arquivo", "crie um documento..."). Antes qualquer frase com "documento", "receita" ou "escreva" virava um .txt em Documentos.
 - Embeddings na CPU levam ~1 s por consulta; fica de olho se isso pesar na resposta.
+
+### 2026-11-18 — Fase 6: API segura (itens 43 e 44)
+
+- `server.py` reescrito. Antes: sem `SECRET_TOKEN_JARVIS` no .env, o cabeçalho `Bearer None` era aceito; escutava em 0.0.0.0 com CORS aberto para qualquer site; um pedido da API ligava o modo API global e o Jarvis de voz parava de falar enquanto isso; o texto das exceções voltava para quem chamou.
+- Agora: token obrigatório (mínimo 16 caracteres; sem ele o servidor não abre e sugere um), comparado com `hmac.compare_digest`; escuta só em 127.0.0.1 (`JARVIS_API_HOST` para abrir na rede); CORS só para as origens de `JARVIS_API_ORIGINS`; pergunta validada (texto, até 2000 caracteres, idioma pt/en, corpo até 16 KB); um pedido por vez (429 se ficar ocupado 90 s); erro interno vai para o log e a resposta diz só "Erro interno"; 401 para token errado.
+- `core/config.py`: `IS_API_REQUEST` vale só para a thread do pedido (`with config.api_request():`). Os módulos que leem `config.IS_API_REQUEST` não mudaram.
+- Serve com `waitress` (adicionado ao requirements.txt); sem ele, cai para o servidor do Flask com aviso.
+- Testes: `tests/test_server.py` (5).

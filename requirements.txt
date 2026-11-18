@@ -60,6 +60,7 @@ llama-index-embeddings-ollama
 # === COPILOT INTEGRATION ===
 flask               # Used for /suggest API in Jarvis
 flask-cors
+waitress            # Servidor da API (server.py)
 # Codestral is used via Ollama, no pip package required
 
 # === TESTS ===
