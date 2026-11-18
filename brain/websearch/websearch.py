@@ -186,6 +186,26 @@ def _brave_snippets(results, limit=6):
     return "\n".join(lines)
 
 
+# Páginas da última busca (web ou notícias), para Pedro poder pedir
+# "abra a página onde você encontrou isso". Lista de {url, site, title}.
+LAST_SOURCES = []
+
+
+def remember_sources(items):
+    """Guarda as fontes da última busca (substitui as anteriores)."""
+    LAST_SOURCES[:] = [
+        {"url": i["url"], "site": extract_readable_source(i["url"]), "title": i.get("title", "")}
+        for i in items if i.get("url", "").startswith(("http://", "https://"))
+    ]
+
+
+def numbered_sources():
+    """Texto com as fontes numeradas, para o modelo citar e para abrir depois."""
+    return "\n".join(
+        f"{n}. {s['site']} — {s['title']} ({s['url']})" for n, s in enumerate(LAST_SOURCES, 1)
+    )
+
+
 def search_web(query, min_length=80, total_limit=5000, max_links=WEB_MAX_PAGES):
     if not BRAVE_API_KEY:
         return "API KEY da Brave Search não encontrada.", "internet"
@@ -232,6 +252,9 @@ def search_web(query, min_length=80, total_limit=5000, max_links=WEB_MAX_PAGES):
             return "Não consegui acessar nenhum conteúdo relevante.", "internet"
 
         used = [link for link, _ in links_with_text] or [r.get("url", "") for r in results[:3]]
+        titles = {r.get("url"): BeautifulSoup(r.get("title", ""), "html.parser").get_text(" ", strip=True)
+                  for r in results}
+        remember_sources([{"url": link, "title": titles.get(link, "")} for link in used])
         sources = "\n".join(extract_readable_source(link) for link in used)
         print(f"[WEB] {len(links_with_text)} página(s) lidas em {time.monotonic() - started:.1f}s.")
         return combined_texts.strip(), sources

@@ -49,7 +49,7 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 
 ## Fase 4 — Inteligência: ferramentas no lugar de regex
 
-- [x] 31. Transformar cada comando em ferramenta com descrição (`brain/tools.py`, 23 ferramentas)
+- [x] 31. Transformar cada comando em ferramenta com descrição (`brain/tools.py`, 24 ferramentas)
 - [x] 32. Roteamento por tool calling em `process_command` (`brain/tool_router.py`)
 - [x] 33. Atalhos sem LLM: desligar, hora, data, controle de música, avatar (volume ainda não existe)
 - [x] 34. Comandos encadeados via múltiplas ferramentas; apagar `commands_multiples.py`
@@ -450,3 +450,9 @@ Corrigido:
 - Nova ferramenta `pesquisar_no_google`: abre a página de resultados do Google no Chrome de Pedro (perfil normal, nova aba). As descrições separam as duas: ver a pesquisa (`pesquisar_no_google`) e ouvir a resposta (`buscar_na_internet`).
 - `abrir_site`, abrir o navegador e a pesquisa usam o Chrome (`open_in_chrome` em `brain/system.py`); Edge só sem Chrome; navegador padrão como último recurso.
 - Se na mesma frase houver pesquisa, site ou vídeo, o roteador ignora o "abrir navegador" (evita uma janela vazia a mais).
+
+### 2026-11-18 — Abrir a página de onde veio a resposta
+
+- `search_web` e `buscar_noticias` guardam as páginas usadas na última busca (`LAST_SOURCES` em `brain/websearch/websearch.py`: endereço, site e título).
+- `buscar_na_internet` entrega ao modelo as fontes numeradas e pede que ele cite o site na resposta.
+- Nova ferramenta `abrir_fonte`: abre no Chrome a fonte principal, a de um número ("a segunda"), a de um site citado ("a da Fextralife") ou todas (até 4). Sem busca anterior, avisa.

@@ -52,16 +52,22 @@ def _text(kind="string", description="", enum=None):
 def buscar_na_internet(consulta):
     from brain.websearch.websearch import search_web
 
+    from brain.websearch.websearch import numbered_sources
+
     text, sources = search_web(consulta)
-    return f"Resultados da busca por '{consulta}':\n{text}\n\nFontes: {sources}"
+    return (f"Resultados da busca por '{consulta}':\n{text}\n\n"
+            f"Fontes (cite o site de onde veio a informação):\n{numbered_sources() or sources}")
 
 
 def buscar_noticias(assunto):
     from brain.websearch.news import fetch_news
 
+    from brain.websearch.websearch import remember_sources
+
     items = fetch_news(assunto)
     if not items:
         return f"Nenhuma notícia encontrada sobre '{assunto}'."
+    remember_sources(items)
     return "\n\n".join(
         f"Título: {i['title']}\nResumo: {i['description']}\n"
         f"Data: {i['date'] or 'não informada'}\nFonte: {i['url']}"
@@ -173,6 +179,39 @@ def abrir_site(endereco):
 
     open_in_chrome(url)
     return f"abrir_site({url})"
+
+
+def abrir_fonte(qual=""):
+    """Abre a página da última busca: a principal, um número, um site ou todas."""
+    import difflib
+
+    from brain.system import open_in_chrome
+    from brain.websearch.websearch import LAST_SOURCES
+
+    if not LAST_SOURCES:
+        _say("Ainda não fiz nenhuma busca para abrir a fonte.")
+        return "abrir_fonte: nenhuma busca"
+    wanted = (qual or "").strip().lower()
+    if wanted in ("todas", "todos", "tudo", "all"):
+        chosen = LAST_SOURCES[:4]
+    elif wanted.isdigit() and 1 <= int(wanted) <= len(LAST_SOURCES):
+        chosen = [LAST_SOURCES[int(wanted) - 1]]
+    elif wanted and wanted not in ("principal", "primeira", "1ª"):
+        def score(source):
+            names = [source["site"].lower(), source["url"].lower(), source["title"].lower()]
+            if any(wanted in name for name in names):
+                return 1.0
+            return max(difflib.SequenceMatcher(None, wanted, name[:40]).ratio() for name in names)
+
+        best = max(LAST_SOURCES, key=score)
+        chosen = [best if score(best) >= 0.5 else LAST_SOURCES[0]]
+    else:
+        chosen = [LAST_SOURCES[0]]
+    sites = ", ".join(dict.fromkeys(s["site"] for s in chosen))
+    _say(f"Abrindo a página {'das fontes' if len(chosen) > 1 else 'do'} {sites}.")
+    for source in chosen:
+        open_in_chrome(source["url"])
+    return "abrir_fonte: " + ", ".join(s["url"] for s in chosen)
 
 
 def pesquisar_no_google(consulta):
@@ -358,6 +397,11 @@ TOOLS = [
          "https://www.youtube.com. Para pesquisar dentro de um site, monte a URL de busca "
          "dele, por exemplo https://www.youtube.com/results?search_query=queen.",
          abrir_site, {"endereco": _text(description="URL do site")}, ["endereco"]),
+    Tool("abrir_fonte",
+         "Abre no Chrome a página de onde veio a informação da última busca ('abra a "
+         "página onde você encontrou isso'). 'qual' é o número da fonte, o nome do site "
+         "citado na resposta, 'todas', ou vazio para a principal.",
+         abrir_fonte, {"qual": _text(description="Número, nome do site, 'todas' ou vazio")}, []),
     Tool("pesquisar_no_google",
          "Abre no Chrome a página de resultados do Google, para Pedro ver. Use quando ele "
          "pedir para abrir o Chrome/navegador e pesquisar, ou para mostrar a pesquisa na "

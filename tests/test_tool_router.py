@@ -136,6 +136,49 @@ class ToolsTest(unittest.TestCase):
             self.assertEqual(tools.run_tool("teste", '{"consulta": "x", "extra": 1}'), ("ok", True))
         self.assertEqual(received, {"consulta": "x"})
 
+    def _sources(self):
+        from brain.websearch import websearch
+
+        websearch.remember_sources([
+            {"url": "https://aion2.wiki.fextralife.com/Ranger_Builds", "title": "Ranger Builds"},
+            {"url": "https://game8.co/games/Aion-2/archives/631924", "title": "Best Ranger Build"},
+            {"url": "https://www.aion2vault.com/ranger-pvp", "title": "Ranger PvP"},
+        ])
+        self.addCleanup(websearch.LAST_SOURCES.clear)
+
+    def _open(self, qual):
+        opened = []
+        with mock.patch("brain.system.open_in_chrome", side_effect=opened.append), \
+             mock.patch.object(tools, "_say"):
+            tools.abrir_fonte(qual)
+        return opened
+
+    def test_abrir_fonte_principal_numero_site_e_todas(self):
+        self._sources()
+        self.assertEqual(self._open(""), ["https://aion2.wiki.fextralife.com/Ranger_Builds"])
+        self.assertEqual(self._open("2"), ["https://game8.co/games/Aion-2/archives/631924"])
+        self.assertEqual(self._open("Aion2vault"), ["https://www.aion2vault.com/ranger-pvp"])
+        self.assertEqual(self._open("game8"), ["https://game8.co/games/Aion-2/archives/631924"])
+        self.assertEqual(len(self._open("todas")), 3)
+
+    def test_abrir_fonte_sem_busca_avisa(self):
+        from brain.websearch import websearch
+
+        websearch.LAST_SOURCES.clear()
+        self.assertEqual(self._open(""), [])
+
+    def test_busca_entrega_as_fontes_numeradas_ao_modelo(self):
+        from brain.websearch import websearch
+
+        def fake_search(query):
+            websearch.remember_sources([{"url": "https://site.com/a", "title": "Título A"}])
+            return "texto", "Site"
+
+        self.addCleanup(websearch.LAST_SOURCES.clear)
+        with mock.patch.object(websearch, "search_web", side_effect=fake_search):
+            result = tools.buscar_na_internet("x")
+        self.assertIn("1. Site — Título A (https://site.com/a)", result)
+
     def test_pesquisar_no_google_abre_os_resultados_no_chrome(self):
         opened = []
         with mock.patch("brain.system.open_in_chrome", side_effect=opened.append), \
