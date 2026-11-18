@@ -65,6 +65,11 @@ def main():
         avatar.show()
 
     start_ollama()
+
+    # Memória por semelhança: importa as memórias antigas (uma vez) e
+    # atualiza o índice da pasta de documentos, sem atrasar a abertura
+    from brain import semantic_memory
+    Thread(target=semantic_memory.prepare, daemon=True).start()
     if SD_AUTOSTART:
         start_stable_diffusion()
 

@@ -28,11 +28,14 @@ def learn(content):
             topic = parts[0].strip().lower()
             information = "é " + parts[1].strip()
 
-            if memoria_ja_existe(topic):
+            from brain import semantic_memory
+
+            known = semantic_memory.search(f"{topic} {information}", k=1, min_score=0.92)
+            if known:
                 say("Eu já sabia disso, mas obrigado por reforçar!")
                 return True
 
-            if insert_memory(topic, information):
+            if semantic_memory.add(topic, information, "Pedro", "fato"):
                 say("Aprendido com sucesso.")
             else:
                 say("Algo deu errado ao tentar aprender isso.")
@@ -47,11 +50,11 @@ def remember(content):
     match = re.search(r"(o que você sabe sobre|lembra sobre) (.+)", content)
     if match:
         subject = match.group(2).strip().rstrip("?.,!").lower()
-        result = consultar_memoria(subject)
+        from brain import semantic_memory
 
-        if result:
-            info, source, date = result
-            say(f"Sim, eu sei que {info} (Fonte: {source}, Aprendido em {date})")
+        found = semantic_memory.search(subject, k=1)
+        if found:
+            say(f"Sim, eu sei que {found[0]['texto'][:400]}")
         else:
             response = generate_dynamic_contextual_response(subject)
             if response:
@@ -77,7 +80,9 @@ def forget(content):
     match = re.search(r"esqueça (.+)", content)
     if match:
         data = match.group(1).strip()
-        if apagar_memoria(data):
+        from brain import semantic_memory
+
+        if semantic_memory.forget(data):
             say("Informação esquecida.")
         else:
             say("Não consegui encontrar isso para esquecer.")
@@ -85,7 +90,9 @@ def forget(content):
     return False
 
 def list_all(content):
-    titles = listar_memoria()
+    from brain import semantic_memory
+
+    titles = semantic_memory.list_subjects()
     if titles:
         listing = ", ".join(titles)
         say(f"Eu sei sobre: {listing}.")
@@ -115,9 +122,10 @@ def learn_from_web(content):
     if not response or "Erro" in response:
         return True  # execute_search já avisou que não encontrou
 
-    date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    from brain import semantic_memory
+
     clean_title = subject.strip().lower().strip(string.punctuation)
-    if insert_memory(clean_title, response, source, date):
+    if semantic_memory.add(clean_title, response, str(source).split("\n")[0], "aprendido"):
         say(f"Guardei isso sobre {clean_title}.")
     else:
         say("Não consegui guardar essa informação.")

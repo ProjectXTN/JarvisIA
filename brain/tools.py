@@ -100,20 +100,31 @@ def status_do_computador():
 
 
 def consultar_memoria(assunto):
-    from brain.learning.consult_memory import consultar_memoria as consult
+    from brain import semantic_memory
 
-    result = consult(assunto.lower().strip())
-    if not result:
-        return f"Não há nada guardado sobre '{assunto}'."
-    info, source, date = result
-    return f"Guardado sobre '{assunto}': {info} (fonte: {source}, em {date})."
+    found = semantic_memory.search(assunto, k=3)
+    if not found:
+        return f"Não há nada guardado parecido com '{assunto}'."
+    return "Lembranças parecidas (da mais à menos parecida):\n" + "\n".join(
+        f"- {m['assunto']}: {m['texto'][:600]} (fonte: {m['fonte']}, em {m['criado']}, "
+        f"semelhança {m['score']})" for m in found)
 
 
 def listar_memorias():
-    from brain.learning.list_memory import listar_memoria
+    from brain import semantic_memory
 
-    titles = listar_memoria()
-    return "Assuntos guardados: " + (", ".join(titles) if titles else "nenhum ainda.")
+    subjects = semantic_memory.list_subjects()
+    return "Assuntos guardados (mais recentes primeiro): " + (", ".join(subjects) if subjects else "nenhum ainda.")
+
+
+def consultar_documentos(pergunta):
+    from brain import semantic_memory
+
+    found = semantic_memory.search_documents(pergunta)
+    if not found:
+        return "Nenhum trecho dos documentos de Pedro fala disso."
+    return "Trechos dos documentos de Pedro:\n" + "\n\n".join(
+        f"[{m['fonte']}] {m['texto']}" for m in found)
 
 
 def consultar_emocoes(emocao, periodo=""):
@@ -304,20 +315,22 @@ def descrever_imagem(arquivo, pergunta=""):
 
 
 def memorizar(assunto, informacao):
-    from brain.learning.insert_memory import insert_memory
+    from brain import semantic_memory
 
-    ok = insert_memory(assunto.lower().strip(), informacao, "Pedro",
-                       datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    ok = semantic_memory.add(assunto, informacao, "Pedro", "fato")
     _say(f"Guardei isso sobre {assunto}." if ok else "Não consegui guardar isso.")
     return f"memorizar({assunto})"
 
 
 def esquecer(assunto):
-    from brain.learning.clean_memory import apagar_memoria
+    from brain import semantic_memory
 
-    ok = apagar_memoria(assunto.lower().strip())
-    _say(f"Esqueci o que sabia sobre {assunto}." if ok else f"Não encontrei nada sobre {assunto}.")
-    return f"esquecer({assunto})"
+    removed = semantic_memory.forget(assunto)
+    if removed:
+        _say(f"Esqueci isto: {removed['texto'][:120]}")
+    else:
+        _say(f"Não encontrei nada guardado sobre {assunto}.")
+    return f"esquecer({assunto}): {'apagado' if removed else 'nada'}"
 
 
 def aprender_da_internet(assunto):
@@ -381,7 +394,14 @@ TOOLS = [
     Tool("data_e_hora", "Data e hora atuais de Pedro.", data_e_hora, for_model=True),
     Tool("status_do_computador", "Uso de CPU, memória RAM e disco do computador.",
          status_do_computador, for_model=True),
-    Tool("consultar_memoria", "O que Jarvis guardou sobre um assunto ('o que você sabe sobre X').",
+    Tool("consultar_documentos",
+         "Procura nos documentos de Pedro (arquivos .txt, .md e .pdf da pasta de documentos "
+         "do Jarvis). Use quando ele perguntar sobre os arquivos, anotações ou documentos dele.",
+         consultar_documentos, {"pergunta": _text()}, ["pergunta"], True),
+    Tool("consultar_memoria",
+         "Lembranças de Jarvis parecidas com um assunto: o que Pedro pediu para lembrar e o "
+         "que Jarvis aprendeu ('o que você sabe sobre X', 'você lembra de...'). Busca por "
+         "semelhança, não precisa do nome exato.",
          consultar_memoria, {"assunto": _text()}, ["assunto"], True),
     Tool("listar_memorias", "Lista os assuntos que Jarvis já guardou.", listar_memorias, for_model=True),
     Tool("consultar_emocoes", "Lembranças de Pedro ligadas a uma emoção ('o que me deixou feliz esta semana').",

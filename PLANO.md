@@ -58,9 +58,9 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 
 ## Fase 5 — Memória e RAG
 
-- [ ] 37. RAG: carregar o índice uma vez e usar `as_retriever()`
-- [ ] 38. Trocar o modelo de embeddings e reindexar
-- [ ] 39. Memória de longo prazo com busca por semelhança
+- [x] 37. RAG: carregar o índice uma vez e usar `as_retriever()` (llama-index trocado por índice próprio em SQLite, atualizado só quando o arquivo muda)
+- [x] 38. Trocar o modelo de embeddings e reindexar (`qwen3-embedding:0.6b`, multilíngue; Pedro precisa rodar `ollama pull qwen3-embedding:0.6b`)
+- [x] 39. Memória de longo prazo com busca por semelhança (base pronta; a extração automática das conversas fica no item 53)
 - [ ] 40. `auto_learning`: resumir antes de salvar, rejeitar erros, limitar ciclos
 - [ ] 41. Resumo automático da conversa ao encerrar
 
@@ -456,3 +456,15 @@ Corrigido:
 - `search_web` e `buscar_noticias` guardam as páginas usadas na última busca (`LAST_SOURCES` em `brain/websearch/websearch.py`: endereço, site e título).
 - `buscar_na_internet` entrega ao modelo as fontes numeradas e pede que ele cite o site na resposta.
 - Nova ferramenta `abrir_fonte`: abre no Chrome a fonte principal, a de um número ("a segunda"), a de um site citado ("a da Fextralife") ou todas (até 4). Sem busca anterior, avisa.
+
+### 2026-11-18 — Fase 5: memória por semelhança e documentos
+
+- Novo `brain/semantic_memory.py`: tabela `memorias` no mesmo banco (`brain/learning/memoria_jarvis.db`) com o vetor de significado de cada lembrança, gerado no Ollama (`/api/embed`). A busca acha por semelhança: "qual o modelo da minha impressora?" encontra o que foi guardado como "minha impressora". Sem o modelo de embeddings, cai para comparação de palavras.
+- Tipos: `fato` (o que Pedro mandou lembrar), `aprendido` (o que Jarvis pesquisou e guardou) e `documento` (trechos dos arquivos).
+- Modelo de embeddings: `qwen3-embedding:0.6b` (multilíngue, ~640 MB, roda junto do gemma4:26b). Trocável por `JARVIS_EMBEDDING_MODEL`. Ao trocar de modelo, as lembranças antigas ficam sem vetor válido e a busca usa palavras até reindexar.
+- Na abertura (em segundo plano): importa uma vez as 113 memórias da tabela antiga `conhecimento`, pulando o lixo do estudo automático antigo (mensagens de erro e textos curtos), e atualiza o índice da pasta de documentos.
+- Documentos: `.txt`, `.md` e `.pdf` em `brain/data_jarvis/` (ou `JARVIS_DOCS_DIR`). Divididos em trechos de ~900 caracteres; só reprocessa arquivo que mudou e tira do índice arquivo apagado. O llama-index saiu do caminho (acabou o aviso "Using MockLLM" na abertura).
+- Ferramentas: `memorizar`, `consultar_memoria`, `esquecer` e `listar_memorias` usam a memória nova; nova `consultar_documentos`. Os comandos antigos ("aprenda que...", "o que você sabe sobre...", "esqueça...", "aprenda sobre X") também.
+- Testes: `tests/test_semantic_memory.py` (7).
+- Para usar: `ollama pull qwen3-embedding:0.6b` e colocar arquivos em `brain/data_jarvis/`. Teste por voz: "guarde que a senha do wifi é ...", depois "qual é a senha da internet?"; "o que diz o meu documento sobre ...?".
+- Faltam na Fase 5: 40 e 41 (cobertos pelos itens 53–56 da Fase 7).

@@ -64,7 +64,11 @@ DEFAULT_MODEL_HIGH = os.getenv("JARVIS_MODEL_HIGH", DEFAULT_MODEL)
 DEFAULT_MODEL_CODE = os.getenv("JARVIS_MODEL_CODE", "qwen3.8:27b")
 VISION_MODEL_LOW = os.getenv("JARVIS_VISION_MODEL_LOW", DEFAULT_MODEL)
 VISION_MODEL_HIGH = os.getenv("JARVIS_VISION_MODEL_HIGH", VISION_MODEL_LOW)
-EMBEDDING_MODEL = os.getenv("JARVIS_EMBEDDING_MODEL", "nomic-embed-text")
+# Embeddings multilíngues (memória por semelhança e documentos): ollama pull qwen3-embedding:0.6b
+EMBEDDING_MODEL = os.getenv("JARVIS_EMBEDDING_MODEL", "qwen3-embedding:0.6b")
+MEMORY_DB = os.path.join(BASE_DIR, "brain", "learning", "memoria_jarvis.db")
+# Pasta de documentos que o Jarvis consulta (.txt, .md, .pdf)
+DOCS_DIR = os.getenv("JARVIS_DOCS_DIR", os.path.join(BASE_DIR, "brain", "data_jarvis"))
 
 # === Voz ===
 # Na GPU: large-v3-turbo (preciso e rápido). Se a GPU não puder ser usada,

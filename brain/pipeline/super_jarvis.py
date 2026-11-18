@@ -1,5 +1,10 @@
 from brain.websearch.websearch import search_web
-from brain.rag.query_rag import query_rag
+from brain.semantic_memory import search_documents
+
+
+def query_rag(user_prompt):
+    """Trechos dos documentos de Pedro (memória por semelhança; antes llama-index)."""
+    return "\n\n".join(f"[{m['fonte']}] {m['texto']}" for m in search_documents(user_prompt))
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from brain.memory.memory import llama_query, llama_stream, DEFAULT_MODEL, memory_context, remember_turn

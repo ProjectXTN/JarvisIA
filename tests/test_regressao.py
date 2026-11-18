@@ -504,15 +504,15 @@ class LearnFromWebTest(unittest.TestCase):
 
         spoken.clear()
         with mock.patch.object(commands_memorie, "execute_search", return_value=("resumo", "G1")) as search, \
-             mock.patch.object(commands_memorie, "insert_memory", return_value=True) as insert, \
+             mock.patch("brain.semantic_memory.add", return_value=1) as insert, \
              mock.patch.object(commands_memorie, "listen", side_effect=AssertionError("ficou esperando resposta")):
             self.assertTrue(commands_memorie.learn_from_web("pesquise sobre a bolsa de valores e aprenda"))
         search.assert_called_once_with("O que é a bolsa de valores?")
-        self.assertEqual(insert.call_args.args[:3], ("a bolsa de valores", "resumo", "G1"))
+        self.assertEqual(insert.call_args.args, ("a bolsa de valores", "resumo", "G1", "aprendido"))
         self.assertEqual(spoken, ["Guardei isso sobre a bolsa de valores."])
 
         with mock.patch.object(commands_memorie, "execute_search", return_value=("resumo", "G1")) as search, \
-             mock.patch.object(commands_memorie, "insert_memory", return_value=True):
+             mock.patch("brain.semantic_memory.add", return_value=1):
             commands_memorie.learn_from_web("aprenda sobre redes neurais")
         search.assert_called_once_with("O que é redes neurais?")
 
