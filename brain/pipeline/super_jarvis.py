@@ -2,7 +2,7 @@ from brain.websearch.websearch import search_web
 from brain.rag.query_rag import query_rag
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-from brain.memory.memory import llama_query, DEFAULT_MODEL, memory_context, remember_turn
+from brain.memory.memory import llama_query, llama_stream, DEFAULT_MODEL, memory_context, remember_turn
 from core.settings import RAG_TIMEOUT, RAG_ENABLED
 from brain.websearch.news import is_news_request, news_response
 
@@ -84,7 +84,7 @@ def contextualize_search(user_prompt, history):
     return rewritten
 
 
-def super_jarvis_query(user_prompt, lang="pt", conversation=False):
+def super_jarvis_query(user_prompt, lang="pt", conversation=False, stream=False):
     history = list(memory_context) if conversation else []
     search_query = contextualize_search(user_prompt, history)
     if is_news_request(search_query):
@@ -113,6 +113,14 @@ def super_jarvis_query(user_prompt, lang="pt", conversation=False):
         + "\n"
         f"{pt['answer_instruction']}"
     )
+
+    if stream:
+        # Fala em fluxo: devolve os pedaços; o turno é guardado quando terminar
+        return llama_stream(
+            prompt, model=DEFAULT_MODEL, direct_mode=True, lang=lang, mode="web",
+            history=history, remember=False,
+            on_complete=(lambda text: remember_turn(user_prompt, text)) if conversation else None,
+        )
 
     resposta = llama_query(prompt, model=DEFAULT_MODEL, direct_mode=True, lang=lang, mode="web",
                            history=list(memory_context) if conversation else [], remember=False)

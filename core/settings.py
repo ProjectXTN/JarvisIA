@@ -67,6 +67,9 @@ WHISPER_BEAM_SIZE = 5
 # Downloads grandes são preparados separadamente para não travar a abertura.
 WHISPER_ALLOW_DOWNLOAD = os.getenv("JARVIS_WHISPER_ALLOW_DOWNLOAD", "0") == "1"
 
+# Fala em fluxo: a primeira frase toca enquanto o modelo ainda escreve o resto
+STREAMING_ENABLED = os.getenv("JARVIS_STREAMING", "1") == "1"
+
 # Som ao ouvir "Jarvis": "bip" (instantâneo) ou "voz" (fala "Jarvis Ativado", ~1 s)
 ACTIVATION_SOUND = os.getenv("JARVIS_ACTIVATION_SOUND", "bip")
 

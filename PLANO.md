@@ -41,7 +41,7 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 - [x] 23. Whisper `large-v3-turbo` na GPU, com volta automática para a CPU (`brain/whisper_loader.py`)
 - [ ] 24. Manter o microfone aberto entre escutas
 - [ ] 25. TTS local com Kokoro (`brain/tts.py`), Google TTS como reserva
-- [ ] 26. Streaming LLM → TTS frase a frase
+- [x] 26. Streaming LLM → TTS frase a frase (`brain/speech_stream.py`; falta confirmar por voz)
 - [ ] 27. Tocar áudio com `sounddevice`, sem `ffplay`
 - [x] 28. Interrupção por voz enquanto o Jarvis fala (só com ordem de parar; perguntas não interrompem)
 - [x] 29. Bip local no lugar de "Jarvis Ativado..." e remover `sleep(0.5)`
@@ -333,3 +333,13 @@ Sintomas: "procure sobre a nova versão do ChatGPT Astra 6.2" foi respondida da 
 
 - Confirmado por voz: transcrição de 0,41 a 0,46 s (antes 15 a 18 s), "procure..." pesquisa de verdade e a continuação foi reescrita como "atualizações mais recentes sobre o GPT-6.2 Astra da OpenAI". Respostas completas em 3 a 4 s.
 - O modelo disse "lançou hoje, dia 17" no dia 18: ele não sabe a data. A resposta com busca passa a receber a data do dia (`today_line` em `super_jarvis.py`); o caminho de notícias já recebia.
+
+### 2026-11-18 — Fala em fluxo (item 26)
+
+- **Como funciona:** o modelo responde em stream (`llama_stream` em `brain/memory/memory.py`). `brain/speech_stream.py` corta o texto em frases, gera o áudio da próxima enquanto a atual toca (até duas à frente) e toca na ordem. A primeira frase sai assim que termina; as seguintes são agrupadas em ~90 caracteres para a fala não ficar picotada.
+- **Onde vale:** perguntas comuns e respostas com busca na web. Pedidos de código, notícias, comandos e a API continuam com o texto pronto.
+- **Falas comuns também:** `say()` usa a mesma fila, então qualquer fala longa começa pela primeira frase.
+- **Interrupção:** "pare" encerra a fala, a síntese e a conexão com o modelo; áudios gerados e não tocados são apagados. O histórico guarda a resposta inteira gerada.
+- **Console:** `[LLM] Primeiras palavras em X s` e `⏱️ Áudio gerado em X s` por frase.
+- Para desligar: `JARVIS_STREAMING=0` no `.env`.
+- 44 testes de regressão e 6 de fala em fluxo passando, com modelo e áudio simulados. Falta o teste por voz no PC.

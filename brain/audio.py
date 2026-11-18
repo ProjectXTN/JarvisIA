@@ -11,6 +11,7 @@ import webrtcvad
 import collections
 import queue
 from brain.playback import InterruptRecognizer, monitor_playback, finish_player
+from brain.speech_stream import run_pipeline
 import threading
 import time
 import requests
@@ -203,7 +204,7 @@ async def speak_with_gui(text):
         current_audio_process = None
 
 
-# === Public speech function ===
+# === Bip de ativação ===
 def _make_beep(rate=44100):
     """Dois tons curtos subindo (~0,2 s), com entrada e saída suaves."""
     parts = []
@@ -231,31 +232,19 @@ def activation_sound():
         print(f"⚠️ Não consegui tocar o bip: {e}")
 
 
-def say(text, lang="pt-BR", gender="MALE"):
-    global silenced
-
-    if not text or not str(text).strip():
-        return
-    if silenced:
-        print(f"[DEBUG] Fala descartada (você interrompeu): {str(text)[:80]}")
-        return
-
+def _clean_for_speech(text, budget=MAX_SPOKEN_CHARS):
+    """Texto pronto para o TTS: sem Markdown, marcações, links e repetições."""
     clean_text = clean_output(str(text)).strip()
     clean_text = re.sub(r"(^\s*\*\s*|\s+\*\s+)", " ", clean_text, flags=re.MULTILINE)
     clean_text = re.sub(r"-{3,}", " ", clean_text)
     clean_text = re.sub(r"^\s*-+\s*$", "", clean_text, flags=re.MULTILINE)
     # Sem [TÍTULO], links, setas e frases repetidas; corta respostas longas
-    clean_text = prepare_for_speech(clean_text, MAX_SPOKEN_CHARS)
-    if not clean_text:
-        return
+    return prepare_for_speech(clean_text, budget)
 
-    # === CONTINUA NORMAL ===
+
+def _synthesize(clean_text, gender="MALE"):
+    """Google TTS: devolve o caminho de um MP3 temporário, ou None em erro."""
     url = f"https://texttospeech.googleapis.com/v1/text:synthesize?key={API_KEY_GOOGLE_SPEECH}"
-
-    headers = {
-        "Content-Type": "application/json; charset=utf-8",
-    }
-
     body = {
         "input": {"text": clean_text},
         "voice": {
@@ -265,43 +254,79 @@ def say(text, lang="pt-BR", gender="MALE"):
         },
         "audioConfig": {"audioEncoding": "MP3", "speakingRate": 1.10, "pitch": -2.0},
     }
-
-    print(f"\n🧠 Jarvis : {clean_text}")
-    print("🔊 Starting TTS generation...")
     start_time = time.time()
-
     try:
         response = requests.post(
-            url, headers=headers, data=json.dumps(body), timeout=30
+            url,
+            headers={"Content-Type": "application/json; charset=utf-8"},
+            data=json.dumps(body),
+            timeout=30,
         )
     except requests.exceptions.RequestException as e:
         print(f"❌ Erro de rede no TTS: {e}")
+        return None
+    if response.status_code != 200:
+        print(f"❌ Erro no TTS: {response.status_code}")
+        print(response.text[:300])
+        return None
+    print(f"⏱️ Áudio gerado em {time.time() - start_time:.2f}s ({len(clean_text)} caracteres).")
+    audio_content = base64.b64decode(response.json()["audioContent"])
+    # Fechado antes de ffplay/ffmpeg lerem o arquivo no Windows
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as out:
+        out.write(audio_content)
+        return out.name
+
+
+def _discard_audio(path):
+    try:
+        os.remove(path)
+    except OSError as error:
+        print(f"[AUDIO] Não consegui remover o áudio temporário: {error}")
+
+
+def _play_sentence(path, text):
+    avatar.speak_start(path, text)  # boca e legenda do avatar seguem cada frase
+    return _play_interruptible(path, text)
+
+
+def speak_stream(pieces, gender="MALE"):
+    """Fala um texto que chega em pedaços (resposta do modelo em stream).
+
+    A primeira frase toca assim que fica pronta, enquanto as seguintes ainda
+    são escritas e convertidas em áudio. Devolve o texto falado.
+    """
+    global silenced
+    if silenced:
+        print("[DEBUG] Fala descartada (você interrompeu).")
+        closer = getattr(pieces, "close", None)
+        if callable(closer):
+            closer()
+        return ""
+    try:
+        spoken, interrupted = run_pipeline(
+            pieces,
+            synthesize=lambda text: _synthesize(text, gender),
+            play=_play_sentence,
+            prepare=_clean_for_speech,
+            discard=_discard_audio,
+            max_chars=MAX_SPOKEN_CHARS,
+            on_sentence=lambda text: print(f"\n🧠 Jarvis : {text}"),
+        )
+    finally:
+        avatar.speak_stop()
+    if interrupted:
+        silenced = True
+    return spoken
+
+
+# === Public speech function ===
+def say(text, lang="pt-BR", gender="MALE"):
+    if not text or not str(text).strip():
         return
-
-    end_time = time.time()
-    duration = end_time - start_time
-    print(f"⏱️ Time to generate audio: {duration:.2f} seconds.")
-
-    if response.status_code == 200:
-        audio_content = base64.b64decode(response.json()["audioContent"])
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as out:
-            out.write(audio_content)
-            audio_path = out.name
-        # Fechar antes de ffplay/ffmpeg lerem o arquivo no Windows.
-        try:
-            avatar.speak_start(audio_path, clean_text)
-            if _play_interruptible(audio_path, clean_text):
-                silenced = True
-        finally:
-            avatar.speak_stop()
-            try:
-                os.remove(audio_path)
-            except OSError as error:
-                print(f"[AUDIO] Não consegui remover o áudio temporário: {error}")
-
-    else:
-        print(f"❌ Erro: {response.status_code}")
-        print(response.text)
+    if silenced:
+        print(f"[DEBUG] Fala descartada (você interrompeu): {str(text)[:80]}")
+        return
+    speak_stream([str(text)], gender)
 
 
 # === Listening function with VAD + Fast-Whisper ===

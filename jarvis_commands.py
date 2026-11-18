@@ -18,13 +18,15 @@ from commands.commands_avatar import generate_avatar, avatar_view_commands
 from commands.commands_systeme import system_command, shutdown_command
 from brain.weatherAPI.weatherAPI import handle_weather_query
 from brain.storage.file_saver import save_response_to_file, should_save_to_file
+from core.settings import STREAMING_ENABLED
+from brain.memory.memory import llama_stream
 from brain.memory.memory import llama_query, memory_context, remember_turn
 from brain.pipeline.super_jarvis import super_jarvis_query
 from brain.utils.querySensitive import is_query_time_sensitive
 from brain.utils.utils import is_code_request
 from brain.utils.inputs import markdown_instruction
 
-from brain.audio import say
+from brain.audio import say, speak_stream
 from brain.utils.utils import log_interaction
 
 # Cache for responses to accelerate
@@ -117,8 +119,14 @@ def is_explicit_search(query):
     return bool(EXPLICIT_SEARCH.search(query.lower()))
 
 
-def generate_response(query, lang="pt", api=False):
-    """Resposta do LLM (com busca web quando o assunto é atual), ou None."""
+def generate_response(query, lang="pt", api=False, stream=False):
+    """Resposta do LLM (com busca web quando o assunto é atual), ou None.
+
+    stream=True (só na voz) devolve um gerador de pedaços de texto, para a
+    fala começar antes de o modelo terminar. Pedidos de código e notícias
+    continuam devolvendo o texto pronto.
+    """
+    stream = stream and not api
     start_time = time.time()
     response = None
 
@@ -130,16 +138,23 @@ def generate_response(query, lang="pt", api=False):
                 remember_turn(query, response)
         elif is_explicit_search(query) or is_query_time_sensitive(query):
             print("[DEBUG] Busca na internet (pedido explícito ou assunto atual).")
-            response = super_jarvis_query(query, lang=lang, conversation=not api)
+            response = super_jarvis_query(query, lang=lang, conversation=not api, stream=stream)
         else:
             print("[DEBUG] Timeless query. Using only LLaMA memory.")
-            response = llama_query(query, lang=lang, mode="site" if api else None)
+            if stream:
+                response = llama_stream(query, lang=lang)
+            else:
+                response = llama_query(query, lang=lang, mode="site" if api else None)
     except Exception as e:
         # Falha de rede, busca ou RAG não pode derrubar o Jarvis
         print(f"[ERROR] Falha ao gerar resposta: {e}")
         response = None
 
     generation_time = time.time() - start_time
+
+    if response is not None and not isinstance(response, str):
+        print(f"[DEBUG] Preparado em {generation_time:.2f}s; falando enquanto o modelo escreve.")
+        return response
 
     if response:
         print(f"\nJarvis generated (in {generation_time:.2f} seconds)")
@@ -175,7 +190,31 @@ def process_command(query, lang="pt"):
 
     # 🔁 Fallback pipeline RAG+Web (super_jarvis_query)
     # Respostas de conversa dependem do histórico; cache só por texto é incorreto.
-    response = generate_response(query, lang=lang)
+    response = generate_response(query, lang=lang, stream=STREAMING_ENABLED)
+
+    if response is not None and not isinstance(response, str):
+        # Fala em fluxo: guarda o texto inteiro enquanto fala as frases
+        parts = []
+
+        def collect():
+            try:
+                for piece in response:
+                    parts.append(piece)
+                    yield piece
+            finally:
+                closer = getattr(response, "close", None)
+                if callable(closer):
+                    closer()  # interrompido: encerra a conexão com o modelo
+
+        speak_stream(collect())
+        response = "".join(parts).strip() or None
+        if response:
+            log_interaction(query, response)
+            if should_save_to_file(query):
+                save_response_to_file(query, response)
+            return True
+        say("Desculpe, não consegui responder agora.")
+        return True
 
     if response:
         log_interaction(query, response)

@@ -1,4 +1,5 @@
 """Cliente de conversa Ollama; apenas a voz compartilha memória."""
+import json
 import re
 import threading
 import time
@@ -57,17 +58,7 @@ def _read_timeout(mode):
     return OLLAMA_TIMEOUT
 
 
-def llama_query(prompt, model=None, direct_mode=False, mode=None, lang="pt",
-                history=None, remember=None, images=None):
-    """Texto ou None. Resumos/API não alteram a conversa; history isola sessões."""
-    use_voice_history = not direct_mode and mode not in ("site", "code", "vision") and history is None
-    if remember is None:
-        remember = use_voice_history
-    personal = check_personal_answer(prompt) if not direct_mode and mode != "code" else None
-    if personal:
-        if remember:
-            remember_turn(prompt, personal)
-        return personal
+def _build_messages(prompt, lang, history, use_voice_history, images=None):
     instruction = {"pt": "Responda em português brasileiro.",
                    "fr": "Répondez en français.", "en": "Reply in English."}.get(lang, "Responda no idioma do usuário.")
     messages = [{"role": "system", "content": system_prompt + " " + instruction}]
@@ -83,6 +74,89 @@ def llama_query(prompt, model=None, direct_mode=False, mode=None, lang="pt",
     if images:
         user_message["images"] = images
     messages.append(user_message)
+    return messages
+
+
+def llama_stream(prompt, model=None, direct_mode=False, mode=None, lang="pt",
+                 history=None, remember=None, on_complete=None):
+    """Como llama_query, mas devolve a resposta em pedaços, à medida que o
+    modelo escreve (stream do Ollama). Serve para a fala começar antes do fim.
+
+    Guarda o turno no histórico só quando a resposta termina. on_complete(texto)
+    é chamado no fim com a resposta inteira. Em erro, para de gerar; o que já
+    saiu continua valendo.
+    """
+    use_voice_history = not direct_mode and mode not in ("site", "code", "vision") and history is None
+    if remember is None:
+        remember = use_voice_history
+    personal = check_personal_answer(prompt) if not direct_mode else None
+    if personal:
+        if remember:
+            remember_turn(prompt, personal)
+        if on_complete:
+            on_complete(personal)
+        yield personal
+        return
+    messages = _build_messages(prompt, lang, history, use_voice_history)
+    candidate = model or DEFAULT_MODEL
+    started = time.monotonic()
+    parts = []
+    response = None
+    print(f"[LLM] Gerando resposta em stream com {candidate} ({sum(len(m['content']) for m in messages)} caracteres)...", flush=True)
+    try:
+        response = session.post(
+            f"{OLLAMA_HOST}/api/chat",
+            json={"model": candidate, "messages": messages, "stream": True,
+                  "think": False, "keep_alive": OLLAMA_KEEP_ALIVE,
+                  "options": {"temperature": 0.2, "num_ctx": OLLAMA_NUM_CTX,
+                              "num_predict": {"news": 192}.get(mode, 512)}},
+            timeout=_read_timeout(mode), stream=True)
+        response.raise_for_status()
+        first = True
+        for line in response.iter_lines():
+            if not line:
+                continue
+            data = json.loads(line)
+            if data.get("error"):
+                raise RuntimeError(data["error"])
+            piece = data.get("message", {}).get("content", "")
+            if piece:
+                if first:
+                    print(f"[LLM] Primeiras palavras em {time.monotonic()-started:.1f}s.")
+                    first = False
+                parts.append(piece)
+                yield piece
+            if data.get("done"):
+                break
+        print(f"[LLM] Resposta completa em {time.monotonic()-started:.1f}s.")
+    except GeneratorExit:
+        print("[LLM] Stream encerrado (você interrompeu).")
+        raise
+    except Exception as error:
+        print(f"[ERROR] Falha no Ollama ({candidate}): {error}")
+    finally:
+        if response is not None:
+            response.close()
+        output = clean_output("".join(parts)).strip()
+        if output:
+            if remember:
+                remember_turn(prompt, output)
+            if on_complete:
+                on_complete(output)
+
+
+def llama_query(prompt, model=None, direct_mode=False, mode=None, lang="pt",
+                history=None, remember=None, images=None):
+    """Texto ou None. Resumos/API não alteram a conversa; history isola sessões."""
+    use_voice_history = not direct_mode and mode not in ("site", "code", "vision") and history is None
+    if remember is None:
+        remember = use_voice_history
+    personal = check_personal_answer(prompt) if not direct_mode and mode != "code" else None
+    if personal:
+        if remember:
+            remember_turn(prompt, personal)
+        return personal
+    messages = _build_messages(prompt, lang, history, use_voice_history, images)
     chosen = model or DEFAULT_MODEL
     candidates = [chosen]
     if mode == "code" and chosen != DEFAULT_MODEL_CODE:

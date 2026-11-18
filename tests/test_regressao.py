@@ -64,6 +64,15 @@ spoken = []
 fake_audio = types.ModuleType("brain.audio")
 fake_audio.say = lambda text, *a, **k: spoken.append(text)
 fake_audio.listen = lambda: ""
+
+
+def _fake_speak_stream(pieces, *a, **k):
+    text = "".join(pieces)
+    spoken.append(text)
+    return text
+
+
+fake_audio.speak_stream = _fake_speak_stream
 sys.modules["brain.audio"] = fake_audio
 
 from brain.memory import memory  # noqa: E402
@@ -358,6 +367,47 @@ class SearchContextTest(unittest.TestCase):
             self.assertEqual(super_jarvis.contextualize_search("preço do bitcoin", []), "preço do bitcoin")
 
 
+class StreamingVoiceTest(unittest.TestCase):
+    def test_pergunta_comum_fala_em_fluxo_e_guarda_o_texto(self):
+        def fake_stream(query, lang="pt"):
+            yield "Olá, "
+            yield "Pedro."
+
+        spoken.clear()
+        with mock.patch.object(jarvis_commands, "STREAMING_ENABLED", True), \
+             mock.patch.object(jarvis_commands, "run_command_handlers", return_value=(False, None)), \
+             mock.patch.object(jarvis_commands, "handle_weather_query", return_value=False), \
+             mock.patch.object(jarvis_commands, "is_code_request", return_value=False), \
+             mock.patch.object(jarvis_commands, "is_explicit_search", return_value=False), \
+             mock.patch.object(jarvis_commands, "is_query_time_sensitive", return_value=False), \
+             mock.patch.object(jarvis_commands, "llama_stream", side_effect=fake_stream), \
+             mock.patch.object(jarvis_commands, "log_interaction") as log, \
+             mock.patch.object(jarvis_commands, "should_save_to_file", return_value=False):
+            self.assertTrue(jarvis_commands.process_command("me explica algo"))
+        self.assertEqual(spoken, ["Olá, Pedro."])
+        log.assert_called_once_with("me explica algo", "Olá, Pedro.")
+
+    def test_stream_vazio_avisa_que_nao_conseguiu(self):
+        spoken.clear()
+        with mock.patch.object(jarvis_commands, "STREAMING_ENABLED", True), \
+             mock.patch.object(jarvis_commands, "run_command_handlers", return_value=(False, None)), \
+             mock.patch.object(jarvis_commands, "handle_weather_query", return_value=False), \
+             mock.patch.object(jarvis_commands, "is_code_request", return_value=False), \
+             mock.patch.object(jarvis_commands, "is_explicit_search", return_value=False), \
+             mock.patch.object(jarvis_commands, "is_query_time_sensitive", return_value=False), \
+             mock.patch.object(jarvis_commands, "llama_stream", return_value=iter([])):
+            jarvis_commands.process_command("me explica algo")
+        self.assertIn("Desculpe, não consegui responder agora.", spoken)
+
+    def test_api_nunca_usa_stream(self):
+        with mock.patch.object(jarvis_commands, "is_code_request", return_value=False), \
+             mock.patch.object(jarvis_commands, "is_explicit_search", return_value=False), \
+             mock.patch.object(jarvis_commands, "is_query_time_sensitive", return_value=False), \
+             mock.patch.object(jarvis_commands, "llama_stream", side_effect=AssertionError("stream na API")), \
+             mock.patch.object(jarvis_commands, "llama_query", return_value="ok"):
+            self.assertEqual(jarvis_commands.generate_response("oi", api=True, stream=True), "ok")
+
+
 class HandlerFlowTest(unittest.TestCase):
     def test_comando_que_devolve_false_nao_encerra(self):
         # "atualize o sistema" casa com a chave "atualize", mas o comando de
@@ -394,6 +444,46 @@ class LlamaQueryTest(unittest.TestCase):
         self.assertEqual(kwargs["json"]["options"]["temperature"], 0.2)
         self.assertNotIn("temperature", kwargs["json"])
         self.assertIsNotNone(kwargs["timeout"])
+
+
+class LlamaStreamTest(unittest.TestCase):
+    def _reply(self, lines):
+        import json as _json
+
+        reply = mock.Mock()
+        reply.iter_lines.return_value = [_json.dumps(line).encode() for line in lines]
+        return reply
+
+    def test_pedacos_chegam_em_ordem_e_turno_guardado_no_fim(self):
+        lines = [
+            {"message": {"content": "Olá, "}, "done": False},
+            {"message": {"content": "Pedro."}, "done": False},
+            {"message": {"content": ""}, "done": True},
+        ]
+        done = []
+        with mock.patch.object(memory.session, "post", return_value=self._reply(lines)) as post, \
+             mock.patch.object(memory, "remember_turn") as remember, \
+             mock.patch.object(memory, "check_personal_answer", return_value=None):
+            pieces = list(memory.llama_stream("oi", on_complete=done.append))
+        self.assertEqual(pieces, ["Olá, ", "Pedro."])
+        self.assertTrue(post.call_args.kwargs["stream"])
+        self.assertTrue(post.call_args.kwargs["json"]["stream"])
+        remember.assert_called_once_with("oi", "Olá, Pedro.")
+        self.assertEqual(done, ["Olá, Pedro."])
+
+    def test_erro_no_meio_para_sem_derrubar(self):
+        lines = [{"message": {"content": "Começo. "}, "done": False}, {"error": "model crashed"}]
+        with mock.patch.object(memory.session, "post", return_value=self._reply(lines)), \
+             mock.patch.object(memory, "check_personal_answer", return_value=None), \
+             mock.patch.object(memory, "remember_turn"):
+            self.assertEqual(list(memory.llama_stream("oi")), ["Começo. "])
+
+    def test_falha_de_conexao_nao_gera_nada(self):
+        with mock.patch.object(memory.session, "post", side_effect=ConnectionError("fora do ar")), \
+             mock.patch.object(memory, "check_personal_answer", return_value=None), \
+             mock.patch.object(memory, "remember_turn") as remember:
+            self.assertEqual(list(memory.llama_stream("oi")), [])
+        remember.assert_not_called()
 
 
 class LockTest(unittest.TestCase):
