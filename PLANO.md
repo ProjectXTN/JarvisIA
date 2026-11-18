@@ -1,7 +1,7 @@
 # Plano de refatoração do Jarvis (2026)
 
 Acompanhamento do trabalho no branch `refactor-2026`.
-`[x]` = feito · `[ ]` = pendente. A coluna "Onde" indica os arquivos alterados.
+`[x]` = feito · `[ ]` = pendente · `[-]` = descartado. A coluna "Onde" indica os arquivos alterados.
 
 Última atualização: 2026-11-17
 
@@ -39,13 +39,13 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 ## Fase 3 — Velocidade e naturalidade da voz
 
 - [x] 23. Whisper `large-v3-turbo` na GPU, com volta automática para a CPU (`brain/whisper_loader.py`)
-- [ ] 24. Manter o microfone aberto entre escutas
+- [x] 24. Manter o microfone aberto entre escutas (`brain/microphone.py`)
 - [x] 25. TTS local com Kokoro (`brain/tts.py`), Google TTS como reserva
 - [x] 26. Streaming LLM → TTS frase a frase (`brain/speech_stream.py`; falta confirmar por voz)
 - [x] 27. Tocar áudio com `sounddevice`, sem `ffplay` (WAV do Kokoro; MP3 do Google continua no `ffplay`)
 - [x] 28. Interrupção por voz enquanto o Jarvis fala (só com ordem de parar; perguntas não interrompem)
 - [x] 29. Bip local no lugar de "Jarvis Ativado..." e remover `sleep(0.5)`
-- [ ] 30. Hotword dedicada com `openWakeWord`
+- [-] 30. Hotword dedicada com `openWakeWord` (descartado: ver registro de 18/11)
 
 ## Fase 4 — Inteligência: ferramentas no lugar de regex
 
@@ -392,3 +392,13 @@ Sintoma: "Pesquise sobre a Bolsa de Valores" caiu no comando antigo de aprendiza
 - Primeira frase longa: o primeiro trecho é cortado na primeira vírgula depois de ~35 caracteres, para o áudio começar mais cedo (Kokoro na CPU leva ~1 s para 120 caracteres).
 - Observado: "Interrupção lenta" voltou a aparecer. Hipótese: o Kokoro e o Whisper de interrupção disputam a CPU. A interrupção funcionou mesmo assim; acompanhar.
 - 52 testes de regressão e 7 de fala em fluxo passando.
+
+### 2026-11-18 — Microfone sempre aberto (item 24) e Fase 3 encerrada
+
+- `brain/microphone.py`: um único stream do microfone fica aberto e entrega blocos de 30 ms a quem estiver inscrito (escuta normal ou monitor de interrupção). Antes cada escuta e cada fala abriam e fechavam o dispositivo, e o começo da fala logo depois de o Jarvis terminar podia se perder. Se o dispositivo para de mandar áudio por 2 s, é reaberto.
+- A transcrição passou a ser feita direto da memória, sem gravar um WAV no disco.
+- 5 testes novos (`tests/test_microphone.py`) com um microfone simulado. Falta o teste por voz.
+
+**Item 30 descartado.** Com o Whisper turbo na GPU, transcrever cada fala no modo passivo custa ~0,4 s e já reconhece "Jarvis, que horas são?" numa frase só. O modelo pronto do openWakeWord é "hey jarvis": exigiria mudar o jeito de chamar o Jarvis e treinar um modelo próprio para "Jarvis" sozinho, além de mais uma dependência, para um ganho pequeno (menos processamento com o PC parado). Se o reconhecimento passivo der problema (ruído de TV, por exemplo), reavaliar.
+
+**Fase 3 encerrada:** Whisper turbo na GPU (23), microfone aberto (24), voz local Kokoro (25), fala em fluxo (26), áudio pela placa de som (27), interrupção por voz (28), bip de ativação (29).

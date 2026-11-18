@@ -13,6 +13,7 @@ import queue
 from brain.playback import InterruptRecognizer, monitor_playback, finish_player
 from brain.speech_stream import run_pipeline
 from brain.player import open_player, expected_delay_ms
+from brain.microphone import get_microphone
 from brain import tts
 import threading
 import time
@@ -122,23 +123,18 @@ def _play_interruptible(path, spoken_text):
     proc, _ = open_player(path)
     current_audio_process = proc
     frames = queue.Queue(maxsize=100)
-    fs, frame = 16000, 480
+    fs = 16000
     vad = webrtcvad.Vad(3)
     recognizer = None
     timeout = max(20.0, min(180.0, len(spoken_text) / 8.0 + 15.0))
-
-    def capture(indata, count, timing, status):
-        try:
-            frames.put_nowait(indata.copy())
-        except queue.Full:
-            pass
+    mic = get_microphone()
 
     try:
         if INTERRUPT_ENABLED and _interrupt_model is not None:
             try:
-                stream = sd.InputStream(samplerate=fs, channels=1, dtype="int16",
-                                        blocksize=frame, callback=capture)
-                stream.start()
+                # Mesmo microfone da escuta, já aberto: só passa a receber blocos
+                frames = mic.subscribe(maxsize=100)
+                stream = frames
                 recognizer = _interrupt_recognizer
             except Exception as error:
                 print(f"[AUDIO] Microfone indisponível durante a fala: {error}")
@@ -159,14 +155,7 @@ def _play_interruptible(path, spoken_text):
         finally:
             current_audio_process = None
             if stream is not None:
-                try:
-                    stream.abort()
-                except Exception as error:
-                    print(f"[AUDIO] Erro ao parar microfone: {error}")
-                try:
-                    stream.close()
-                except Exception as error:
-                    print(f"[AUDIO] Erro ao fechar microfone: {error}")
+                mic.unsubscribe(stream)  # o microfone continua aberto
             print("[AUDIO] Frase concluída.")
 
 
@@ -353,14 +342,14 @@ def listen():
     silence_blocks = int(silence_duration / block_duration)
     silence_counter = 0
 
+    # Microfone aberto o tempo todo (brain/microphone.py): sem abrir e fechar
+    # o dispositivo a cada escuta, e sem perder o começo da fala
+    mic = get_microphone()
     try:
-        stream = sd.InputStream(
-            samplerate=fs, channels=1, dtype="int16", blocksize=frame_size
-        )
-        stream.start()
+        stream = mic.subscribe()
 
         while True:
-            block, _ = stream.read(frame_size)
+            block = mic.read(stream)
             is_speech = vad.is_speech(block.tobytes(), fs)
 
             if not triggered:
@@ -384,11 +373,8 @@ def listen():
         print(f"Error during audio capture: {e}")
         return ""
     finally:
-        if stream:
-            try:
-                stream.stop()
-            finally:
-                stream.close()
+        if stream is not None:
+            mic.unsubscribe(stream)
 
     audio_np = np.concatenate(audio, axis=0)
     average_volume = np.abs(audio_np).mean()
@@ -400,13 +386,7 @@ def listen():
 
     avatar.set_state("thinking")
 
-    # O arquivo é fechado antes de transcrever e apagado no fim (antes cada
-    # fala deixava um .wav na pasta temporária).
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-        wav_path = f.name
-
     try:
-        scipy.io.wavfile.write(wav_path, fs, audio_np)
         print("🔎 Transcribing with Faster-Whisper...")
 
         start_time = time.time()
@@ -414,8 +394,9 @@ def listen():
         # O faster-whisper só processa de verdade ao percorrer "segments",
         # então o laço fica dentro do lock e da medição de tempo.
         with transcribe_lock:
+            # Direto da memória, sem gravar um WAV no disco
             segments, info = model.transcribe(
-                wav_path,
+                audio_np.reshape(-1).astype(np.float32) / 32768.0,
                 language="pt",
                 beam_size=WHISPER_BEAM_SIZE,
                 # Dica de grafia para nomes próprios (cidade, hotword)
@@ -431,11 +412,6 @@ def listen():
     except Exception as e:
         print(f"❌ Error during transcription: {e}")
         return ""
-    finally:
-        try:
-            os.remove(wav_path)
-        except OSError:
-            pass
 
     if text_out:
         print("🖙️ You said:", text_out)
