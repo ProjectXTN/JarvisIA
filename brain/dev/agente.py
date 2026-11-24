@@ -51,6 +51,10 @@ TOOLS = [
     _tool("rodar_app", "Roda um arquivo .py ou .js do projeto e devolve a saída.",
           {"arquivo": {"type": "string"}, "argumentos": {"type": "array", "items": {"type": "string"}}},
           ["arquivo"]),
+    _tool("perguntar_ao_pedro",
+          "Pergunta algo ao Pedro e espera a resposta. Só para decisões que mudam o resultado "
+          "(no máximo 2 por etapa); para detalhes, escolha o padrão mais razoável.",
+          {"pergunta": {"type": "string", "description": "Curta, com sugestão de resposta"}}, ["pergunta"]),
     _tool("terminar", "Encerra o trabalho.",
           {"resumo": {"type": "string", "description": "2 frases, sem código"},
            "como_rodar": {"type": "string"},
@@ -71,9 +75,14 @@ def chat(messages):
 class Session:
     """Um trabalho num projeto. allow_run: Pedro deixou instalar pacotes e rodar."""
 
-    def __init__(self, project, request, allow_run=True, llm=chat, log=print):
+    def __init__(self, project, request, allow_run=True, llm=chat, log=print,
+                 plan_text="", step=None, step_number=None, total_steps=None, done_notes=(), ask=None):
         self.project, self.request, self.allow_run = project, request, allow_run
         self.llm, self.log = llm, log
+        self.plan_text, self.step = plan_text, step
+        self.step_number, self.total_steps = step_number, total_steps
+        self.done_notes, self.ask = list(done_notes), ask
+        self.questions = 0
         self.failed_runs = 0
         self.last_run = None
         self.result = None
@@ -86,6 +95,16 @@ class Session:
             text += "\n\nREADME atual:\n" + self.project.read("README.md")[:3000]
         if not self.allow_run:
             text += "\nPedro NÃO autorizou instalar pacotes nem rodar o app: só escreva os arquivos."
+        if self.plan_text:
+            text += "\n\nPLANO APROVADO PELO PEDRO:\n" + self.plan_text
+        if self.done_notes:
+            text += "\n\nEtapas já feitas:\n" + "\n".join(f"- {n}" for n in self.done_notes)
+        if self.step:
+            text += (f"\n\nAGORA faça SÓ a etapa {self.step_number} de {self.total_steps}: "
+                     f"{self.step['titulo']} — {self.step['descricao']}\n"
+                     f"Pronta quando: {self.step['teste']}\n"
+                     "Leia os arquivos que já existem antes de mudar. Escreva, rode, corrija. "
+                     "Quando a etapa estiver pronta e testada, chame terminar com o resumo DESTA etapa.")
         return text
 
     def call(self, name, args):
@@ -98,6 +117,14 @@ class Session:
                 return self.project.read(args.get("caminho"))
             if name == "listar_arquivos":
                 return "\n".join(self.project.files()) or "(vazio)"
+            if name == "perguntar_ao_pedro":
+                if not self.ask or self.questions >= 2:
+                    return "Sem mais perguntas nesta etapa: escolha o padrão mais razoável e siga."
+                self.questions += 1
+                answer = self.ask(str(args.get("pergunta") or "").strip())
+                self.log(f"[DEV] Pergunta: {args.get('pergunta')} -> {answer!r}")
+                return f"Resposta do Pedro: {answer}" if answer else \
+                    "Pedro não respondeu: escolha o padrão mais razoável, siga e diga no resumo o que escolheu."
             if name in ("instalar_pacotes", "rodar_app") and not self.allow_run:
                 return "Pedro não autorizou instalar nem rodar. Só escreva os arquivos e termine."
             if name == "instalar_pacotes":
@@ -135,7 +162,11 @@ class Session:
 
     def work(self):
         messages = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": self._context()}]
+        from brain.dev import conversa
+
         for step in range(DEV_MAX_STEPS):
+            if conversa.cancel_flag.is_set():
+                break
             message = self.llm(messages)
             calls = message.get("tool_calls") or []
             if not calls:
@@ -163,7 +194,9 @@ class Session:
             messages.extend(results)
             if self.failed_runs > MAX_FAILED_RUNS:
                 break
-        self.result = {"ok": False, "resumo": "Não terminei: passei do limite de tentativas.",
+        cancelled = conversa.cancel_flag.is_set()
+        self.result = {"ok": False, "resumo": "Parei porque você pediu." if cancelled else
+                       "Não terminei: passei do limite de tentativas.",
                        "como_rodar": "", "principal": "main.py", "passos": DEV_MAX_STEPS}
         return self.result
 
@@ -213,3 +246,133 @@ def run_in_background(project, request, allow_run, build, say, on_done=None):
 
 def busy():
     return _busy.locked()
+
+
+# ---------------------------------------- projeto com plano e etapas (estilo Claude/GPT)
+_progress = {"app": None, "fase": None, "etapa": 0, "total": 0, "titulo": ""}
+
+
+def progress():
+    return dict(_progress)
+
+
+def _is_yes(text):
+    from brain.tools import _is_yes as yes
+
+    return yes(text)
+
+
+def _cancel_words(text):
+    import re
+
+    return bool(re.search(r"\b(cancel[ae]r?|cancela|desist[ae]|esquece|n[aã]o quero mais|pode parar)\b", (text or "").lower()))
+
+
+def run_project(project, request, build, say, on_done=None, llm=chat, planner=None, log=print):
+    """Pergunta → plano aprovado → etapas testadas → resumo. Em segundo plano.
+
+    Devolve False se já há um projeto em andamento.
+    """
+    from brain.dev import conversa, planejador
+
+    if not _busy.acquire(blocking=False):
+        return False
+    conversa.cancel_flag.clear()
+    planner = planner or planejador.make_plan
+    name = project.spoken
+
+    def ask(question, kind="pergunta", detail="", timeout=900):
+        return conversa.ask(question, name, say=say, timeout=timeout, kind=kind, detail=detail)
+
+    def job():
+        started = time.monotonic()
+        _progress.update(app=project.name, fase="planejando", etapa=0, total=0, titulo="")
+        try:
+            # 1. Entender e perguntar só o essencial
+            plan = planner(request, project)
+            if plan["perguntas"]:
+                _progress["fase"] = "perguntando"
+                say(f"Antes de começar o app {name}, tenho {len(plan['perguntas'])} "
+                    f"pergunta{'s' if len(plan['perguntas']) > 1 else ''}.")
+                answers = []
+                for question in plan["perguntas"]:
+                    reply = ask(question)
+                    if conversa.cancel_flag.is_set() or _cancel_words(reply) and not _is_yes(reply):
+                        say(f"Tudo bem, cancelei o app {name}.")
+                        return
+                    answers.append((question, reply))
+                plan = planner(request, project, answers=answers)
+
+            # 2. Plano: opções, escolha e etapas; Pedro aprova (isso também autoriza instalar e rodar)
+            for attempt in range(3):
+                _progress["fase"] = "esperando aprovação"
+                project.write("PLANO.md", planejador.to_markdown(plan, request))
+                extra = " e gerar o executável no fim" if build else ""
+                reply = ask(f"{planejador.spoken_summary(plan)} Posso começar, instalando os pacotes e "
+                            f"rodando para testar{extra}? Ou me diga o que mudar.",
+                            kind="aprovacao", detail=planejador.to_markdown(plan, request), timeout=1800)
+                if reply is None or conversa.cancel_flag.is_set():
+                    say(f"Não tive resposta, então deixei o plano do app {name} salvo e parei. "
+                        "Quando quiser, peça para continuar o app.")
+                    project.add_history(request, "Plano feito, esperando aprovação.", False)
+                    return
+                if _is_yes(reply):
+                    break
+                if _cancel_words(reply):
+                    say(f"Tudo bem, cancelei o app {name}.")
+                    return
+                say("Entendi, vou ajustar o plano.")
+                plan = planner(request, project, changes=reply)
+            else:
+                say("Vou seguir com a última versão do plano.")
+
+            # 3. Etapas: escreve, roda, corrige; avisa o progresso
+            total = len(plan["etapas"])
+            plan_text = planejador.to_markdown(plan, request)
+            notes, ok_all, last = [], True, None
+            say(f"Combinado, começando. São {total} etapas; vou te avisando.")
+            for number, step in enumerate(plan["etapas"], 1):
+                if conversa.cancel_flag.is_set():
+                    ok_all = False
+                    break
+                _progress.update(fase="programando", etapa=number, total=total, titulo=step["titulo"])
+                session = Session(project, request, True, llm=llm, log=log, plan_text=plan_text, step=step,
+                                  step_number=number, total_steps=total, done_notes=notes,
+                                  ask=lambda q: ask(q))
+                last = session.work()
+                notes.append(f"{number}. {step['titulo']}: {last['resumo']}")
+                project.write("PLANO.md", planejador.to_markdown(plan, request, done=number if last["ok"] else number - 1))
+                if not last["ok"]:
+                    ok_all = False
+                    say(f"Travei na etapa {number}, {step['titulo']}. {last['resumo']}")
+                    break
+                if number < total:
+                    say(f"Etapa {number} de {total} pronta: {step['titulo']}.")
+
+            # 4. Fim: executável (se pedido), histórico, resumo curto
+            built = ""
+            if ok_all and build:
+                done, out = executor.build(project, plan["arquivo_principal"])
+                built = " Gerei o executável na pasta dist." if done else " O executável não saiu; o erro está no log."
+                if not done:
+                    log(f"[DEV] Build falhou:\n{out}")
+            summary = "; ".join(notes) or "nada feito"
+            project.add_history(request, summary[:500], ok_all, plan["arquivo_principal"])
+            minutes = (time.monotonic() - started) / 60
+            log(f"[DEV] {project.name}: {'ok' if ok_all else 'parou'} em {minutes:.1f} min.")
+            if ok_all:
+                executor.open_folder(project)
+                how = f" Para rodar: {last['como_rodar']}" if last and last.get("como_rodar") else \
+                    " Para abrir, diga: abre o app."
+                say(f"Terminei o app {name}, {total} etapas testadas.{built}{how}")
+        except Exception as error:
+            log(f"[DEV] Erro no modo programador: {error}")
+            say(f"Tive um problema programando o app {name}: o modelo de código não respondeu.")
+        finally:
+            _progress.update(app=None, fase=None)
+            _busy.release()
+            if on_done:
+                on_done()
+
+    threading.Thread(target=job, name=f"dev-{project.name}", daemon=True).start()
+    return True

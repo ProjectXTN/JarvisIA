@@ -649,3 +649,11 @@ Corrigido:
 - `brain/monitor.py` lê `nvidia-smi`, `psutil` e `/api/ps` do Ollama; `interface/monitor.html`.
 - Busca sem `BRAVE_API_KEY`: Jarvis avisa que falta a chave (antes dizia que não achou nada).
 - Testes: +3 (monitor). Total: 224.
+
+### 2026-11-24 — Programador por etapas (estilo Claude/GPT)
+
+- "Crie um app de..." agora segue um processo, em segundo plano, com a janela de texto aberta: (1) o modelo de código entende o pedido e faz até 3 perguntas, só as que mudam o resultado, cada uma com sugestão; (2) compara 2 ou 3 caminhos (ex.: Python + Tkinter × Web), recomenda um e divide em 3 a 6 etapas, cada uma com um teste de "pronto"; (3) o plano vai para a janela e para `PLANO.md` na pasta do app, e o Jarvis fala um resumo e pergunta "posso começar?" (aprovar também autoriza instalar e rodar). Pedro pode pedir mudanças (o plano é refeito, até 3 vezes) ou cancelar; (4) cada etapa é feita, rodada e corrigida em separado, com o plano e o que já foi feito no contexto, e o programador pode perguntar algo no meio (até 2 por etapa). O Jarvis avisa "Etapa 1 de 3 pronta" e marca no PLANO.md; (5) no fim, executável se pedido, histórico e resumo curto.
+- `brain/dev/planejador.py` (plano em JSON, PLANO.md, resumo falado), `brain/dev/conversa.py` (pergunta pendente: o programador espera; resposta por voz ou escrita). `agente.run_project` orquestra; `Session` ganhou etapa, plano, etapas feitas e a ferramenta `perguntar_ao_pedro`.
+- O roteador sabe quando o programador espera uma resposta e chama a nova ferramenta `responder_programador`. Novas: `status_do_programador` ("como está o app?") e `cancelar_programacao` ("para o app").
+- Sem resposta: dúvidas usam o padrão mais razoável (dito no resumo); o plano sem aprovação em 30 min fica salvo e o trabalho para.
+- Testes: `tests/test_dev_etapas.py` (10). Total: 234.

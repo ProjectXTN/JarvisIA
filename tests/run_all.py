@@ -16,7 +16,7 @@ SUITES = [
     "tests.test_media_window", "tests.test_browser_choice", "tests.test_tts_engine",
     "tests.test_fase2", "tests.test_playback", "tests.test_news",
     "tests.test_semantic_memory", "tests.test_server", "tests.test_image_gen",
-    "tests.test_log", "tests.test_persona", "tests.test_autonomia", "tests.test_iniciativa", "tests.test_chat_window", "tests.test_followup", "tests.test_dev", "tests.test_gpu", "tests.test_whisper_loader",
+    "tests.test_log", "tests.test_persona", "tests.test_autonomia", "tests.test_iniciativa", "tests.test_chat_window", "tests.test_followup", "tests.test_dev", "tests.test_dev_etapas", "tests.test_gpu", "tests.test_whisper_loader",
 ]
 
 if __name__ == "__main__":

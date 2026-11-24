@@ -324,21 +324,20 @@ def _announce(text):
 
 
 def _start_dev(project, request, build):
-    from brain.audio import ask
+    """Começa o trabalho em segundo plano: perguntas, plano para aprovar, etapas."""
+    from brain import chat_window
     from brain.dev import agente
     from brain.image_gen import unload_llm
     from core.initializer import start_ollama
 
-    extra = " e gerar o executável" if build else ""
-    answer = ask(f"Vou trabalhar no app {project.spoken}, na pasta jarvis apps. "
-                 f"Posso instalar os pacotes, rodar o app para testar{extra}?")
-    allow = _is_yes(answer)
-    _say("Combinado, começando. Enquanto programo, minhas respostas podem demorar um pouco. "
-         "Te aviso quando terminar." if allow else
-         "Tudo bem, só vou escrever os arquivos, sem instalar nem rodar nada.")
+    _say(f"Vou planejar o app {project.spoken}. Abri a janela de texto: lá aparecem o plano e as "
+         "perguntas. Pode responder falando ou escrevendo.")
+    try:
+        chat_window.open_window()
+    except Exception as error:
+        print(f"[DEV] Janela de texto não abriu: {error}")
     unload_llm()  # o modelo de código e o de conversa não cabem juntos na placa
-    agente.run_in_background(project, request, allow, build and allow, say=_announce,
-                             on_done=start_ollama)
+    agente.run_project(project, request, build, say=_announce, on_done=start_ollama)
 
 
 def criar_app(descricao, nome, gerar_executavel=False):
@@ -387,6 +386,42 @@ def abrir_app(nome=""):
         return f"abrir_app({project.name}): sem arquivo principal"
     _say(f"Abrindo o app {project.spoken}.")
     return f"abrir_app({project.name}): {opened}"
+
+
+def responder_programador(resposta):
+    from brain.dev import conversa
+
+    question = conversa.pending()
+    if not question or not conversa.answer(resposta):
+        return "Não havia pergunta do programador esperando resposta."
+    _say("Anotado.")
+    return f"responder_programador: entregue ({question['tipo']})"
+
+
+def status_do_programador():
+    from brain.dev import agente, conversa
+
+    info = agente.progress()
+    question = conversa.pending()
+    if not info.get("app"):
+        return "O programador não está trabalhando em nenhum app agora."
+    text = f"App {info['app'].replace('_', ' ')}: {info['fase']}"
+    if info.get("total"):
+        text += f", etapa {info['etapa']} de {info['total']} ({info['titulo']})"
+    if question:
+        text += f". Esperando sua resposta para: {question['texto']}"
+    return text + "."
+
+
+def cancelar_programacao():
+    from brain.dev import agente, conversa
+
+    if not agente.busy():
+        _say("Não estou programando nada agora.")
+        return "cancelar_programacao: nada"
+    conversa.cancel_flag.set()
+    _say("Certo, vou parar o app no ponto em que está.")
+    return "cancelar_programacao: ok"
 
 
 def listar_apps():
@@ -604,6 +639,13 @@ TOOLS = [
     Tool("abrir_app",
          "Abre (executa) para Pedro usar um app que o Jarvis criou. Sem nome: o mais recente.",
          abrir_app, {"nome": _text(description="Nome do app, ou vazio para o último")}),
+    Tool("responder_programador",
+         "Entrega a resposta de Pedro a uma pergunta do programador que está esperando (uma "
+         "dúvida sobre o app ou a aprovação do plano: 'sim', 'pode começar', uma escolha, mudanças).",
+         responder_programador, {"resposta": _text(description="A fala de Pedro, completa")}, ["resposta"]),
+    Tool("status_do_programador", "Em que pé está o app que o Jarvis está programando.",
+         status_do_programador, for_model=True),
+    Tool("cancelar_programacao", "Para o app que o Jarvis está programando agora.", cancelar_programacao),
     Tool("listar_apps", "Lista os apps que o Jarvis já criou e o último resumo de cada um.",
          listar_apps, for_model=True),
     Tool("lembrar_compromisso",

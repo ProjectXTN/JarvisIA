@@ -65,6 +65,17 @@ def _base_messages(query, lang):
     instruction = {"pt": "Responda em português brasileiro.", "en": "Reply in English.",
                    "fr": "Répondez en français."}.get(lang, "Responda no idioma do usuário.")
     now = f"Agora são {datetime.now():%H:%M}."
+    try:  # o programador está esperando o Pedro responder algo?
+        from brain.dev import conversa
+
+        waiting = conversa.pending()
+    except Exception:
+        waiting = None
+    if waiting:
+        now += (f"\nO PROGRAMADOR está esperando a resposta de Pedro sobre o app {waiting['app']}: "
+                f"\"{waiting['texto'][:400]}\". Se a fala de Pedro responde isso (sim, pode começar, "
+                "uma escolha, mudanças no plano), chame responder_programador com a fala completa; "
+                "se for outro assunto, atenda normalmente.")
     messages = [{"role": "system",
                  "content": f"{system_prompt} {instruction}{persona_block()}\n{today_line(lang)} {now}\n{ROUTER_GUIDE}"}]
     for question, answer in list(memory_context)[-MAX_CONTEXT:]:
