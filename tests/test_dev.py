@@ -30,6 +30,16 @@ class ProjetoTest(unittest.TestCase):
         self.assertEqual(projeto.find_project("o app da calculadora", self.base).name, "calculadora_de_gorjeta")
         self.assertIsNone(projeto.find_project("jogo da cobrinha", self.base))
 
+    def test_arquivo_principal_e_nome_falado(self):
+        self.assertEqual(self.p.spoken, "calculadora de gorjeta")
+        self.assertIsNone(self.p.main_file())
+        self.p.write("src/app_principal.py", "print(1)")
+        self.assertEqual(self.p.main_file(), "src/app_principal.py")
+        self.p.write("main.py", "print(1)")
+        self.assertEqual(self.p.main_file(), "main.py")
+        self.p.add_history("x", "y", True, "src/app_principal.py")
+        self.assertEqual(self.p.main_file(), "src/app_principal.py")
+
     def test_historico(self):
         self.p.add_history("adicione modo escuro", "Botão de tema escuro.", True)
         self.assertEqual(self.p.history()[-1]["pedido"], "adicione modo escuro")

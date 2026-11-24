@@ -114,6 +114,40 @@ def build(project, entry):
     return code == 0, _tail(out)
 
 
+_GUI = re.compile(r"^\s*(import|from)\s+(tkinter|customtkinter|PyQt\w*|PySide\w*|pygame|kivy|wx|flet)\b", re.M)
+
+
+def launch(project):
+    """Abre o app para o Pedro usar (sem esperar). Devolve o que abriu, ou None."""
+    exes = [f for f in project.files() if f.startswith("dist/") and f.endswith(".exe")]
+    if exes and hasattr(os, "startfile"):
+        os.startfile(os.path.join(project.path, exes[0]))
+        return exes[0]
+    entry = project.main_file()
+    if not entry:
+        return None
+    if entry.endswith(".py"):
+        python = ensure_venv(project)
+        source = project.read(entry)
+        if _GUI.search(source):  # janela: sem console preto atrás
+            pythonw = os.path.join(os.path.dirname(python), "pythonw.exe")
+            cmd = [pythonw if os.path.isfile(pythonw) else python, entry]
+            flags = CREATE_FLAGS
+        else:  # programa de terminal: abre num console próprio que fica aberto
+            cmd = ["cmd.exe", "/k", python, entry] if os.name == "nt" else [python, entry]
+            flags = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
+    elif entry.endswith(".js"):
+        node = shutil.which("node")
+        if not node:
+            return None
+        cmd = ["cmd.exe", "/k", node, entry] if os.name == "nt" else [node, entry]
+        flags = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
+    else:
+        return None
+    subprocess.Popen(cmd, cwd=project.path, creationflags=flags)
+    return entry
+
+
 def open_folder(project):
     code = shutil.which("code")
     try:

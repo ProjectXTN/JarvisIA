@@ -188,20 +188,20 @@ def run_in_background(project, request, allow_run, build, say, on_done=None):
                 built = " Gerei o executável na pasta dist." if ok else " O executável não saiu; deixei o erro no log."
                 if not ok:
                     print(f"[DEV] Build falhou:\n{out}")
-            project.add_history(request, result["resumo"], result["ok"])
+            project.add_history(request, result["resumo"], result["ok"], result["principal"])
             minutes = (time.monotonic() - started) / 60
             print(f"[DEV] {project.name}: {'ok' if result['ok'] else 'travou'} em {minutes:.1f} min, "
                   f"{result['passos']} passos.")
             if result["ok"]:
                 executor.open_folder(project)
-                message = (f"Terminei o app {project.name}. {result['resumo']}{built} "
+                message = (f"Terminei o app {project.spoken}. {result['resumo']}{built} "
                            f"{('Para rodar: ' + result['como_rodar']) if result['como_rodar'] else ''}")
             else:
-                message = f"Não consegui deixar o app {project.name} funcionando. {result['resumo']}"
+                message = f"Não consegui deixar o app {project.spoken} funcionando. {result['resumo']}"
             say(message.strip())
         except Exception as error:
             print(f"[DEV] Erro no modo programador: {error}")
-            say(f"Tive um problema programando o app {project.name}: o modelo de código não respondeu.")
+            say(f"Tive um problema programando o app {project.spoken}: o modelo de código não respondeu.")
         finally:
             _busy.release()
             if on_done:

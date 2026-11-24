@@ -17,6 +17,9 @@ _state = threading.local()
 MODEL_READY = threading.Event()
 # Hora (time.monotonic) do último pedido do Pedro; a rotina de fundo espera ele parar
 LAST_ACTIVITY = 0.0
+# Quando o Jarvis terminou de falar pela última vez (datetime). Depois de um aviso
+# feito em segundo plano ("terminei o app"), dá para responder sem dizer "Jarvis".
+LAST_SPEECH_END = None
 # Ligado quando o Jarvis não está atendendo um pedido (lembretes esperam por ele)
 NOT_BUSY = threading.Event()
 NOT_BUSY.set()

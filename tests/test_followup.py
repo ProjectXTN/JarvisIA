@@ -12,6 +12,11 @@ NOW = datetime(2026, 11, 24, 9, 37, 0)
 
 
 class FollowupTest(unittest.TestCase):
+    def setUp(self):
+        from core import config
+
+        config.LAST_SPEECH_END = None
+
     def accept(self, text, seconds_ago, playing=False):
         with mock.patch.object(system_audio, "other_audio_playing", return_value=playing):
             return followup.accept_followup(text, NOW - timedelta(seconds=seconds_ago), now=NOW)
@@ -30,6 +35,12 @@ class FollowupTest(unittest.TestCase):
         self.assertIsNone(self.accept("Tchau.", 3))
         self.assertIsNone(self.accept("Tchau.", 60, playing="chrome.exe"))
         self.assertEqual(self.accept("Tchau, Jarvis.", 60, playing="chrome.exe"), "tchau")  # com Jarvis vale
+
+    def test_depois_de_um_aviso_em_segundo_plano_responde_sem_jarvis(self):
+        from core import config
+
+        with mock.patch.object(config, "LAST_SPEECH_END", NOW - timedelta(seconds=5)):
+            self.assertEqual(self.accept("Abre o aplicativo que você criou.", 300), "abre o aplicativo que você criou")
 
     def test_jarvis_no_meio_da_frase(self):
         self.assertEqual(self.accept("Ok Jarvis, abre o chat", 90), "ok abre o chat")

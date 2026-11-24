@@ -45,6 +45,11 @@ class Project:
             raise OutsideProject("A pasta .jarvis é do Jarvis.")
         return full
 
+    @property
+    def spoken(self):
+        """Nome para falar ("lista_de_tarefas" -> "lista de tarefas")."""
+        return self.name.replace("_", " ")
+
     def exists(self):
         return os.path.isdir(self.path)
 
@@ -93,10 +98,21 @@ class Project:
         except (OSError, ValueError):
             return []
 
-    def add_history(self, request, summary, ok):
+    def main_file(self):
+        """Arquivo principal: o que o modelo indicou, senão main.py/app.py/index.js."""
+        for item in reversed(self.history()):
+            if item.get("principal") and os.path.isfile(os.path.join(self.path, item["principal"])):
+                return item["principal"]
+        for name in ("main.py", "app.py", "index.js", "server.js"):
+            if os.path.isfile(os.path.join(self.path, name)):
+                return name
+        py = [f for f in self.files() if f.endswith(".py")]
+        return py[0] if py else None
+
+    def add_history(self, request, summary, ok, principal=None):
         items = self.history()
         items.append({"quando": datetime.now().strftime("%Y-%m-%d %H:%M"), "pedido": request,
-                      "resumo": summary, "funcionou": ok})
+                      "resumo": summary, "funcionou": ok, "principal": principal})
         os.makedirs(os.path.dirname(self._history_path()), exist_ok=True)
         with open(self._history_path(), "w", encoding="utf-8") as f:
             json.dump(items, f, ensure_ascii=False, indent=2)

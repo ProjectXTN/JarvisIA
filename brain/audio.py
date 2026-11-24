@@ -306,6 +306,10 @@ def speak_stream(pieces, gender="MALE"):
         )
     finally:
         avatar.speak_stop()
+        from datetime import datetime as _dt
+        from core import config as _config
+
+        _config.LAST_SPEECH_END = _dt.now()
     if interrupted:
         silenced = True
     return spoken

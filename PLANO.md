@@ -580,3 +580,10 @@ Corrigido:
 - Confirmação por voz (65): antes de começar, Jarvis pergunta se pode instalar pacotes, rodar para testar e (se pedido) gerar o executável. Sem "sim", só escreve os arquivos.
 - Roda em segundo plano: a voz continua funcionando; o gemma4 sai da placa enquanto o qwen programa e volta no fim. Um app por vez. No fim, resumo falado curto (o que fez, executável, como rodar), esperando o Jarvis terminar de atender se estiver ocupado.
 - Testes: `tests/test_dev.py` (12). Total: 205.
+
+### 2026-11-24 — Primeiro app por voz e ajustes
+
+- Validado: "lista de tarefas" em Tkinter criada, testada ("abriu") e resumida por voz em 1,1 min e 3 passos.
+- Nova ferramenta `abrir_app` ("abre o aplicativo que você criou"): antes o modelo só listava os apps e dizia que estava abrindo. Abre o .exe de `dist/` se existir; senão o arquivo principal (guardado no histórico) com o Python do venv do app: `pythonw` para apps com janela (tkinter, PyQt, pygame...), console próprio para programas de terminal. Sem nome, abre o mais recente.
+- Nome do app falado com espaços ("lista de tarefas", não "listadetarefas").
+- Depois de um aviso em segundo plano ("terminei o app"), dá para responder em até 20 s sem dizer "Jarvis" (`config.LAST_SPEECH_END`), com a mesma proteção contra som tocando no PC.

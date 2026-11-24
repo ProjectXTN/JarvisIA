@@ -24,7 +24,11 @@ def accept_followup(text, last_command_time, now=None):
         if word:
             cleaned = re.sub(rf"\b{re.escape(word)}\b[\s,]*", "", cleaned, count=1).strip()
         return cleaned or None
-    if (now - last_command_time).total_seconds() > FOLLOWUP_SECONDS:
+    from core import config
+
+    spoke = getattr(config, "LAST_SPEECH_END", None)
+    reference = max(last_command_time, spoke) if spoke else last_command_time
+    if (now - reference).total_seconds() > FOLLOWUP_SECONDS:
         print(f"[DEBUG] Ignorado (sem 'Jarvis', fora da conversa): {text}")
         return None
     playing = other_audio_playing()

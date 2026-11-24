@@ -317,7 +317,7 @@ def _start_dev(project, request, build):
     from core.initializer import start_ollama
 
     extra = " e gerar o executável" if build else ""
-    answer = ask(f"Vou trabalhar no app {project.name.replace('_', ' ')}, na pasta jarvis apps. "
+    answer = ask(f"Vou trabalhar no app {project.spoken}, na pasta jarvis apps. "
                  f"Posso instalar os pacotes, rodar o app para testar{extra}?")
     allow = _is_yes(answer)
     _say("Combinado, começando. Enquanto programo, minhas respostas podem demorar um pouco. "
@@ -336,7 +336,7 @@ def criar_app(descricao, nome, gerar_executavel=False):
         return "criar_app: ocupado"
     project = projeto.Project(nome)
     if project.exists() and project.files() not in ([], ["README.md"]):
-        _say(f"Já existe um app chamado {project.name.replace('_', ' ')}; vou mexer em cima dele.")
+        _say(f"Já existe um app chamado {project.spoken}; vou mexer em cima dele.")
     project.create(descricao)
     _start_dev(project, descricao, bool(gerar_executavel))
     return f"criar_app({project.name})"
@@ -355,6 +355,25 @@ def continuar_app(nome, pedido, gerar_executavel=False):
         return f"continuar_app({nome}): não achou"
     _start_dev(project, pedido, bool(gerar_executavel))
     return f"continuar_app({project.name})"
+
+
+def abrir_app(nome=""):
+    from brain.dev import executor, projeto
+
+    names = projeto.list_projects()
+    project = projeto.find_project(nome) if nome else None
+    if not project and names and not nome:
+        latest = max(names, key=lambda n: os.path.getmtime(projeto.Project(n).path))
+        project = projeto.Project(latest)
+    if not project:
+        _say("Não achei esse app.")
+        return f"abrir_app({nome}): não achou"
+    opened = executor.launch(project)
+    if not opened:
+        _say(f"Não achei o arquivo principal do app {project.spoken}.")
+        return f"abrir_app({project.name}): sem arquivo principal"
+    _say(f"Abrindo o app {project.spoken}.")
+    return f"abrir_app({project.name}): {opened}"
 
 
 def listar_apps():
@@ -569,6 +588,9 @@ TOOLS = [
          continuar_app,
          {"nome": _text(description="Nome do app"), "pedido": _text(description="O que mudar"),
           "gerar_executavel": {"type": "boolean"}}, ["nome", "pedido"]),
+    Tool("abrir_app",
+         "Abre (executa) para Pedro usar um app que o Jarvis criou. Sem nome: o mais recente.",
+         abrir_app, {"nome": _text(description="Nome do app, ou vazio para o último")}),
     Tool("listar_apps", "Lista os apps que o Jarvis já criou e o último resumo de cada um.",
          listar_apps, for_model=True),
     Tool("lembrar_compromisso",
