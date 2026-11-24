@@ -604,3 +604,9 @@ Corrigido:
 - Privacidade: em pedidos da API a personalidade não leva o perfil do Pedro, o diário nem as opiniões, e o modelo é avisado que fala com um visitante (`persona.core.public_block`). Perguntas do site não entram em `turnos`, então não viram "fatos sobre o Pedro".
 - `start_api.bat` e `start_api.vbs` (sem janela) para abrir a API junto com o Windows.
 - Testes: `tests/test_server.py` (+5). Total: 211.
+
+### 2026-11-24 — Correção: "AI Knowledge" do site falhava
+
+- O prompt do gráfico de conceitos (JSON) passava pelo caminho de conversa: virava minúsculas, era tratado como busca na internet (o Brave pesquisou o próprio prompt) e a resposta passava pela limpeza de fala.
+- `process_command_api`: prompt pronto (mais de 300 caracteres ou "return only the JSON") vai direto ao modelo (`llama_query(mode="prompt")`, até 2048 tokens, texto intacto), sem comandos, clima nem busca.
+- O erro final era o Ollama fechado (porta 11500 recusou): o `server.py` agora abre o Ollama sozinho se ele não estiver no ar, sem carregar o Whisper e a voz.

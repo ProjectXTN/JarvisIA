@@ -186,6 +186,42 @@ def create_app(token, answer, origins=()):
     return app
 
 
+def ensure_ollama():
+    """O site precisa do Ollama mesmo com o Jarvis de voz fechado: abre se não estiver no ar.
+
+    Sem importar core.initializer, que carregaria o Whisper e a voz à toa.
+    """
+    import subprocess
+    import time
+
+    import requests
+
+    from core.settings import OLLAMA_HOST
+
+    try:
+        requests.get(f"{OLLAMA_HOST}/api/tags", timeout=3)
+        return True
+    except requests.RequestException:
+        pass
+    print(f"⚙️ Ollama fora do ar em {OLLAMA_HOST}; abrindo...")
+    env = dict(os.environ, OLLAMA_HOST=OLLAMA_HOST.split("//", 1)[-1])
+    try:
+        subprocess.Popen(["ollama", "serve"], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except OSError as error:
+        print(f"⚠️ Não consegui abrir o Ollama: {error}")
+        return False
+    for _ in range(20):
+        time.sleep(1)
+        try:
+            requests.get(f"{OLLAMA_HOST}/api/tags", timeout=2)
+            print("✅ Ollama no ar.")
+            return True
+        except requests.RequestException:
+            continue
+    print("⚠️ O Ollama não respondeu; o site vai dar erro até ele abrir.")
+    return False
+
 def main():
     token = os.getenv("SECRET_TOKEN_JARVIS", "")
     if len(token) < MIN_TOKEN:
@@ -193,6 +229,8 @@ def main():
         print(f"   SECRET_TOKEN_JARVIS={secrets.token_urlsafe(32)}")
         sys.exit(1)
     host = os.getenv("JARVIS_API_HOST", "127.0.0.1")
+
+    ensure_ollama()
     port = int(os.getenv("JARVIS_API_PORT", "11600"))
 
     def answer(question, lang):

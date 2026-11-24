@@ -98,6 +98,22 @@ class PrivacidadeTest(unittest.TestCase):
             record.assert_called_once()
         memory.clear_history()
 
+class PromptDoSiteTest(unittest.TestCase):
+    def test_prompt_do_grafico_vai_direto_ao_modelo(self):
+        from unittest import mock
+        import jarvis_commands
+
+        prompt = 'You are a concept map generator. Based on the topic "Japão"... Return only the JSON.'
+        self.assertTrue(jarvis_commands.is_raw_prompt(prompt))
+        self.assertFalse(jarvis_commands.is_raw_prompt("quem é você?"))
+        jarvis_commands.response_cache.clear() if hasattr(jarvis_commands.response_cache, "clear") else None
+        with mock.patch.object(jarvis_commands, "llama_query", return_value='{"nodes": []}') as llm, \
+             mock.patch.object(jarvis_commands, "super_jarvis_query") as web:
+            self.assertEqual(jarvis_commands.process_command_api(prompt + " x"), '{"nodes": []}')
+        web.assert_not_called()
+        self.assertEqual(llm.call_args.kwargs["mode"], "prompt")
+        self.assertIn("Japão", llm.call_args.args[0])  # sem minúsculas nem limpeza
+
 
 if __name__ == "__main__":
     unittest.main()

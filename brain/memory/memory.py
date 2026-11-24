@@ -256,7 +256,8 @@ def llama_query(prompt, model=None, direct_mode=False, mode=None, lang="pt",
                 json={"model": candidate, "messages": messages, "stream": False,
                       "think": False, "keep_alive": OLLAMA_KEEP_ALIVE,
                       "options": {"temperature": 0.2, "num_ctx": OLLAMA_NUM_CTX,
-                                  "num_predict": {"code": 2048, "news": 192, "rewrite": 64, "route": 4}.get(mode, 512)}},
+                                  "num_predict": {"code": 2048, "prompt": 2048, "news": 192, "rewrite": 64,
+                                                  "route": 4}.get(mode, 512)}},
                 timeout=_read_timeout(mode))
             response.raise_for_status()
             print(f"[LLM] Resposta recebida em {time.monotonic()-started:.1f}s.")
@@ -267,7 +268,8 @@ def llama_query(prompt, model=None, direct_mode=False, mode=None, lang="pt",
                 original_refusal = raw
                 print("[LLM] Recusa explícita; tentando o modelo reserva de código.")
                 continue
-            output = raw if mode == "code" else clean_output(raw)
+            # "prompt": instrução pronta vinda do site (ex.: JSON do gráfico); não mexe no texto
+            output = raw if mode in ("code", "prompt") else clean_output(raw)
             if not output:
                 return None
             if remember:

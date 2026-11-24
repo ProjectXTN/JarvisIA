@@ -372,7 +372,26 @@ def _process_command(query, lang="pt"):
     return True
 
 
+def is_raw_prompt(text):
+    """Instrução pronta de um app (o site manda prompts longos, como o do gráfico em JSON)."""
+    low = text.lower()
+    return len(text) > 300 or "return only the json" in low or "responda só o json" in low
+
+
 def process_command_api(query, lang="pt"):
+    # Prompt pronto do site: vai direto ao modelo, sem comandos, clima nem busca na
+    # internet (antes o JSON do gráfico de conceitos virava uma busca no Brave)
+    if is_raw_prompt(query):
+        cached = response_cache.get(query)
+        if cached:
+            return cached
+        print(f"[API] Prompt direto ({len(query)} caracteres).")
+        response = llama_query(query.strip(), direct_mode=True, mode="prompt", lang=lang)
+        if response:
+            response_cache[query] = response
+            return response
+        return "Sorry, I couldn't generate a response."
+
     query = clean_query(query)
 
     if shutdown_command(query) is False:
