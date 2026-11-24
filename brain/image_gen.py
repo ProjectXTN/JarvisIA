@@ -193,6 +193,12 @@ def generate(prompt, formato="quadrada", timeout=240, open_after=True):
     with open(path, "wb") as f:
         f.write(data.content)
     print(f"[IMAGEM] Pronta em {time.monotonic() - started:.1f}s: {path}")
+    try:
+        from core.log import record_time
+
+        record_time("imagem", time.monotonic() - started, prompt)
+    except OSError:
+        pass
     if open_after and hasattr(os, "startfile"):
         os.startfile(path)
     return path

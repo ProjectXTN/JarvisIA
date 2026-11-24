@@ -4,7 +4,6 @@
 # Pastas do ambiente virtual
 venv/
 .env/
-server.py
 
 # Cache do Python
 __pycache__/

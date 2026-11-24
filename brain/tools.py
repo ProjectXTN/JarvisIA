@@ -492,6 +492,13 @@ def schemas():
 
 
 def run_tool(name, arguments):
+    from core.log import etapa
+
+    with etapa(f"ferramenta {name}", show=False):
+        return _run_tool(name, arguments)
+
+
+def _run_tool(name, arguments):
     """Executa uma ferramenta. Devolve (texto, para_o_modelo). Erros viram texto."""
     tool = BY_NAME.get(name)
     if tool is None:

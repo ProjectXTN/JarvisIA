@@ -1,0 +1,131 @@
+"""API HTTP do Jarvis (perguntas em texto, para o app de chat e outros clientes).
+
+Segurança:
+  - token obrigatório (SECRET_TOKEN_JARVIS no .env, mínimo 16 caracteres);
+    sem token o servidor nem abre;
+  - comparação do token em tempo constante (hmac.compare_digest);
+  - escuta só em 127.0.0.1, a não ser que JARVIS_API_HOST diga outro endereço;
+  - CORS desligado, a não ser para as origens em JARVIS_API_ORIGINS
+    (separadas por vírgula);
+  - pedidos atendidos um de cada vez (o modelo é um só) e com tamanho limitado;
+  - erros internos vão para o log, não para quem chamou.
+Serve com waitress (pip install waitress); sem ele, usa o servidor do Flask.
+"""
+
+import hmac
+import os
+import secrets
+import sys
+import threading
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+if __name__ == "__main__":
+    from core import log
+
+    log.setup()
+
+MAX_QUESTION = 2000
+LANGS = {"pt", "en"}
+MIN_TOKEN = 16
+
+
+class BadRequest(ValueError):
+    pass
+
+
+def token_ok(header, token):
+    """Confere "Authorization: Bearer <token>" em tempo constante."""
+    if not token or not header or not header.startswith("Bearer "):
+        return False
+    return hmac.compare_digest(header[len("Bearer "):].encode(), token.encode())
+
+
+def parse_question(data):
+    """(pergunta, idioma) de um JSON de pedido, ou BadRequest."""
+    if not isinstance(data, dict):
+        raise BadRequest("Envie um JSON com o campo 'question'.")
+    question = data.get("question")
+    if not isinstance(question, str) or not question.strip():
+        raise BadRequest("O campo 'question' precisa ser um texto.")
+    if len(question) > MAX_QUESTION:
+        raise BadRequest(f"Pergunta longa demais (máximo {MAX_QUESTION} caracteres).")
+    lang = data.get("lang", "pt")
+    if lang not in LANGS:
+        raise BadRequest("Idioma inválido (use 'pt' ou 'en').")
+    return question.strip(), lang
+
+
+def allowed_origins(value):
+    return [o.strip() for o in (value or "").split(",") if o.strip()]
+
+
+def create_app(token, answer, origins=()):
+    """Monta o app Flask. answer(pergunta, lang) devolve o texto da resposta."""
+    from flask import Flask, jsonify, request
+
+    from core import config
+
+    app = Flask(__name__)
+    app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
+    if origins:
+        from flask_cors import CORS
+
+        CORS(app, origins=list(origins))
+    busy = threading.Lock()
+
+    @app.get("/ping")
+    def ping():
+        return jsonify({"status": "online"})
+
+    @app.post("/ask")
+    def ask_jarvis():
+        if not token_ok(request.headers.get("Authorization"), token):
+            return jsonify({"error": "Unauthorized"}), 401
+        try:
+            question, lang = parse_question(request.get_json(silent=True))
+        except BadRequest as error:
+            return jsonify({"error": str(error)}), 400
+        if not busy.acquire(timeout=90):
+            return jsonify({"error": "Jarvis ocupado, tente de novo."}), 429
+        try:
+            with config.api_request():
+                return jsonify({"answer": answer(question, lang)})
+        except Exception as error:
+            app.logger.exception("Erro ao responder pela API: %s", error)
+            return jsonify({"error": "Erro interno."}), 500
+        finally:
+            busy.release()
+
+    return app
+
+
+def main():
+    token = os.getenv("SECRET_TOKEN_JARVIS", "")
+    if len(token) < MIN_TOKEN:
+        print("❌ Defina SECRET_TOKEN_JARVIS no .env (mínimo 16 caracteres). Sugestão:")
+        print(f"   SECRET_TOKEN_JARVIS={secrets.token_urlsafe(32)}")
+        sys.exit(1)
+    host = os.getenv("JARVIS_API_HOST", "127.0.0.1")
+    port = int(os.getenv("JARVIS_API_PORT", "11600"))
+
+    from jarvis_commands import process_command_api
+
+    app = create_app(token, lambda q, lang: process_command_api(q, lang=lang),
+                     allowed_origins(os.getenv("JARVIS_API_ORIGINS")))
+    if host not in ("127.0.0.1", "localhost"):
+        print(f"⚠️ API aberta para a rede em {host}; use só em rede confiável.")
+    try:
+        from waitress import serve
+    except ImportError:
+        print("⚠️ waitress não instalado (pip install waitress); usando o servidor do Flask.")
+        app.run(host=host, port=port)
+    else:
+        print(f"🚀 API do Jarvis em http://{host}:{port} (waitress)")
+        serve(app, host=host, port=port, threads=4)
+
+
+if __name__ == "__main__":
+    main()

@@ -69,9 +69,9 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 - [x] 42. Stable Diffusion sob demanda, alternando VRAM com o LLM (feito com o FLUX, item 51)
 - [x] 43. `server.py`: token obrigatório, `hmac.compare_digest`, sem global, sem `lower()`
 - [x] 44. Servir a API com `waitress` e restringir o CORS
-- [ ] 45. `logging` com níveis e medição de tempo por etapa
-- [ ] 46. Testes automáticos (desligamento, hotword, roteamento)
-- [ ] 47. Atualizar `README.md`, `Dockerfile` e `build_jarvis.bat`
+- [x] 45. `logging` com níveis e medição de tempo por etapa
+- [x] 46. Testes automáticos (desligamento, hotword, roteamento)
+- [x] 47. Atualizar `README.md`, `Dockerfile` e `build_jarvis.bat` (build e Docker ainda não testados)
 
 ## Fase 7 — Jarvis vivo: personalidade, memória e aprendizado autônomo
 
@@ -508,3 +508,15 @@ Corrigido:
 - `process_command`: se o modelo ainda está carregando, Jarvis diz "Ainda estou carregando, só um instante" e espera (até 4 min) em vez de parecer travado.
 - `semantic_memory.prepare` espera o modelo carregar antes de mexer nos embeddings, e `backfill_vectors` gera os vetores que ficaram faltando (o `teste jarvis.txt` tinha sido indexado sem vetor).
 - Caminho antigo de imagem (quando o roteador falha) também usa o FLUX.
+
+### 2026-11-24 — Fase 6 concluída: registro, testes e documentação (itens 45 a 47)
+
+- Validado por voz: imagem do lobo gerada pelo FLUX no ComfyUI.
+- Novo `core/log.py`: tudo que aparece na janela também vai para `logs/jarvis.log` com data, hora e nível (o nível sai do conteúdo da linha: [DEBUG], erro/falhou, aviso/indisponível). Arquivo gira a cada 5 MB e guarda 5. `JARVIS_CONSOLE_LEVEL=INFO` esconde o [DEBUG] da janela; o arquivo guarda tudo. Erros inesperados vão com o traceback.
+- Tempos: cada pedido de voz (`[TEMPO] pedido: Xs` na janela), cada ferramenta e cada imagem ficam em `logs/tempos.csv` (abre no Excel), para ver onde o Jarvis perde tempo.
+- Testes: novo `tests/run_all.py` roda as 17 suítes de uma vez (155 testes aqui; o do Whisper precisa do venv do Windows). Novo `tests/test_ferramentas.py` confere os esquemas das 25 ferramentas. Desligamento, palavra de ativação e roteamento já tinham testes em `test_regressao.py` e `test_tool_router.py`.
+- `README.md` reescrito com o estado atual (modelos, ferramentas, memória, imagens, API, logs, testes, estrutura).
+- `build_jarvis.bat`: PyInstaller em pasta (`--onedir`) com faster-whisper, ctranslate2, kokoro e as DLLs da NVIDIA; tirou os arquivos do Whisper antigo e o `utils_datetime.py` que não existe mais. Ainda não testado.
+- `Dockerfile` e `docker-compose.yml`: só a API de texto, com o Ollama no Windows (`host.docker.internal`). O Jarvis de voz roda no venv. Ainda não testado.
+- `server.py` estava no `.gitignore` e nunca tinha ido para o git; agora vai (não guarda segredo, o token vem do .env).
+- Próximo: Fase 7 (Jarvis vivo). Pendente do Pedro: item 16 (`ollama rm` dos modelos antigos).

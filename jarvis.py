@@ -1,5 +1,9 @@
 import sys
 import atexit
+
+# Registro em logs/jarvis.log (com nível e hora) antes de qualquer print
+from core import log
+log.setup()
 import time
 import re
 from brain.initiate.personalized_greeting import personalized_greeting
@@ -106,7 +110,11 @@ def main():
             print(f"[DEBUG] Phrase after removing activator: {query}")
 
             if query:
-                if shutdown_command(query) is False or process_command(query) is False:
+                if shutdown_command(query) is False:
+                    sys.exit()
+                with log.etapa("pedido", query):
+                    result = process_command(query)
+                if result is False:
                     sys.exit()
 
             while True:
@@ -125,7 +133,8 @@ def main():
                 if handle_study_mode(query):
                     continue
 
-                result = process_command(query)
+                with log.etapa("pedido", query):
+                    result = process_command(query)
                 if result is False:
                     sys.exit()
 
@@ -136,6 +145,7 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
+        log.logger.exception("Erro inesperado")
         print(f"🔥 Jarvis encountered an unexpected error: {e}")
         say("Houve um erro inesperado. Encerrando o sistema.")
         sys.exit(1)

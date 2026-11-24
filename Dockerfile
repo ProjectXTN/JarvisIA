@@ -1,32 +1,17 @@
-FROM python:3.13-slim
+# Só a API de texto (server.py). O Jarvis de voz precisa de microfone, alto-falante
+# e GPU do Windows e roda direto no venv (veja o README).
+# O Ollama continua no Windows: passe OLLAMA_HOST=http://host.docker.internal:11500
+FROM python:3.12-slim
 
-# System dependencies
-RUN apt update && apt install -y \
-    ffmpeg \
-    espeak-ng \
-    libespeak-ng1 \
-    libasound2 \
-    alsa-utils \
-    build-essential \
-    git \
-    wget \
-    curl \
-    portaudio19-dev \
-    libportaudio2 \
-    libportaudiocpp0 \
-    python3-dev \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg libportaudio2 libasound2 espeak-ng \
     && rm -rf /var/lib/apt/lists/*
 
-# Working directory
 WORKDIR /app
-
-# Copy project files
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
-# Install Python dependencies
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
-RUN pip install piper-phonemize
-
-# Default command
-CMD ["python", "jarvis.py"]
+ENV JARVIS_API_HOST=0.0.0.0 JARVIS_API_PORT=11600
+EXPOSE 11600
+CMD ["python", "server.py"]

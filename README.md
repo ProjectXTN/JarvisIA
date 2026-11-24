@@ -1,294 +1,117 @@
 ## Jarvis IA
 
-Jarvis is an intelligent, sarcastic, and futuristic AI assistant inspired by Tony Stark's iconic system.Built entirely in Python, it supports voice interaction, vision models, autonomous learning, weather reports, emotional memory, music search, journaling, and much more — running 100% on your local machine.
+Jarvis is a local voice assistant inspired by Tony Stark's system. It listens, thinks and speaks on your own PC: speech recognition, the language model, the voice and image generation all run locally. Internet is used only for web search, news, weather and music.
 
-## 🗣️ Important: All Jarvis voice commands are in Brazilian Portuguese (PT-BR).
+**All voice commands and answers are in Brazilian Portuguese (PT-BR).**
+
+The refactoring plan and a log of every change live in [PLANO.md](PLANO.md).
 
 ## 💻 Requirements
 
-Python 3.10 or higher
+- Windows 10/11, Python 3.10+ (tested with the project `venv`)
+- NVIDIA GPU with 24 GB (developed on an RTX 4090)
+- [Ollama](https://ollama.com) with:
+  ```
+  ollama pull gemma4:26b             # conversation, tools and vision
+  ollama pull qwen3-embedding:0.6b   # semantic memory and documents (runs on CPU)
+  ollama pull qwen3.8:27b            # optional: programming
+  ```
+- Chrome (Edge is used only if Chrome is missing), ffmpeg
+- Optional: [ComfyUI portable](https://github.com/Comfy-Org/ComfyUI/releases) for images
+- API keys in `.env`: `BRAVE_API_KEY` (web search), `OPENWEATHER_API_KEY` (weather)
 
-CUDA-compatible GPU (recommended for Whisper and LLaMA)
+## 🧠 How it works
 
-Ollama for LLaMA 3.3, LLaMA 3.2 Vision models and Codestral(For extension Copilot)
+| Step | What runs |
+|---|---|
+| Wake word | "Jarvis" (and variations), voice activity detection with webrtcvad |
+| Speech to text | faster-whisper `large-v3-turbo` on the GPU (int8_float16) |
+| Thinking | `gemma4:26b` in Ollama with tool calling: the model decides whether to answer, search, open something, play music, remember... |
+| Voice | Kokoro (`pm_santa`, local, CPU), Google TTS as fallback. Speech starts while the model is still writing |
+| Interrupting | Say "pare", "para", "chega"... while Jarvis speaks. Questions such as "para que serve isso?" do not interrupt |
 
-ffmpeg, git, git-lfs
+### Tools the model can use
 
-Brave Search API Key (for web searches)
+Web search (Brave, with sources) and news · open the source page of the last answer · Google search in Chrome · open sites, programs and folders · play on YouTube (one media window that is reused) · Apple Music · weather · date and time · computer status · remember / recall / forget (semantic memory) · search your documents · learn about a topic from the web · emotional memory and daily journal · create images (FLUX) · describe images · translate SRT subtitles · avatar.
 
-OpenWeather API Key (for weather forecasts)
+### Memory and documents
 
-Internet connection (for searches and autonomous learning)
+Memories are stored in SQLite (`brain/learning/memoria_jarvis.db`) with an embedding vector, so "what is the internet password?" finds what was saved as "wifi password". Put `.txt`, `.md` or `.pdf` files in `brain/data_jarvis/` (or set `JARVIS_DOCS_DIR`, several folders separated by `;`) and ask about them.
 
-## 🧠 Features
+### Images
 
-🎙 Wake Word Detection — Activates with “Jarvis” or variations (e.g., "Javis")
+ComfyUI + FLUX.2 [klein] 4B (4 steps). Before generating, Jarvis unloads gemma4 from the GPU, generates, frees ComfyUI and reloads gemma4 in the background. Images are saved to `Pictures\Jarvis`.
 
-🧠 Voice Activity Detection (VAD) — Natural listening using smart silence detection
+1. Extract ComfyUI portable to `C:\ComfyUI` (or set `JARVIS_COMFYUI_DIR`).
+2. `venv\Scripts\python.exe tests\prepare_flux.py` downloads the model, text encoder and VAE.
+3. Ask: "Jarvis, crie uma imagem de um lobo na neve ao pôr do sol". Jarvis starts ComfyUI by itself.
 
-🗣 Text-to-Speech — Using Google TTS API
+## 🚀 Getting started
 
-🎧 Speech-to-Text — Using OpenAI Whisper/Fast-Whisper (large model optimized for PT-BR)
-
-🧠 LLaMA 3.3 — For deep contextual conversations and memory-based learning
-
-👁 LLaMA 3.2 Vision 90B — For detailed image analysis and description
-
-🌦️ Weather Forecast — Voice-based weather queries by city and country
-
-🔍 RAG + Autonomous Internet Search — Now hybrid: Combines local LLM, memory, and real-time web search for up-to-date answers!
-
-🖼 Local Image Vision — Scan and describe images stored locally
-
-🧠 AI Image Generation — Create stunning AI-generated images based on voice prompts using Stable Diffusion
-
-💾 Session Memory — Maintains context during conversations
-
-🧠 Long-Term Memory — Persists important facts, feelings, and events via SQLite
-
-❤️ Emotional Memory — Records happiness, sadness, anger, and more
-
-📘 Reflective Mode — Journaling about daily experiences with emotional tagging
-
-🧪 (WIP) Voice emotion recognition
-
-🧠 Autonomous Learning — Searches, summarizes, and learns new information online
-
-💻 App Automation — Launch Steam, Discord, VS Code, browsers, and more
-
-💜 OS Control — Open folders, close programs, manage files
-
-🎵 Apple Music Voice Integration — Search and control your music library
-
-🧱 Modular Architecture — Commands split into organized modules (commands/)
-
-🌎 SRT Subtitle Translation — Translate subtitle files (.srt) to any language by voice command, preserving timing and format.
-
-
-## 🗂 Project Structure
-
-jarvis/
-├── comandos/                # Modular command files (music, system, folders, memory, search, weather, etc.)
-├── brain/                   # Core modules: audio, memory, utils, learning, weatherAPI
-├── core/                    # Initialization and model bootstrapping
-├── imagens/                 # (Optional) Images for vision analysis
-├── tests/                   # Testing scripts (vision, weather, etc.)
-├── jarvis.py                # Main executable
-├── requirements.txt         # Dependencies
-└── README.md
-
-## 🗣️ Voice Commands — Examples (in Portuguese)
-
-"Jarvis, abrir a pasta de downloads"
-
-"Jarvis, descreva a imagem skyline"
-
-"Jarvis, desligar"
-
-"Jarvis, tocar Arctic Monkeys"
-
-"Jarvis, pesquisar o que é computação quântica"
-
-"Jarvis, lembre que programar me deixou feliz"
-
-"Jarvis, o que me deixou feliz este mês?"
-
-"Jarvis, como está o clima em Paris?"
-
-"Jarvis, previsão do tempo para São Paulo"
-
-"Jarvis, traduzir o arquivo (Name of ile) para (langue)"
-
-## 🖼️ Vision Mode
-
-To trigger Vision 90B model (for precise descriptions):
-
-"Descreva a imagem skyline com detalhes"
-
-"Quero uma análise precisa da imagem"
-
-Fallback to faster vision models if necessary.
-
-## 🧠 How RAG + Web Search Works
-Question Received:
-User asks anything by voice or text.
-
-Intent & Context Detection:
-Jarvis uses regex and heuristics to decide if the answer should come from memory or if it’s time-sensitive (current events, “who is...”, “quanto é o dólar”, etc).
-
-Hybrid Answering:
-
-Timeless? → Responds instantly from LLaMA’s memory.
-
-Current/Time-sensitive? → Runs real-time Brave Search, parses the web, summarizes context, then LLaMA 3.3 generates a rich answer with references.
-
-Conversation stays fast, relevant, and never obsolete!
-
-🚀 What's New: RAG + Web Search (Hybrid Intelligence)
-Smart Decision Making:
-Jarvis analyzes every question and decides:
-
-If it’s time-sensitive or about current events, it automatically performs a live web search, parses results, and feeds context to the LLM before answering.
-
-If the answer is timeless (history, science, definitions), it responds instantly using its own knowledge.
-
-Languages Supported:
-Regex and heuristics are multi-lingual, so Jarvis intelligently detects queries in Portuguese, English, or French and fetches real-time answers when needed.
-
-No more “Biden em 2025”!
-If you ask “Who is the president of the USA?” Jarvis will always give you the most current answer, not just what’s in its model.
-
-## 🌐 Example Queries
-"Quem é o presidente dos Estados Unidos?"
-→ Busca web + resposta atualizada
-
-"Qual a cotação do euro hoje?"
-→ Busca web + resposta atualizada
-
-"Me conte a história de Napoleão"
-→ LLM responde direto (não vai pra internet)
-
-"Jarvis, previsão do tempo para Lisboa amanhã"
-→ Busca web (se necessário) + dados atualizados
-
-## 🌦️ Weather Forecast
-
-Ask naturally about the weather, including for the next days:
-
-"Jarvis, previsão do tempo em Lisboa"  
-"Jarvis, como está o clima em São Paulo?"  
-"Jarvis, previsão do tempo para a próxima semana em Nova York"  
-"Jarvis, meteo em Paris nos próximos dias"
-
-Jarvis will:
-- Detect if you're asking about today's weather or a forecast.
-- Automatically ask for the country if necessary.
-- Understand requests like "semana que vem", "amanhã", or "próximos dias".
-- Fetch accurate, day-by-day weather information using the OpenWeather API.
-- Handle incomplete questions by politely requesting missing information (city or country).
-
-If no specific city is detected, Jarvis defaults to a configured location (Lexy by default).
-
-Jarvis will intelligently ask for the country if needed and retrieve a detailed weather report using OpenWeather API.
-
-## 🎵 Apple Music Integration
-
-Jarvis can:
-
-🎶 Open Apple Music app: "Jarvis, abra o Apple Music"
-
-🔍 Search and play songs: "Jarvis, toque Arctic Monkeys"
-
-⏯ Pause, skip, resume: "Jarvis, pause a música", "próxima música", "continuar música"
-
-## ❤️ Emotional Memory
-
-Register positive/negative events: "Jarvis, lembre que jantei com Camila e fiquei feliz"
-
-Retrieve emotional states: "Jarvis, o que me deixou triste essa semana?"
-
-Voice-based journaling: "Jarvis, quero escrever sobre meu dia"
-
-## 🧬 Developer Mode
-
-Jarvis can chain multiple commands in a single voice phrase:
-
-"Abra a pasta de imagens e depois toque uma música"
-
-"Inicie o navegador e procure sobre inteligência artificial"
-
-## 🧠 Autonomous Learning
-Jarvis can:
-
-Search the internet autonomously
-
-Summarize new knowledge
-
-Store learned facts with sources and dates into the database
-
-Example:
-
-"Jarvis, learn about quantum entanglement."
-
-## 🖼️ AI Image Generation
-Jarvis can:
-
-Generate AI images based on voice prompts
-
-Use Stable Diffusion locally (with support for high-resolution images)
-
-Automatically refine and upscale images when necessary
-
-Example:
-
-"Jarvis, create an ultra-realistic 4K image of a cyberpunk futuristic city with lots of neon and people."
-
-"Jarvis, draw a medieval castle with a dragon flying above."
-
-The generated images are automatically saved under:
-
-## 🌎 SRT Subtitle Translation
-
-Quickly translate any `.srt` subtitle file to your preferred language — just with your voice.
-
-**Example voice commands:**
-
-"Jarvis, traduzir o arquivo legenda para inglês"
-
-"Jarvis, traduzir o arquivo cs50 para espanhol"
-
-"Jarvis, traduzir o arquivo my_subs para português"
-
-**How it works:**
-- Say the command specifying the file name (without `.srt`) and the target language.
-- Jarvis finds the file in your Documents folder.
-- The translation is handled by your local LLM, preserving all subtitle timings and formatting.
-- The translated subtitle is saved as a new `.srt` file (e.g., `legenda-ingles.srt`).
-
-**Jarvis ensures:**
-- Timing and subtitle numbering are always preserved.
-- Only the dialogue text is translated — no explanation or commentary.
-- You can translate to any language supported by your LLM.
-
-Perfect for movies, online courses, or sharing educational content in multiple languages!
-
-## 🚀 Getting Started
-
+```powershell
 git clone https://github.com/ProjectXTN/Jarvis_IA.git
-
 cd Jarvis_IA
-
 python -m venv venv
+venv\Scripts\pip install -r requirements.txt
+venv\Scripts\python.exe tests\prepare_whisper.py   # downloads the Whisper model
+venv\Scripts\python.exe tests\prepare_kokoro.py    # downloads the Kokoro voice
+venv\Scripts\python.exe jarvis.py
+```
 
-venv\Scripts\activate  # or source venv/bin/activate on Linux/Mac
+After a cold boot gemma4 takes a minute or two to load; if you speak earlier, Jarvis says it is still loading and waits.
 
-pip install -r requirements.txt
+### Main `.env` settings
 
-Make sure your .env file contains your API Keys:
+| Variable | Default | Meaning |
+|---|---|---|
+| `OLLAMA_HOST` | `http://127.0.0.1:11434` | Ollama server |
+| `JARVIS_TOOL_ROUTER` | `1` | Model chooses the tools (0 = old keyword rules) |
+| `JARVIS_EMBEDDING_MODEL` | `qwen3-embedding:0.6b` | Memory embeddings |
+| `JARVIS_DOCS_DIR` | `brain/data_jarvis` | Document folders (`;` separated) |
+| `JARVIS_IMAGE_ENGINE` | `flux` | `flux` (ComfyUI) or `sd` (old Stable Diffusion) |
+| `JARVIS_COMFYUI_DIR` | `C:\ComfyUI` | ComfyUI folder |
+| `JARVIS_CONSOLE_LEVEL` | `DEBUG` | `INFO` hides `[DEBUG]` lines in the window |
+| `SECRET_TOKEN_JARVIS` | — | API token (16+ characters) |
 
-BRAVE_API_KEY=your_brave_api_key
+## 🌐 HTTP API
 
-OPENWEATHER_API_KEY=your_openweather_api_key
+```powershell
+venv\Scripts\python.exe server.py
+```
 
-## 🔒 Lock System
+`POST http://127.0.0.1:11600/ask` with `Authorization: Bearer <SECRET_TOKEN_JARVIS>` and `{"question": "...", "lang": "pt"}`. Listens on 127.0.0.1 only (`JARVIS_API_HOST` to change), CORS only for `JARVIS_API_ORIGINS`, one request at a time, served with waitress.
 
-Jarvis uses a .lock file system to prevent multiple instances from running simultaneously.
+## 📋 Logs
 
-## 💌 Voice Deactivation
+- `logs/jarvis.log`: everything printed, with time and level (rotates at 5 MB).
+- `logs/tempos.csv`: how long each request, tool and image took.
+- `logs/log_YYYY-MM-DD.txt`: the conversation.
 
-Say:
+## 🧪 Tests
 
-"Jarvis, pare de responder"
+```powershell
+venv\Scripts\python.exe tests\run_all.py
+```
 
-"Jarvis, silênço"
+## 🗂 Project structure
 
-"Jarvis, mutar"
+```
+jarvis.py              voice loop (wake word → command)
+jarvis_commands.py     shortcuts → tool router → old keyword rules
+server.py              HTTP API
+core/                  settings, startup, per-request state, logging
+brain/tool_router.py   model + tools
+brain/tools.py         the tools
+brain/audio.py, tts.py, player.py, microphone.py, speech_*.py   listening and speaking
+brain/semantic_memory.py   memory and documents
+brain/image_gen.py     ComfyUI + FLUX
+brain/websearch/       Brave search, news, page reading
+commands/              old keyword commands (fallback)
+tests/                 tests and setup scripts
+```
 
-Jarvis will return to passive mode until called again.
+## 🔒 Lock system
+
+A `.lock` file prevents two Jarvis instances from running at the same time.
 
 Made with 💥 by Pedro MEIRELES
-
-## 📢 Note:
-
-All commands and conversations with Jarvis are fully in Brazilian Portuguese (PT-BR).For the best experience, speak naturally and clearly.
-
