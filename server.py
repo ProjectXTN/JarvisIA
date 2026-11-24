@@ -76,6 +76,12 @@ def create_app(token, answer, origins=()):
         CORS(app, origins=list(origins))
     busy = threading.Lock()
 
+    @app.get("/")
+    def home():
+        from flask import redirect
+
+        return redirect("/painel")
+
     @app.get("/ping")
     def ping():
         return jsonify({"status": "online"})
@@ -154,9 +160,14 @@ def main():
     host = os.getenv("JARVIS_API_HOST", "127.0.0.1")
     port = int(os.getenv("JARVIS_API_PORT", "11600"))
 
-    from jarvis_commands import process_command_api
+    def answer(question, lang):
+        # Importa o Jarvis (Whisper, voz) só no primeiro /ask: o painel não precisa
+        # disso e não ocupa a placa de vídeo à toa junto com o Jarvis aberto
+        from jarvis_commands import process_command_api
 
-    app = create_app(token, lambda q, lang: process_command_api(q, lang=lang),
+        return process_command_api(question, lang=lang)
+
+    app = create_app(token, answer,
                      allowed_origins(os.getenv("JARVIS_API_ORIGINS")))
     if host not in ("127.0.0.1", "localhost"):
         print(f"⚠️ API aberta para a rede em {host}; use só em rede confiável.")
@@ -166,7 +177,7 @@ def main():
         print("⚠️ waitress não instalado (pip install waitress); usando o servidor do Flask.")
         app.run(host=host, port=port)
     else:
-        print(f"🚀 API do Jarvis em http://{host}:{port} (waitress)")
+        print(f"🚀 API do Jarvis em http://{host}:{port} (waitress) — painel: http://{host}:{port}/painel")
         serve(app, host=host, port=port, threads=4)
 
 
