@@ -78,13 +78,21 @@ if (Tem "ffmpeg") { Ok "ffmpeg" } else { Winget-Instalar "Gyan.FFmpeg" "ffmpeg";
 
 if (Tem "ollama") { Ok "Ollama" } else { Winget-Instalar "Ollama.Ollama" "Ollama"; Ok "Ollama instalado" }
 
-if (Tem "nvidia-smi") {
-    $gpu = (cmd /c "nvidia-smi --query-gpu=name,memory.total --format=csv,noheader 2>nul" | Select-Object -First 1)
+# Procura o nvidia-smi também nas pastas de 64 bits (caso este PowerShell seja de 32 bits)
+$smi = @((Get-Command nvidia-smi -ErrorAction SilentlyContinue).Source,
+         "$env:windir\Sysnative\nvidia-smi.exe", "$env:windir\System32\nvidia-smi.exe",
+         "$env:ProgramW6432\NVIDIA Corporation\NVSMI\nvidia-smi.exe") | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+$placa = Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "NVIDIA" } | Select-Object -First 1
+if ($smi) {
+    $gpu = (& $smi --query-gpu=name,memory.total --format=csv,noheader 2>$null | Select-Object -First 1)
     Ok "Placa de vídeo: $gpu"
+} elseif ($placa) {
+    Ok "Placa de vídeo: $($placa.Name)"
 } else {
-    Aviso "Não achei placa NVIDIA (nvidia-smi). O Jarvis funciona, mas o Whisper e os modelos ficam lentos."
+    Aviso "Não achei placa NVIDIA. O Jarvis funciona, mas o Whisper e os modelos ficam lentos."
 }
-$chrome = @("$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
+$chrome = @("$env:ProgramW6432\Google\Chrome\Application\chrome.exe",
+            "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
             "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
             "$env:LocalAppData\Google\Chrome\Application\chrome.exe") | Where-Object { Test-Path $_ }
 if ($chrome) { Ok "Chrome" } else { Aviso "Chrome não encontrado: o Jarvis usa o Edge no lugar (avatar, YouTube, chat)." }
@@ -158,11 +166,12 @@ if (Test-Path (Join-Path $Comfy "python_embeded")) {
     Ok "ComfyUI já está em $Comfy"
     & $VenvPy -X utf8 tests\prepare_flux.py $Comfy
 } elseif (Perguntar "Instalar o gerador de imagens agora?" $false) {
-    if (-not (Test-Path "$env:ProgramFiles\7-Zip\7z.exe")) { Winget-Instalar "7zip.7zip" "7-Zip" }
+    $seteZip = @("$env:ProgramW6432\7-Zip\7z.exe", "$env:ProgramFiles\7-Zip\7z.exe") | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+    if (-not $seteZip) { Winget-Instalar "7zip.7zip" "7-Zip"; $seteZip = "$env:ProgramW6432\7-Zip\7z.exe" }
     $arquivo = Join-Path $env:TEMP "ComfyUI_windows_portable_nvidia.7z"
     Write-Host "    Baixando o ComfyUI portátil (~2 GB)..."
     Invoke-WebRequest "https://github.com/Comfy-Org/ComfyUI/releases/latest/download/ComfyUI_windows_portable_nvidia.7z" -OutFile $arquivo -UseBasicParsing
-    & "$env:ProgramFiles\7-Zip\7z.exe" x $arquivo "-oC:\" -y | Out-Null
+    & $seteZip x $arquivo "-oC:\" -y | Out-Null
     if (Test-Path "C:\ComfyUI_windows_portable") { Rename-Item "C:\ComfyUI_windows_portable" "ComfyUI" }
     Remove-Item $arquivo -ErrorAction SilentlyContinue
     & $VenvPy -X utf8 tests\prepare_flux.py $Comfy
