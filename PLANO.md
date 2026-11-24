@@ -28,7 +28,7 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 ## Fase 2 — Cérebro novo
 
 - [x] 15. Baixar `qwen3.8:27b` e `gemma4:26b`, comparar em português e escolher (principal: `gemma4:26b`; reserva de código: `qwen3.8:27b`)
-- [ ] 16. Remover `llama3.2`, `llama3.3`, `codestral`, `llava`, `llama3.2-vision:90b`
+- [x] 16. Remover `llama3.2`, `llama3.3`, `codestral`, `llava`, `llama3.2-vision:90b` (feito em 2026-11-24 com a lista atual: mixtral x2, llama3:8b, nomic-embed-text, llava, codellama, llama2-uncensored)
 - [x] 17. Reescrever `llama_query` para `/api/chat` (system, histórico, `options`, `keep_alive`, `think: false`)
 - [x] 18. Unificar os prompts de sistema num "Jarvis de voz"
 - [x] 19. Ligar o histórico de conversa no fluxo de voz
@@ -635,3 +635,10 @@ Corrigido:
 - `.github/workflows/installer.yml`: no GitHub, a cada tag `v*` gera o `Jarvis.exe`, roda os testes, compila o `JarvisSetup.exe` e publica na Release; também dá para rodar à mão na aba Actions.
 - O atalho do `install.ps1` aponta para o `Jarvis.exe` quando ele existe (com o ícone).
 - Ainda não testado: precisa do primeiro build no GitHub.
+
+### 2026-11-24 — Instalador testado no PC do Pedro e limpeza do Ollama
+
+- Primeiro teste do JarvisSetup.exe (v1.0.0): instalou em `%LOCALAPPDATA%\Jarvis`; bibliotecas vieram do cache do pip; o Whisper falhou com `No module named 'pkg_resources'` (setuptools 81+ tirou o módulo que o ctranslate2 4.6 usa) → `setuptools<81` no requirements.
+- O instalador abria outro Ollama na 11434 sem ver o do Pedro na 11500 → agora procura Ollama já rodando (.env, variável OLLAMA_HOST, 11434, 11500), usa o que tiver os modelos, grava no .env e pula `ollama pull` do que já existe. (Os dois usavam a mesma pasta de modelos: nada foi baixado em dobro.)
+- Instalador chamado pelo Setup (32 bits) não via a placa NVIDIA nem o Chrome → `install.bat` sempre usa o PowerShell de 64 bits.
+- Ollama: só ficaram os modelos que o Jarvis usa (gemma4:26b, qwen3-embedding:0.6b, qwen3.8:27b).
