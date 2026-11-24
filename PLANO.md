@@ -80,9 +80,9 @@ Depende da Fase 2 (modelo novo com ferramentas). Substitui os itens 39 a 41 da F
 - [x] 52. Personalidade própria em `brain/persona/`: traços fixos, humor do dia e opiniões que ele forma e guarda
 - [x] 53. Memória de longo prazo sobre o Pedro: fatos, preferências e projetos extraídos das conversas, com busca por semelhança
 - [x] 54. Diário: ao fim de cada dia, resumo do que conversaram e do que aprendeu, lido na próxima inicialização
-- [ ] 55. Curiosidade: lista de temas a estudar, alimentada pelas conversas e pelos interesses do Pedro
-- [ ] 56. Estudo autônomo quando o PC está ocioso: busca, lê, resume, confere em mais de uma fonte e guarda com a fonte
-- [ ] 57. Reflexão noturna: revisa o que aprendeu, junta notas repetidas, marca contradições e atualiza opiniões
+- [x] 55. Curiosidade: lista de temas a estudar, alimentada pelas conversas e pelos interesses do Pedro
+- [x] 56. Estudo autônomo quando o PC está ocioso: busca, lê, resume, confere em mais de uma fonte e guarda com a fonte
+- [x] 57. Reflexão noturna: revisa o que aprendeu, junta notas repetidas, marca contradições e atualiza opiniões
 - [ ] 58. Iniciativa: puxa assunto sobre o que aprendeu, lembra compromissos, comenta novidades dos temas do Pedro
 - [ ] 59. Painel "o que o Jarvis sabe": ver, corrigir e apagar memórias e aprendizados
 - [x] 60. Limites de segurança: internet só para leitura, nada de executar, comprar ou enviar sem permissão
@@ -531,3 +531,13 @@ Corrigido:
 - `consultar_memoria` e `listar_memorias` também enxergam os fatos do perfil.
 - Testes nunca mais escrevem no banco de verdade: `JARVIS_MEMORY_DB` aponta para um banco temporário em `tests/test_regressao.py`.
 - Testes: `tests/test_persona.py` (10). Total no `run_all`: 165.
+
+### 2026-11-24 — Fase 7, parte 2: curiosidade, estudo autônomo e reflexão (itens 55, 56, 57)
+
+- `brain/persona/curiosidade.py`: fila de temas (tabela `curiosidades`), sem repetir. Entra tema por três caminhos: a leitura da conversa devolve até 3 temas junto com os fatos do Pedro; pedido do Pedro tem prioridade; com a fila vazia, o gemma4 sugere temas ligados aos fatos do perfil.
+- `brain/persona/estudo.py`: pega o próximo tema, busca na internet só para leitura (sem rede local, bancos ou endereços que não sejam http/https, `limites.check_url`) e sem trocar as fontes do "abrir a fonte" do Pedro (`search_web(remember=False)`). O gemma4 resume usando só o texto das páginas, diz quais fontes concordam e onde divergem; confiança "alta" só com duas fontes diferentes concordando. Guarda como `aprendido` com as fontes e a confiança (atualiza se já houver nota igual) e anota em `logs/aprendizados_DATA.txt`.
+- `brain/persona/reflexao.py`: uma vez por dia junta notas aprendidas quase iguais (semelhança ≥ 0,93), procura contradições entre notas parecidas (0,75 a 0,93; tabela `contradicoes`) e forma ou atualiza até 2 opiniões (tabela `opinioes`, que já entra na personalidade). Não opina sobre política nem pessoas.
+- `brain/persona/rotina.py`: a cada minuto, se a autonomia está ligada, o Jarvis não atende há `JARVIS_IDLE_MINUTES` (10) e ninguém mexe em teclado e mouse há esse tempo (`GetLastInputInfo`, então não pesa na placa enquanto o Pedro joga), faz UM passo: ler conversa → diários → reflexão (uma vez por dia, depois de `JARVIS_REFLECT_HOUR`, 22h) → estudar um tema (até `JARVIS_STUDY_PER_DAY`, 8). Falha de Ollama ou internet: espera 10 min.
+- O antigo `auto_learning` (temas aleatórios sem fonte, gravava até mensagens de erro) saiu do `jarvis.py`. "Comece a estudar" / "pare de estudar" agora ligam e desligam a rotina. `JARVIS_AUTONOMY=0` desliga de vez.
+- Cada pedido marca atividade (`config.LAST_ACTIVITY`); a rotina espera o Pedro parar.
+- Testes: `tests/test_autonomia.py` (10). Total: 175.

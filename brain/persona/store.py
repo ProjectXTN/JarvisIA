@@ -18,6 +18,16 @@ def connect():
             data TEXT PRIMARY KEY, resumo TEXT, criado TEXT);
         CREATE TABLE IF NOT EXISTS humor (
             data TEXT PRIMARY KEY, humor TEXT, motivo TEXT);
+        CREATE TABLE IF NOT EXISTS curiosidades (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tema TEXT UNIQUE, motivo TEXT, origem TEXT, prioridade INTEGER DEFAULT 1,
+            status TEXT DEFAULT 'pendente', criado TEXT, estudado TEXT, resultado TEXT);
+        CREATE TABLE IF NOT EXISTS contradicoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            memoria_a INTEGER, memoria_b INTEGER, explicacao TEXT, criado TEXT,
+            resolvida INTEGER DEFAULT 0);
+        CREATE TABLE IF NOT EXISTS rotina (
+            chave TEXT PRIMARY KEY, valor TEXT);
         CREATE TABLE IF NOT EXISTS opinioes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             tema TEXT UNIQUE, opiniao TEXT, motivo TEXT, criado TEXT, atualizado TEXT);

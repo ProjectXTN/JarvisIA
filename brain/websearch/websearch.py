@@ -206,7 +206,10 @@ def numbered_sources():
     )
 
 
-def search_web(query, min_length=80, total_limit=5000, max_links=WEB_MAX_PAGES):
+def search_web(query, min_length=80, total_limit=5000, max_links=WEB_MAX_PAGES,
+               remember=True, url_filter=None):
+    """Busca e lê páginas. remember=False não troca as fontes do "abrir a fonte"
+    (estudo autônomo); url_filter(url) -> bool descarta endereços."""
     if not BRAVE_API_KEY:
         return "API KEY da Brave Search não encontrada.", "internet"
 
@@ -228,6 +231,10 @@ def search_web(query, min_length=80, total_limit=5000, max_links=WEB_MAX_PAGES):
             return "Nenhum resultado encontrado na web.", "internet"
 
         snippets = _brave_snippets(results)
+        if url_filter:
+            results = [r for r in results if url_filter(r.get("url", ""))]
+            if not results:
+                return "Nenhum resultado permitido.", "internet"
         links = [result["url"] for result in results[:max_links]]
         print(f"[🔗] Lendo {len(links)} páginas: {links}")
 
@@ -254,7 +261,8 @@ def search_web(query, min_length=80, total_limit=5000, max_links=WEB_MAX_PAGES):
         used = [link for link, _ in links_with_text] or [r.get("url", "") for r in results[:3]]
         titles = {r.get("url"): BeautifulSoup(r.get("title", ""), "html.parser").get_text(" ", strip=True)
                   for r in results}
-        remember_sources([{"url": link, "title": titles.get(link, "")} for link in used])
+        if remember:
+            remember_sources([{"url": link, "title": titles.get(link, "")} for link in used])
         sources = "\n".join(extract_readable_source(link) for link in used)
         print(f"[WEB] {len(links_with_text)} página(s) lidas em {time.monotonic() - started:.1f}s.")
         return combined_texts.strip(), sources

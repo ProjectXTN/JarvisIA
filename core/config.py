@@ -15,6 +15,8 @@ _state = threading.local()
 # Depois de reiniciar o PC o Ollama abre frio e o gemma4 leva um tempo para
 # sair do disco; enquanto isso, quem precisa do Ollama espera aqui.
 MODEL_READY = threading.Event()
+# Hora (time.monotonic) do último pedido do Pedro; a rotina de fundo espera ele parar
+LAST_ACTIVITY = 0.0
 
 
 def __getattr__(name):

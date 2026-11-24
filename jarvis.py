@@ -19,8 +19,6 @@ from core.initializer import (
     passive_mode,
     start_stable_diffusion,
 )
-from brain.learning import auto_learning
-from brain.learning.auto_learning import auto_learn
 from brain.utils.utils import sounds_like_jarvis
 from brain import avatar
 from core.settings import AVATAR_AUTO_OPEN, SD_AUTOSTART
@@ -38,19 +36,21 @@ def handle_study_mode(query):
     """Liga ou desliga o estudo autônomo por voz. True se a frase era sobre isso."""
     query = query.lower()
 
+    from brain.persona import rotina
+
+    # Fase 7: liga/desliga a rotina de fundo (estudo, reflexão), que só roda com o PC parado
     if re.search(START_STUDY_PATTERN, query):
-        if not auto_learning.auto_learning_enabled:
-            auto_learning.auto_learning_enabled = True
-            Thread(target=auto_learn, daemon=True).start()
-            say("Modo de estudo autônomo ativado.")
+        if not rotina.state["enabled"]:
+            rotina.enable(True)
+            say("Modo de estudo ativado. Vou estudar quando o computador estiver parado.")
         else:
-            say("Já estou estudando, Pedro.")
+            say("Já estou estudando quando o computador fica parado, Pedro.")
         return True
 
     if re.search(STOP_STUDY_PATTERN, query):
-        if auto_learning.auto_learning_enabled:
-            auto_learning.auto_learning_enabled = False
-            say("Modo de estudo autônomo desativado.")
+        if rotina.state["enabled"]:
+            rotina.enable(False)
+            say("Modo de estudo desativado.")
         else:
             say("O modo de estudo já estava desligado.")
         return True
@@ -85,6 +85,8 @@ def main():
     from brain import semantic_memory
     Thread(target=semantic_memory.prepare, daemon=True).start()
     Thread(target=persona_background, daemon=True).start()
+    from brain.persona import rotina
+    rotina.start()
     if SD_AUTOSTART:
         start_stable_diffusion()
 

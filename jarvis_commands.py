@@ -245,6 +245,10 @@ def process_command(query, lang="pt"):
     if shutdown_command(query) is False:
         return False
 
+    from brain.persona.rotina import mark_activity
+
+    mark_activity()  # a rotina de fundo (estudo, reflexão) espera o Pedro parar
+
     # Atalhos sem modelo: instantâneos e sem ambiguidade (hora, data, música, avatar)
     handled, result = run_command_handlers(query, handlers=SHORTCUT_HANDLERS)
     if handled:

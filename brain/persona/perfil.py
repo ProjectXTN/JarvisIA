@@ -24,7 +24,10 @@ EXTRACT_SYSTEM = (
     "disse. Não invente. Responda só JSON: "
     '{"fatos": [{"categoria": "preferência|projeto|pessoa|rotina|fato", '
     '"fato": "frase curta em terceira pessoa, começando com Pedro"}]}. '
-    'Sem fatos novos: {"fatos": []}. No máximo 5.'
+    'Sem fatos novos: {"fatos": []}. No máximo 5. '
+    'Inclua também "temas": até 3 assuntos que valem um estudo do Jarvis porque Pedro '
+    'mostrou interesse ou ficou uma dúvida em aberto, no formato '
+    '[{"tema": "assunto curto", "motivo": "por que estudar"}].'
 )
 
 
@@ -73,6 +76,14 @@ def process_pending():
         result = llm.ask(EXTRACT_SYSTEM, talk, as_json=True, num_predict=400)
         facts = [f for f in (_valid(i) for i in (result or {}).get("fatos", [])) if f][:5]
         saved = [save_fact(c, f) for c, f in facts]
+        try:
+            from brain.persona import curiosidade
+
+            for item in ((result or {}).get("temas") or [])[:3]:
+                if isinstance(item, dict):
+                    curiosidade.add(item.get("tema", ""), item.get("motivo", ""), "conversa")
+        except Exception as error:
+            print(f"[CURIOSIDADE] Não anotei os temas: {error}")
         with lock, connect() as conn:
             conn.executemany("UPDATE turnos SET processado = 1 WHERE id = ?", [(t[0],) for t in turns])
         if facts:

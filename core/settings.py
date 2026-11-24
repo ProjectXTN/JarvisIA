@@ -77,6 +77,12 @@ EMBEDDING_MODEL = os.getenv("JARVIS_EMBEDDING_MODEL", "qwen3-embedding:0.6b")
 # Embeddings na CPU: na GPU o Ollama tirava o gemma4:26b da VRAM para carregá-los
 # e a próxima pergunta esperava o modelo grande recarregar (Jarvis "travava")
 EMBEDDING_ON_GPU = os.getenv("JARVIS_EMBEDDING_GPU", "0") == "1"
+# Fase 7: o que o Jarvis faz sozinho com o PC parado (ler a conversa, diário,
+# reflexão, estudar). Só leitura na internet (brain/persona/limites.py).
+AUTONOMY_ENABLED = os.getenv("JARVIS_AUTONOMY", "1") == "1"
+IDLE_MINUTES = float(os.getenv("JARVIS_IDLE_MINUTES", "10"))
+STUDY_PER_DAY = int(os.getenv("JARVIS_STUDY_PER_DAY", "8"))
+REFLECT_HOUR = int(os.getenv("JARVIS_REFLECT_HOUR", "22"))
 MEMORY_DB = os.getenv("JARVIS_MEMORY_DB", os.path.join(BASE_DIR, "brain", "learning", "memoria_jarvis.db"))
 # Pastas de documentos que o Jarvis consulta (.txt, .md, .pdf), separadas por ";"
 # Ex.: JARVIS_DOCS_DIR=C:\Projetos\jarvis\brain\data_jarvis;C:\Users\pedro\Documents\Jarvis
