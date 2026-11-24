@@ -90,6 +90,31 @@ def open_chat_window(query=None):
     return True
 
 
+def game_mode_on(query=None):
+    from core import gpu
+
+    gpu.game_mode(True)
+    say("Modo jogo ligado. Liberei a placa de vídeo e pausei meus estudos. "
+        "Se me chamar, eu respondo, só um pouco mais devagar.")
+    return True
+
+
+def game_mode_off(query=None):
+    from core import gpu
+    from core.initializer import start_ollama
+
+    gpu.game_mode(False)
+    say("Modo jogo desligado. Voltando ao normal.")
+    start_ollama()  # recarrega o modelo de conversa em segundo plano
+    return True
+
+
+game_commands = [
+    (r"\b(sa[ií]r?|desligue|desliga|desligar|encerr[ae]r?|terminei|acabei)\b.{0,15}\b(modo (de )?jogo|modo game|de jogar)\b",
+     game_mode_off),
+    (r"\b(modo (de )?jogo|modo game|vou jogar|hora de jogar)\b", game_mode_on),
+]
+
 chat_commands = [
     (r"\b(abr[aei]r?|abre|mostr[ae]r?|quero|preciso)\b.*\b(chat|janela de (texto|conversa|escrever)|"
      r"caixa de texto|lugar (pra|para) escrever)\b", open_chat_window),
@@ -98,6 +123,7 @@ chat_commands = [
 
 
 SHORTCUT_HANDLERS = [
+    game_commands,
     chat_commands,
     datetime_commands,
     music_control_commands,
@@ -272,6 +298,11 @@ def process_command(query, lang="pt"):
             return _process_command(query, lang)
         finally:
             config.NOT_BUSY.set()
+            if getattr(config, "GAME_MODE", False):
+                # Modo jogo: respondeu, devolve a placa para o jogo
+                from core import gpu
+
+                threading.Thread(target=gpu.unload_ollama, daemon=True).start()
 
 
 

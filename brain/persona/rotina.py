@@ -112,7 +112,7 @@ def _loop():
             check_and_announce()
         except Exception as error:
             print(f"[LEMBRETE] Falhou: {error}")
-        if not state["enabled"] or not is_idle():
+        if not state["enabled"] or getattr(config, "GAME_MODE", False) or not is_idle():
             continue
         try:
             done = step()

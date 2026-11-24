@@ -617,3 +617,12 @@ Corrigido:
 - `process_command_api` agora é só conversa: sem comandos, ferramentas, desligamento, clima nem busca (busca só com `JARVIS_API_WEB=1`, só leitura). Pedido de criar/executar/abrir/apagar (app, site, arquivo, comando, imagem, PC...) recebe uma resposta fixa em pt/en/fr, sem chamar o modelo. Conversa normal vai ao modelo em modo `site`, sem histórico, sem memória e com a personalidade pública (não cria nada, não diz que fez algo, sem programas completos, respostas curtas).
 - `server.py`: pela internet (cabeçalhos do Cloudflare/proxy ou Host que não é localhost) só existem `/ask` e `/ping`; todo o resto responde 404. O painel exige estar neste PC E um token próprio (`JARVIS_PANEL_TOKEN`; sem ele, um token novo é mostrado na janela do server a cada abertura). O token do site não abre mais o painel.
 - Testes: `tests/test_server.py` (+3). Total: 215.
+
+### 2026-11-24 — Placa de vídeo livre para jogos (Aion lento)
+
+- Causa: o ComfyUI aberto pelo Jarvis para gerar imagem ficava rodando escondido depois de fechar o Jarvis; e, ao voltar ao modo passivo, o Jarvis lia a conversa com o gemma4, carregando 17 GB na placa no meio do jogo.
+- Novo `core/gpu.py`: `release()` descarrega todos os modelos do Ollama (`/api/ps` + keep_alive 0) e fecha o ComfyUI se foi o Jarvis que abriu. Roda ao desligar o Jarvis (atexit).
+- ComfyUI aberto pelo Jarvis fecha sozinho depois de 10 min sem gerar imagem.
+- "Jarvis, modo jogo" / "vou jogar": libera a placa e pausa a rotina de fundo. Ainda responde por voz; depois de cada resposta devolve a placa. "Sair do modo jogo" / "terminei de jogar": volta ao normal e recarrega o gemma4.
+- A leitura da conversa (perfil, diário) saiu da volta ao modo passivo; fica só com a rotina, que exige o PC parado (sem teclado/mouse).
+- Testes: `tests/test_gpu.py` (5). Total: 220.

@@ -38,6 +38,10 @@ from core.settings import (
 )
 
 
+_comfy = {"process": None, "timer": None}
+IDLE_CLOSE_SECONDS = 600  # ComfyUI aberto pelo Jarvis fecha depois de 10 min sem imagem
+
+
 class ImageError(Exception):
     """Mensagem curta, pronta para o Jarvis falar."""
 
@@ -96,7 +100,8 @@ def start_comfy(wait=120):
     cmd += ["--listen", "127.0.0.1", "--port", port, "--disable-auto-launch"]
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     log = open(os.path.join(COMFYUI_DIR, "jarvis_comfyui.log"), "a", encoding="utf-8")
-    subprocess.Popen(cmd, cwd=COMFYUI_DIR, stdout=log, stderr=subprocess.STDOUT, creationflags=flags)
+    _comfy["process"] = subprocess.Popen(cmd, cwd=COMFYUI_DIR, stdout=log, stderr=subprocess.STDOUT,
+                                         creationflags=flags)
     deadline = time.monotonic() + wait
     while time.monotonic() < deadline:
         if comfy_running():
@@ -131,6 +136,34 @@ def unload_llm():
         print(f"[IMAGEM] Não consegui descarregar o {DEFAULT_MODEL}: {error}")
 
 
+def stop_comfy():
+    """Fecha o ComfyUI, só se foi o Jarvis que abriu. Devolve True se fechou."""
+    process = _comfy.get("process")
+    timer = _comfy.get("timer")
+    if timer:
+        timer.cancel()
+        _comfy["timer"] = None
+    if not process or process.poll() is not None:
+        _comfy["process"] = None
+        return False
+    process.terminate()
+    try:
+        process.wait(timeout=15)
+    except subprocess.TimeoutExpired:
+        process.kill()
+    _comfy["process"] = None
+    print("[IMAGEM] ComfyUI fechado (ficou parado ou o Jarvis desligou).")
+    return True
+
+
+def _close_when_idle():
+    if _comfy.get("timer"):
+        _comfy["timer"].cancel()
+    _comfy["timer"] = threading.Timer(IDLE_CLOSE_SECONDS, stop_comfy)
+    _comfy["timer"].daemon = True
+    _comfy["timer"].start()
+
+
 def free_comfy_and_reload_llm():
     def work():
         try:
@@ -138,6 +171,11 @@ def free_comfy_and_reload_llm():
                           json={"unload_models": True, "free_memory": True}, timeout=30)
         except requests.RequestException:
             pass
+        _close_when_idle()
+        from core import config
+
+        if getattr(config, "GAME_MODE", False):
+            return  # modo jogo: não recarrega o modelo de conversa
         from core.initializer import start_ollama
 
         try:

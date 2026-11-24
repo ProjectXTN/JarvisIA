@@ -75,6 +75,10 @@ def main():
 
     atexit.register(remove_lock)
 
+    # Ao desligar: tira os modelos da placa e fecha o ComfyUI aberto pelo Jarvis
+    from core import gpu
+    atexit.register(gpu.release, "Jarvis desligado")
+
     if AVATAR_AUTO_OPEN:
         avatar.show()
 
@@ -149,8 +153,8 @@ def main():
                         say(
                             "Nenhuma atividade detectada. Retornando para o modo passivo."
                         )
-                        # Parado: hora de ler a conversa (perfil do Pedro) e do diário
-                        Thread(target=persona_background, daemon=True).start()
+                        # A leitura da conversa (perfil, diário) fica com a rotina de fundo,
+                        # que só roda com o PC parado: antes carregava o gemma4 no meio de um jogo
                         break
                     continue
 
