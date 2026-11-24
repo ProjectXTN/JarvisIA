@@ -178,7 +178,7 @@ if (Perguntar "Baixar também o modelo de programação qwen3.8:27b (~17 GB, par
     $modelos += "qwen3.8:27b"
 }
 foreach ($m in $modelos) {
-    if ($instalados -contains $m -or $instalados -contains "$m:latest") { Ok "$m (já estava no Ollama)"; continue }
+    if ($instalados -contains $m -or $instalados -contains "${m}:latest") { Ok "$m (já estava no Ollama)"; continue }
     Write-Host "    ollama pull $m"
     & ollama pull $m
     if ($LASTEXITCODE -ne 0) { Aviso "Não consegui baixar $m. Rode depois: ollama pull $m" } else { Ok $m }
