@@ -1,0 +1,55 @@
+# Gera o JarvisSetup.exe no GitHub.
+#  - A cada tag v* (ex.: git tag v1.0.0 && git push --tags): cria a Release com o instalador.
+#  - Ou à mão: aba Actions -> "Instalador do Jarvis" -> Run workflow (fica em Artifacts).
+name: Instalador do Jarvis
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Jarvis.exe (lançador)
+        run: |
+          python -m pip install --upgrade pip pyinstaller
+          cd installer
+          pyinstaller --noconfirm --onefile --noconsole --name Jarvis --icon jarvis.ico jarvis_launcher.py
+
+      - name: Testes rápidos
+        continue-on-error: true   # o instalador sai mesmo se um teste falhar; o erro fica no log
+        run: |
+          python -m pip install -r requirements.txt
+          python -X utf8 tests/run_all.py
+
+      - name: Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: JarvisSetup.exe
+        shell: pwsh
+        run: |
+          $version = if ($env:GITHUB_REF_TYPE -eq "tag") { $env:GITHUB_REF_NAME.TrimStart("v") } else { "0.0.0-dev" }
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=$version" installer\jarvis.iss
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JarvisSetup
+          path: dist/JarvisSetup.exe
+
+      - name: Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/JarvisSetup.exe
+          generate_release_notes: true

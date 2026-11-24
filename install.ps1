@@ -176,7 +176,15 @@ Passo "7/7 Atalho e teste rápido"
 $desktop = [Environment]::GetFolderPath("Desktop")
 $shell = New-Object -ComObject WScript.Shell
 $atalho = $shell.CreateShortcut((Join-Path $desktop "Jarvis.lnk"))
-$atalho.TargetPath = Join-Path $Root "start_jarvis.bat"
+$exe = Join-Path $Root "Jarvis.exe"   # instalado pelo JarvisSetup.exe
+if (Test-Path $exe) {
+    $atalho.TargetPath = $exe
+    $atalho.IconLocation = "$exe,0"
+} else {
+    $atalho.TargetPath = Join-Path $Root "start_jarvis.bat"
+    $ico = Join-Path $Root "installer\jarvis.ico"
+    if (Test-Path $ico) { $atalho.IconLocation = $ico }
+}
 $atalho.WorkingDirectory = $Root
 $atalho.Save()
 Ok "atalho 'Jarvis' na área de trabalho"

@@ -626,3 +626,12 @@ Corrigido:
 - "Jarvis, modo jogo" / "vou jogar": libera a placa e pausa a rotina de fundo. Ainda responde por voz; depois de cada resposta devolve a placa. "Sair do modo jogo" / "terminei de jogar": volta ao normal e recarrega o gemma4.
 - A leitura da conversa (perfil, diário) saiu da volta ao modo passivo; fica só com a rotina, que exige o PC parado (sem teclado/mouse).
 - Testes: `tests/test_gpu.py` (5). Total: 220.
+
+### 2026-11-24 — Instalador .exe (JarvisSetup.exe)
+
+- `installer/jarvis_launcher.py` → `Jarvis.exe` (PyInstaller, só biblioteca padrão): abre o Jarvis; na primeira vez roda o `install.bat`; `--api` abre a API do site e o túnel, `--painel` abre o painel no navegador, `--instalar` atualiza bibliotecas e modelos.
+- `installer/jarvis.iss` (Inno Setup): instala em `%LOCALAPPDATA%\Jarvis` sem pedir administrador, roda o `install.bat` no fim, atalhos no Menu Iniciar (Jarvis, painel, API do site, atualizar) e na área de trabalho, opções de abrir o Jarvis e/ou a API junto com o Windows, desinstalador (mantém a memória e o .env). Em português do Brasil.
+- `installer/jarvis.ico`: ícone próprio (anel azul com um J).
+- `.github/workflows/installer.yml`: no GitHub, a cada tag `v*` gera o `Jarvis.exe`, roda os testes, compila o `JarvisSetup.exe` e publica na Release; também dá para rodar à mão na aba Actions.
+- O atalho do `install.ps1` aponta para o `Jarvis.exe` quando ele existe (com o ícone).
+- Ainda não testado: precisa do primeiro build no GitHub.

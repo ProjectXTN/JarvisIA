@@ -46,6 +46,17 @@ ComfyUI + FLUX.2 [klein] 4B (4 steps). Before generating, Jarvis unloads gemma4 
 2. `venv\Scripts\python.exe tests\prepare_flux.py` downloads the model, text encoder and VAE.
 3. Ask: "Jarvis, crie uma imagem de um lobo na neve ao pôr do sol". Jarvis starts ComfyUI by itself.
 
+## 💾 Installer (JarvisSetup.exe)
+
+Download `JarvisSetup.exe` from the [Releases](https://github.com/ProjectXTN/JarvisIA/releases) page and run it. It installs to `%LOCALAPPDATA%\Jarvis` (no admin needed), runs `install.bat` at the end and creates Start menu / desktop shortcuts (`Jarvis`, `Jarvis - painel`, `Jarvis - API do site`, `atualizar bibliotecas e modelos`), with optional start with Windows and an uninstaller (your memory and `.env` are kept).
+
+The installer is built by GitHub Actions (`.github/workflows/installer.yml`) for every tag `v*`:
+
+```powershell
+git tag v1.0.0
+git push --tags
+```
+
 ## 🚀 Getting started (new computer)
 
 ```powershell
