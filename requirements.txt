@@ -79,3 +79,4 @@ chardet
 
 # ===============================
 # See README for manual steps!
+pycaw               # Saber se outro programa está tocando som (live, vídeo)

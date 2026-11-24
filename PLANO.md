@@ -558,3 +558,11 @@ Corrigido:
 - Voz e texto não atendem ao mesmo tempo (`_command_lock` em `process_command`). Escrever desfaz um "pare" anterior.
 - Segurança: só 127.0.0.1; cada abertura do Jarvis gera uma chave nova que vai no endereço da janela; pedido sem a chave (de outro site no navegador) recebe 403.
 - Testes: `tests/test_chat_window.py` (6). Total: 188.
+
+### 2026-11-24 — Correção: voz de live/vídeo virava comando (e um "tchau" da live desligou o Jarvis)
+
+- Causa: depois de um comando, por 2 minutos qualquer fala ouvida era tratada como comando, sem precisar de "Jarvis". O microfone pegava a voz da live que o Pedro assistia ("Obrigado, Lexy, Adriano", "Tchau").
+- Novo `brain/followup.py` (`accept_followup`): sem dizer "Jarvis", uma frase só vale até `JARVIS_FOLLOWUP_SECONDS` (20 s) depois do FIM da última resposta, e só se nenhum outro programa estiver tocando som. Fora disso é ignorada (aparece no log como `[DEBUG] Ignorado`).
+- Novo `brain/system_audio.py`: mede o pico das sessões de áudio do Windows (pycaw), sem contar o próprio Jarvis. Com som tocando (Chrome com a live, música, jogo), toda frase precisa de "Jarvis". Precisa de `pip install pycaw` (adicionado ao requirements); sem ele, vale só a janela de 20 s.
+- Despedida ("tchau", "desligar") sem "Jarvis" no modo conversa é ignorada; "tchau, Jarvis" desliga.
+- Testes: `tests/test_followup.py` (5).

@@ -20,6 +20,7 @@ from core.initializer import (
     start_stable_diffusion,
 )
 from brain.utils.utils import sounds_like_jarvis
+from brain.followup import accept_followup
 from brain import avatar
 from core.settings import AVATAR_AUTO_OPEN, SD_AUTOSTART
 
@@ -142,6 +143,7 @@ def main():
                     result = process_command(query)
                 if result is False:
                     sys.exit()
+                last_command_time = datetime.now()  # a janela de conversa conta do fim da resposta
 
             while True:
                 query = listen()
@@ -153,6 +155,10 @@ def main():
                         # Parado: hora de ler a conversa (perfil do Pedro) e do diário
                         Thread(target=persona_background, daemon=True).start()
                         break
+                    continue
+
+                query = accept_followup(query, last_command_time)
+                if query is None:
                     continue
 
                 if shutdown_command(query.lower()) is False:

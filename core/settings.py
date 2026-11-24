@@ -160,6 +160,9 @@ HOME_CITY = os.getenv("JARVIS_HOME_CITY", "Lexy")
 HOME_COUNTRY = os.getenv("JARVIS_HOME_COUNTRY", "FR")
 
 # === Avatar ===
+# Depois de uma resposta, por quantos segundos o Jarvis aceita outra frase sem
+# ouvir "Jarvis" de novo. Com som tocando no PC (live, vídeo) sempre exige "Jarvis".
+FOLLOWUP_SECONDS = float(os.getenv("JARVIS_FOLLOWUP_SECONDS", "20"))
 # Janela de texto ("Jarvis, abre o chat")
 CHAT_PORT = int(os.getenv("JARVIS_CHAT_PORT", "8766"))
 AVATAR_PORT = int(os.getenv("JARVIS_AVATAR_PORT", "8765"))
