@@ -90,8 +90,25 @@ def allowed_origins(value):
     return [o.strip() for o in (value or "").split(",") if o.strip()]
 
 
-def create_app(token, answer, origins=()):
-    """Monta o app Flask. answer(pergunta, lang) devolve o texto da resposta."""
+# Só isto pode ser acessado pela internet (túnel do Cloudflare); o resto é só deste PC
+PUBLIC_PATHS = {"/ask", "/ping"}
+_LOCAL_HOSTS = {"127.0.0.1", "localhost", "[::1]"}
+_PROXY_HEADERS = ("CF-Connecting-IP", "CF-Ray", "X-Forwarded-For", "X-Real-IP", "Forwarded")
+
+
+def is_external(headers, host):
+    """True se o pedido veio de fora (túnel/proxy), mesmo chegando em 127.0.0.1."""
+    if any(headers.get(h) for h in _PROXY_HEADERS):
+        return True
+    return (host or "").split(":")[0].lower() not in _LOCAL_HOSTS and not (host or "").startswith("[::1]")
+
+
+def create_app(token, answer, origins=(), panel_token=None):
+    """Monta o app Flask. answer(pergunta, lang) devolve o texto da resposta.
+
+    token: o do site (público, vai no JavaScript): só serve para /ask.
+    panel_token: outro token, só para o painel, que além disso só abre neste PC.
+    """
     from flask import Flask, jsonify, request
 
     from core import config
@@ -109,6 +126,13 @@ def create_app(token, answer, origins=()):
         # Atrás do túnel do Cloudflare o IP real vem neste cabeçalho
         return request.headers.get("CF-Connecting-IP") or request.remote_addr or "?"
 
+    @app.before_request
+    def only_chat_from_outside():
+        # Pela internet só existe o chat; painel e o resto nem aparecem
+        if request.path not in PUBLIC_PATHS and is_external(request.headers, request.host):
+            return jsonify({"error": "Not found"}), 404
+        return None
+
     @app.get("/")
     def home():
         from flask import redirect
@@ -119,9 +143,11 @@ def create_app(token, answer, origins=()):
     def ping():
         return jsonify({"status": "online"})
 
-    # ---- Painel "o que o Jarvis sabe" (Fase 7, item 59): página + API com o mesmo token
+    # ---- Painel "o que o Jarvis sabe" (Fase 7, item 59): só neste PC e com token próprio
     def authorized():
-        return token_ok(request.headers.get("Authorization"), token)
+        if is_external(request.headers, request.host) or not panel_token:
+            return False
+        return token_ok(request.headers.get("Authorization"), panel_token)
 
     @app.get("/painel")
     def panel_page():
@@ -240,8 +266,12 @@ def main():
 
         return process_command_api(question, lang=lang)
 
+    panel_token = os.getenv("JARVIS_PANEL_TOKEN", "")
+    if len(panel_token) < MIN_TOKEN or hmac.compare_digest(panel_token, token):
+        panel_token = secrets.token_urlsafe(18)
+        print(f"🔑 Token do painel (só vale nesta abertura; fixe com JARVIS_PANEL_TOKEN no .env): {panel_token}")
     app = create_app(token, answer,
-                     allowed_origins(os.getenv("JARVIS_API_ORIGINS", DEFAULT_ORIGINS)))
+                     allowed_origins(os.getenv("JARVIS_API_ORIGINS", DEFAULT_ORIGINS)), panel_token)
     if host not in ("127.0.0.1", "localhost"):
         print(f"⚠️ API aberta para a rede em {host}; use só em rede confiável.")
     try:

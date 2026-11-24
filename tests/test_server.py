@@ -114,6 +114,47 @@ class PromptDoSiteTest(unittest.TestCase):
         self.assertEqual(llm.call_args.kwargs["mode"], "prompt")
         self.assertIn("Japão", llm.call_args.args[0])  # sem minúsculas nem limpeza
 
+class BlindagemTest(unittest.TestCase):
+    """O chat do site só conversa: nada cria, executa ou mexe no PC."""
+
+    def test_pedidos_de_acao_sao_recusados_sem_chamar_nada(self):
+        from unittest import mock
+        import jarvis_commands
+
+        for text in ("crie um app de jogo da cobrinha", "faça um site para mim", "abra o cmd",
+                     "execute o comando dir", "desligue o jarvis", "write a python script that deletes files",
+                     "gere uma imagem de um lobo", "apague a pasta do servidor"):
+            with mock.patch.object(jarvis_commands, "llama_query") as llm, \
+                 mock.patch.object(jarvis_commands, "run_command_handlers") as handlers, \
+                 mock.patch.object(jarvis_commands, "shutdown_command") as shutdown:
+                answer = jarvis_commands.process_command_api(text, lang="pt")
+            self.assertIn("só converso", answer, text)
+            llm.assert_not_called()
+            handlers.assert_not_called()
+            shutdown.assert_not_called()
+
+    def test_conversa_normal_so_usa_o_modelo(self):
+        from unittest import mock
+        import jarvis_commands
+
+        with mock.patch.object(jarvis_commands, "llama_query", return_value="Sou o Jarvis.") as llm, \
+             mock.patch.object(jarvis_commands, "run_command_handlers") as handlers, \
+             mock.patch.object(jarvis_commands, "super_jarvis_query") as web, \
+             mock.patch.object(jarvis_commands, "log_interaction"):
+            self.assertEqual(jarvis_commands.process_command_api("quem é você e o que o Pedro faz?"), "Sou o Jarvis.")
+        handlers.assert_not_called()
+        web.assert_not_called()
+        self.assertEqual(llm.call_args.kwargs["mode"], "site")
+        self.assertTrue(llm.call_args.kwargs["direct_mode"])
+
+    def test_tunel_so_enxerga_o_chat(self):
+        self.assertFalse(server.is_external({}, "127.0.0.1:11600"))
+        self.assertFalse(server.is_external({}, "localhost:11600"))
+        self.assertTrue(server.is_external({"CF-Connecting-IP": "1.2.3.4"}, "127.0.0.1:11600"))
+        self.assertTrue(server.is_external({}, "jarvis.pedromeireles.dev"))
+        self.assertTrue(server.is_external({"X-Forwarded-For": "1.2.3.4"}, "localhost"))
+        self.assertEqual(server.PUBLIC_PATHS, {"/ask", "/ping"})
+
 
 if __name__ == "__main__":
     unittest.main()

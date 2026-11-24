@@ -98,8 +98,10 @@ def public_block():
     """Para a API/site: só o jeito de ser, nada sobre a vida do Pedro (perfil, diário, opiniões)."""
     persona = load_persona()
     return ("Sua personalidade: " + "; ".join(persona["tracos"]) + ". "
-            "Você está falando com um visitante do site de Pedro, não com o Pedro: não conte nada "
-            "pessoal sobre ele.")
+            "Você está falando com um visitante do site de Pedro (portfólio), não com o Pedro: não conte "
+            "nada pessoal sobre ele. Aqui você só conversa: não tem ferramentas, não cria apps, arquivos "
+            "ou imagens e não executa nada; nunca diga que fez algo. Não escreva programas completos: "
+            "no máximo um trecho curto de exemplo. Responda de forma curta e simpática.")
 
 
 def prompt_block():

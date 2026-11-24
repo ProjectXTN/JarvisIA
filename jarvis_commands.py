@@ -1,3 +1,4 @@
+import os
 import re
 import threading
 import string
@@ -378,52 +379,63 @@ def is_raw_prompt(text):
     return len(text) > 300 or "return only the json" in low or "responda só o json" in low
 
 
+_SITE_ACTION = re.compile(
+    r"\b(crie|criar|cria|crea|create|make|build|fa[cç]a|faz|fazer|gere|gerar|generate|programe|desenvolva|"
+    r"escreva|write|code|codifique|instale|install|execute|executar|run|rode|abra|abrir|open|apague|delete|"
+    r"desligue|desligar|shutdown|reinicie|baixe|download)\b.{0,60}\b(app|aplicativo|application|programa|"
+    r"program|jogo|game|site|website|script|bot|c[oó]digo|code|arquivo|file|pasta|folder|comando|command|"
+    r"servidor|server|computador|computer|pc|jarvis|imagem|image|v[ií]deo|cmd|terminal|powershell|"
+    r"navegador|browser|youtube|m[uú]sica|music|spotify|steam)",
+    re.IGNORECASE)
+_SITE_REFUSAL = {
+    "pt": "Aqui no site eu só converso: não crio apps, arquivos ou imagens e não executo nada. "
+          "Mas posso explicar a ideia, tirar dúvidas ou contar sobre os projetos do Pedro!",
+    "en": "Here on the website I can only chat: I don't create apps, files or images, and I don't run anything. "
+          "But I can explain ideas, answer questions or tell you about Pedro's projects!",
+    "fr": "Ici, sur le site, je peux seulement discuter : je ne crée pas d'applications, de fichiers ni d'images "
+          "et je n'exécute rien. Mais je peux expliquer des idées ou parler des projets de Pedro !",
+}
+API_WEB_ENABLED = os.getenv("JARVIS_API_WEB", "0") == "1"
+
+
 def process_command_api(query, lang="pt"):
-    # Prompt pronto do site: vai direto ao modelo, sem comandos, clima nem busca na
-    # internet (antes o JSON do gráfico de conceitos virava uma busca no Brave)
+    """Chat do site (pedromeireles.dev): SÓ conversa.
+
+    O token do site é público, então daqui não sai nenhuma ação: sem comandos,
+    ferramentas, programas, arquivos, imagens, memória do Pedro nem desligamento.
+    Pedidos de criar/executar algo recebem uma resposta fixa, sem chamar o modelo.
+    Busca na internet só com JARVIS_API_WEB=1 (só leitura, gasta a cota do Brave).
+    """
+    query = (query or "").strip()
+    if not query:
+        return _SITE_REFUSAL.get(lang, _SITE_REFUSAL["en"])
+
+    # Prompt pronto do próprio site (gráfico de conceitos em JSON): direto ao modelo
     if is_raw_prompt(query):
         cached = response_cache.get(query)
         if cached:
             return cached
         print(f"[API] Prompt direto ({len(query)} caracteres).")
-        response = llama_query(query.strip(), direct_mode=True, mode="prompt", lang=lang)
+        response = llama_query(query, direct_mode=True, mode="prompt", lang=lang)
         if response:
             response_cache[query] = response
             return response
         return "Sorry, I couldn't generate a response."
 
-    query = clean_query(query)
+    if _SITE_ACTION.search(query):
+        print(f"[API] Pedido de ação recusado: {query[:120]}")
+        return _SITE_REFUSAL.get(lang, _SITE_REFUSAL["en"])
 
-    if shutdown_command(query) is False:
-        return "Shutting down Jarvis..."
-
-    try:
-        weather_response = handle_weather_query(query, lang=lang)
-    except Exception as e:
-        print(f"[API Error weather] {e}")
-        weather_response = None
-
-    handled, result = run_command_handlers(query, blocked=BLOCKED_COMMANDS_API)
-    if handled:
-        if isinstance(result, Exception):
-            return "There was an error executing the command."
-        if isinstance(result, str):
-            return result
-        return "Command executed."
-
-    if weather_response and isinstance(weather_response, str):
-        return weather_response
-
-    # 🔁 Fallback pipeline RAG+Web (super_jarvis_query)
-    response = response_cache.get(query)
-    if not response:
-        print(f"[DEBUG] Query API, {query}")
-        response = generate_response(query, lang=lang, api=True)
-        if response:
-            response_cache[query] = response
-
+    cached = response_cache.get(query)
+    if cached:
+        return cached
+    print(f"[API] Chat: {query[:120]}")
+    if API_WEB_ENABLED and (is_explicit_search(query) or is_query_time_sensitive(query)):
+        response = super_jarvis_query(query, lang=lang, conversation=False)
+    else:
+        response = llama_query(query, direct_mode=True, mode="site", lang=lang)
     if response:
+        response_cache[query] = response
         log_interaction(query, response)
         return response
-
     return "Sorry, I couldn't generate a response."

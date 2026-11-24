@@ -610,3 +610,10 @@ Corrigido:
 - O prompt do gráfico de conceitos (JSON) passava pelo caminho de conversa: virava minúsculas, era tratado como busca na internet (o Brave pesquisou o próprio prompt) e a resposta passava pela limpeza de fala.
 - `process_command_api`: prompt pronto (mais de 300 caracteres ou "return only the JSON") vai direto ao modelo (`llama_query(mode="prompt")`, até 2048 tokens, texto intacto), sem comandos, clima nem busca.
 - O erro final era o Ollama fechado (porta 11500 recusou): o `server.py` agora abre o Ollama sozinho se ele não estiver no ar, sem carregar o Whisper e a voz.
+
+### 2026-11-24 — Blindagem do chat do site
+
+- Problema: o token do site é público (vai no JavaScript), então qualquer pessoa pode chamar a API. Pelo site pediram "crie um app de jogo da cobrinha" e o Jarvis despejou código; o caminho da API ainda rodava comandos de voz (com uma lista de bloqueio), aceitava "desligar" e o painel usava o MESMO token do site, então qualquer visitante podia ler e apagar a memória do Pedro.
+- `process_command_api` agora é só conversa: sem comandos, ferramentas, desligamento, clima nem busca (busca só com `JARVIS_API_WEB=1`, só leitura). Pedido de criar/executar/abrir/apagar (app, site, arquivo, comando, imagem, PC...) recebe uma resposta fixa em pt/en/fr, sem chamar o modelo. Conversa normal vai ao modelo em modo `site`, sem histórico, sem memória e com a personalidade pública (não cria nada, não diz que fez algo, sem programas completos, respostas curtas).
+- `server.py`: pela internet (cabeçalhos do Cloudflare/proxy ou Host que não é localhost) só existem `/ask` e `/ping`; todo o resto responde 404. O painel exige estar neste PC E um token próprio (`JARVIS_PANEL_TOKEN`; sem ele, um token novo é mostrado na janela do server a cada abertura). O token do site não abre mais o painel.
+- Testes: `tests/test_server.py` (+3). Total: 215.
