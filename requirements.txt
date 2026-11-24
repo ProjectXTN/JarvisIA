@@ -1,82 +1,42 @@
-# === CORE (voice, TTS, VAD, transcription) ===
-faster-whisper
-# Voz local (TTS) pelo ONNX Runtime, na CPU
-kokoro-onnx
-# Bibliotecas de GPU para o Whisper (CTranslate2) no Windows
-nvidia-cublas-cu12
-nvidia-cudnn-cu12==9.*
-ctranslate2
-sentencepiece
-edge-tts
-webrtcvad
-sounddevice
-numpy
-scipy
+# Bibliotecas do Jarvis. O install.bat instala tudo isto num venv.
+# Versões fixas = as testadas no PC do Pedro (Windows 11, Python 3.13, RTX 4090).
 
-# === COMPUTER VISION ===
-Pillow
-opencv-python
-torch
-torchvision
-torchaudio
+# --- Ouvir: microfone, detecção de voz e Whisper na GPU ---
+faster-whisper==1.1.1
+ctranslate2==4.6.0
+nvidia-cublas-cu12==12.9.2.10      # DLLs da GPU para o Whisper (CTranslate2)
+nvidia-cudnn-cu12==9.28.1.4
+huggingface-hub==0.30.2            # baixa o modelo do Whisper
+webrtcvad-wheels                   # mesmo módulo webrtcvad, já compilado para Windows
+sounddevice==0.5.1
+numpy==2.2.5
+scipy==1.15.2
 
-# === SYSTEM AUTOMATION AND CONTROL ===
-keyboard
-pyautogui
-pyperclip
-psutil
+# --- Falar: Kokoro local (CPU) e Edge/Google como reserva ---
+kokoro-onnx==0.6.1
+onnxruntime==1.21.1
+edge-tts==7.0.1
 
-# === WEB SCRAPING + SEARCH ===
-requests
-beautifulsoup4
-aiohttp
+# --- Internet, notícias e documentos ---
+requests==2.32.3
+aiohttp==3.11.18
+beautifulsoup4==4.13.4
+pypdf==5.5.0
 
-# === DATABASE ===
-sqlite-utils
+# --- Windows: teclado, janelas, som tocando no PC ---
+keyboard==0.13.5
+pyautogui==0.9.54
+pyperclip==1.9.0
+psutil==7.0.0
+comtypes==1.4.10
+pycaw
 
-# === GRAPHICAL USER INTERFACE (GUI) ===
-tk
+# --- API, painel e utilidades ---
+flask==3.1.0
+flask-cors==5.0.1
+waitress==3.0.2
+python-dotenv==1.1.0
+Unidecode==1.4.0
+jsbeautifier==1.15.4
 
-# === EMOTIONAL ANALYSIS (voice or written reflection) ===
-pyAudioAnalysis
-matplotlib
-scikit-learn
-
-# === UTILITIES ===
-regex
-tqdm
-python-dotenv
-pywin32     # Windows compatibility
-unidecode
-
-# === DEVELOPMENT TOOLS ===
-jsbeautifier
-
-# === LLMs, RAG & EMBEDDINGS ===
-llama-index
-llama-index-embeddings-ollama
-# ollama-py  # Client for Ollama local API
-
-# === COPILOT INTEGRATION ===
-flask               # Used for /suggest API in Jarvis
-flask-cors
-waitress            # Servidor da API (server.py)
-# Codestral is used via Ollama, no pip package required
-
-# === TESTS ===
-#pytest
-
-# === EXTRA: MULTILINGUAL & FORMATTING ===
-langdetect
-langid
-chardet
-
-# === EXTERNAL DEPENDENCIES (not via pip) ===
-# Ollama (for LLaMA 3.3, Vision 90B and Embedding Models)
-# CUDA Toolkit (for GPU acceleration)
-# ffmpeg (audio/video processing)
-# git / git-lfs (for models, optional)
-
-# ===============================
-# See README for manual steps!
-pycaw               # Saber se outro programa está tocando som (live, vídeo)
+# Fora do pip (o install.bat cuida): Ollama, ffmpeg, Chrome/Edge, ComfyUI (opcional)

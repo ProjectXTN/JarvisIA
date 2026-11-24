@@ -587,3 +587,11 @@ Corrigido:
 - Nova ferramenta `abrir_app` ("abre o aplicativo que você criou"): antes o modelo só listava os apps e dizia que estava abrindo. Abre o .exe de `dist/` se existir; senão o arquivo principal (guardado no histórico) com o Python do venv do app: `pythonw` para apps com janela (tkinter, PyQt, pygame...), console próprio para programas de terminal. Sem nome, abre o mais recente.
 - Nome do app falado com espaços ("lista de tarefas", não "listadetarefas").
 - Depois de um aviso em segundo plano ("terminei o app"), dá para responder em até 20 s sem dizer "Jarvis" (`config.LAST_SPEECH_END`), com a mesma proteção contra som tocando no PC.
+
+### 2026-11-24 — Instalador para computador novo
+
+- `install.bat` → `install.ps1`: Python 3.13, ffmpeg e Ollama pelo winget; venv com o requirements; `.env` a partir do novo `.env.example` (token aleatório, pergunta as chaves Brave/OpenWeather e a cidade); `ollama pull` do gemma4:26b e qwen3-embedding:0.6b (qwen3.8:27b opcional); Whisper e Kokoro; ComfyUI portátil + FLUX opcional; atalho "Jarvis" na área de trabalho; roda os testes. Pode rodar de novo: pula o que já existe. Opções `-Tudo` e `-SemPerguntas`.
+- `requirements.txt` refeito só com o que o código usa, nas versões do PC do Pedro (saíram torch, opencv, llama-index, scikit-learn, matplotlib e outras que nada importava); `webrtcvad-wheels` no lugar de `webrtcvad` (não precisa compilar no Windows).
+- `start_jarvis.bat` e `start_jarvis.vbs` sem o caminho `C:\Projetos\jarvis` fixo.
+- `.gitignore`: banco de memória (`*.db`) e os documentos do Pedro em `brain/data_jarvis/` nunca vão para o GitHub.
+- Ainda não testado num PC novo.

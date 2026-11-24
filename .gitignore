@@ -40,3 +40,8 @@ data/browser-media/
 
 # Gerador antigo, removido em 2026-11-24
 stable-diffusion-webui/
+
+# Dados pessoais do Jarvis (memória, documentos do Pedro)
+*.db
+brain/data_jarvis/*
+!brain/data_jarvis/teste.txt

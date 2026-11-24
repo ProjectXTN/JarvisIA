@@ -46,17 +46,27 @@ ComfyUI + FLUX.2 [klein] 4B (4 steps). Before generating, Jarvis unloads gemma4 
 2. `venv\Scripts\python.exe tests\prepare_flux.py` downloads the model, text encoder and VAE.
 3. Ask: "Jarvis, crie uma imagem de um lobo na neve ao pôr do sol". Jarvis starts ComfyUI by itself.
 
-## 🚀 Getting started
+## 🚀 Getting started (new computer)
 
 ```powershell
-git clone https://github.com/ProjectXTN/Jarvis_IA.git
-cd Jarvis_IA
-python -m venv venv
-venv\Scripts\pip install -r requirements.txt
-venv\Scripts\python.exe tests\prepare_whisper.py   # downloads the Whisper model
-venv\Scripts\python.exe tests\prepare_kokoro.py    # downloads the Kokoro voice
-venv\Scripts\python.exe jarvis.py
+git clone https://github.com/ProjectXTN/JarvisIA.git C:\Projetos\jarvis
+cd C:\Projetos\jarvis
+.\install.bat
 ```
+
+`install.bat` does everything (you can run it again; what is already there is skipped):
+
+1. Python 3.13, ffmpeg and Ollama via winget
+2. `venv` with `requirements.txt`
+3. `.env` from `.env.example` with a random API token (asks for the Brave and OpenWeather keys)
+4. Ollama models: `gemma4:26b`, `qwen3-embedding:0.6b` (and optionally `qwen3.8:27b`)
+5. Whisper and Kokoro voice models
+6. Optionally ComfyUI portable + FLUX.2 klein for images
+7. A "Jarvis" shortcut on the desktop and a quick test run
+
+Options: `install.bat -Tudo` (everything, no questions about optional parts), `install.bat -SemPerguntas` (only the essentials).
+
+Then open the "Jarvis" shortcut (or `start_jarvis.bat`). To start with Windows, put a shortcut to `start_jarvis.vbs` in `shell:startup`.
 
 After a cold boot gemma4 takes a minute or two to load; if you speak earlier, Jarvis says it is still loading and waits.
 
@@ -64,7 +74,7 @@ After a cold boot gemma4 takes a minute or two to load; if you speak earlier, Ja
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `OLLAMA_HOST` | `http://127.0.0.1:11434` | Ollama server |
+| `OLLAMA_HOST` | `http://127.0.0.1:11434` | Ollama server (Pedro's PC uses 11500) |
 | `JARVIS_TOOL_ROUTER` | `1` | Model chooses the tools (0 = old keyword rules) |
 | `JARVIS_EMBEDDING_MODEL` | `qwen3-embedding:0.6b` | Memory embeddings |
 | `JARVIS_DOCS_DIR` | `brain/data_jarvis` | Document folders (`;` separated) |

@@ -1,9 +1,9 @@
-' Script para iniciar o Jarvis automaticamente sem mostrar a janela do CMD
-' Este arquivo deve ser colocado na pasta de Inicialização do Windows:
-' C:\Users\SEU_USUARIO\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
-' 
-' Ele chama o arquivo .bat que ativa o ambiente virtual e executa o Jarvis.
-
+' Abre o Jarvis sem mostrar a janela do console.
+' Para abrir junto com o Windows, ponha um atalho deste arquivo em:
+'   shell:startup   (Win+R e digite isso)
+Set fso = CreateObject("Scripting.FileSystemObject")
+folder = fso.GetParentFolderName(WScript.ScriptFullName)
 Set WshShell = CreateObject("WScript.Shell")
-WshShell.Run chr(34) & "C:\Projetos\jarvis\start_jarvis.bat" & Chr(34), 0
+WshShell.CurrentDirectory = folder
+WshShell.Run Chr(34) & folder & "\start_jarvis.bat" & Chr(34), 0
 Set WshShell = Nothing

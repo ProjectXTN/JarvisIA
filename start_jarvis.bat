@@ -1,5 +1,4 @@
 @echo off
-cd /d C:\Projetos\jarvis
-call .\venv\Scripts\activate
-python jarvis.py
-exit
+chcp 65001 >nul
+cd /d "%~dp0"
+"%~dp0venv\Scripts\python.exe" jarvis.py
