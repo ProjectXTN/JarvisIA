@@ -321,14 +321,6 @@ def cancelar_compromisso(o_que):
 
 
 def criar_imagem(descricao, prompt_em_ingles="", formato="quadrada"):
-    from core.settings import IMAGE_ENGINE
-
-    if IMAGE_ENGINE != "flux":
-        from commands.commands_dispatch_image import dispatch_image_command
-
-        dispatch_image_command(f"crie uma imagem de {descricao}")
-        return f"criar_imagem({descricao})"
-
     from brain import image_gen
 
     _say("Criando a imagem. Leva uns segundos.")

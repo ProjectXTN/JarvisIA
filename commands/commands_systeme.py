@@ -5,8 +5,6 @@ import platform
 import re
 from brain.audio import say
 from brain.system import open_folder
-from core.initializer import get_stable_diffusion_process
-from core.initializer import get_stable_diffusion_pid
 
 
 # Auxiliary system status function
@@ -54,19 +52,6 @@ def system_command(query):
     return False
 
 
-def shutdown_stable_diffusion():
-    pid = get_stable_diffusion_pid()
-
-    if pid is not None:
-        try:
-            subprocess.run(["taskkill", "/PID", str(pid), "/F"])
-            print(f"Stable Diffusion (PID {pid}) terminated cleanly.")
-        except Exception as e:
-            print(f"Failed to shutdown Stable Diffusion server: {e}")
-    else:
-        print("No Stable Diffusion process to terminate.")
-
-
 # Só desliga quando a frase inteira é um pedido de desligamento.
 # Palavras soltas no meio de outra frase ("o que ele falou", "quando vai sair")
 # não contam mais.
@@ -92,8 +77,6 @@ def shutdown_command(query):
     """Devolve False quando o Jarvis deve desligar, True caso contrário."""
     if is_shutdown_request(query):
         say("Jarvis desligando.")
-
-        shutdown_stable_diffusion()
 
         return False
 

@@ -52,15 +52,13 @@ WEB_LLM_TIMEOUT = int(os.getenv("JARVIS_WEB_LLM_TIMEOUT", "60"))
 RAG_ENABLED = os.getenv("JARVIS_RAG", "0") == "1"
 # Abrir o Stable Diffusion junto com o Jarvis. Desligado: ele ocupa a GPU que o
 # modelo principal precisa; agora abre só quando você pede uma imagem.
-# Imagens: ComfyUI + FLUX.2 [klein] 4B ("flux") ou o Stable Diffusion antigo ("sd")
-IMAGE_ENGINE = os.getenv("JARVIS_IMAGE_ENGINE", "flux")
+# Imagens: ComfyUI + FLUX.2 [klein] 4B
 COMFYUI_URL = os.getenv("JARVIS_COMFYUI_URL", "http://127.0.0.1:8188").rstrip("/")
 COMFYUI_DIR = os.getenv("JARVIS_COMFYUI_DIR", r"C:\ComfyUI")
 FLUX_UNET = os.getenv("JARVIS_FLUX_UNET", "flux-2-klein-4b-fp8.safetensors")
 FLUX_CLIP = os.getenv("JARVIS_FLUX_CLIP", "qwen_3_4b.safetensors")
 FLUX_VAE = os.getenv("JARVIS_FLUX_VAE", "flux2-vae.safetensors")
 IMAGE_OUTPUT_DIR = os.getenv("JARVIS_IMAGE_DIR", os.path.join(os.path.expanduser("~"), "Pictures", "Jarvis"))
-SD_AUTOSTART = os.getenv("JARVIS_SD_AUTOSTART", "0") == "1"
 
 # === Modelos da Fase 2 (podem ser trocados no .env) ===
 # Escolha de 18/11/2026 (logs/fase2_modelos.json, GPU inteira):

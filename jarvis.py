@@ -17,12 +17,11 @@ from core.initializer import (
     start_ollama,
     remove_lock,
     passive_mode,
-    start_stable_diffusion,
 )
 from brain.utils.utils import sounds_like_jarvis
 from brain.followup import accept_followup
 from brain import avatar
-from core.settings import AVATAR_AUTO_OPEN, SD_AUTOSTART
+from core.settings import AVATAR_AUTO_OPEN
 
 START_STUDY_PATTERN = (
     r"\b(comece|começar|comeca|comecar)\s+a\s+(estudar|aprender)\b"
@@ -88,8 +87,6 @@ def main():
     Thread(target=persona_background, daemon=True).start()
     from brain.persona import rotina
     rotina.start()
-    if SD_AUTOSTART:
-        start_stable_diffusion()
 
     # Hello Pedro! =)
     personalized_greeting()

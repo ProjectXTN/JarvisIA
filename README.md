@@ -68,7 +68,6 @@ After a cold boot gemma4 takes a minute or two to load; if you speak earlier, Ja
 | `JARVIS_TOOL_ROUTER` | `1` | Model chooses the tools (0 = old keyword rules) |
 | `JARVIS_EMBEDDING_MODEL` | `qwen3-embedding:0.6b` | Memory embeddings |
 | `JARVIS_DOCS_DIR` | `brain/data_jarvis` | Document folders (`;` separated) |
-| `JARVIS_IMAGE_ENGINE` | `flux` | `flux` (ComfyUI) or `sd` (old Stable Diffusion) |
 | `JARVIS_COMFYUI_DIR` | `C:\ComfyUI` | ComfyUI folder |
 | `JARVIS_CONSOLE_LEVEL` | `DEBUG` | `INFO` hides `[DEBUG]` lines in the window |
 | `SECRET_TOKEN_JARVIS` | — | API token (16+ characters) |

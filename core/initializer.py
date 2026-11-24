@@ -9,28 +9,6 @@ from brain.audio import listen
 from brain.utils.utils import normalize_text, sounds_like_jarvis
 from core import config
 from core.settings import LOCK_FILE, OLLAMA_HOST, DEFAULT_MODEL, OLLAMA_KEEP_ALIVE, OLLAMA_NUM_CTX
-stable_diffusion_process = None
-stable_diffusion_pid = None
-
-
-def set_stable_diffusion_pid(pid):
-    global stable_diffusion_pid
-    stable_diffusion_pid = pid
-
-
-def get_stable_diffusion_pid():
-    global stable_diffusion_pid
-    return stable_diffusion_pid
-
-
-def set_stable_diffusion_process(process):
-    global stable_diffusion_process
-    stable_diffusion_process = process
-
-
-def get_stable_diffusion_process():
-    global stable_diffusion_process
-    return stable_diffusion_process
 
 
 def _read_lock_pid():
@@ -145,46 +123,3 @@ def passive_mode():
             print(f"[DEBUG] Nenhuma ativação detectada em: {text_raw}")
 
 
-def start_stable_diffusion():
-    global stable_diffusion_pid
-
-    try:
-        response = requests.get("http://127.0.0.1:7860/sdapi/v1/options", timeout=3)
-        if response.status_code == 200:
-            print("✅ Stable Diffusion server is already running.")
-            return
-    except requests.exceptions.RequestException:
-        print("⚙️ Stable Diffusion server not detected. Starting now...")
-
-    try:
-        webui_bat = os.path.abspath("stable-diffusion-webui/webui-user.bat")
-
-        process = subprocess.Popen(
-            ["cmd.exe", "/c", webui_bat],
-            cwd="stable-diffusion-webui",
-            creationflags=subprocess.CREATE_NEW_CONSOLE,
-        )
-
-        set_stable_diffusion_process(process)
-        set_stable_diffusion_pid(process.pid)
-
-        print(
-            f"⏳ Waiting for Stable Diffusion server to start (PID {stable_diffusion_pid})..."
-        )
-        start_time = time.time()
-        timeout = 120
-        while time.time() - start_time < timeout:
-            try:
-                response = requests.get(
-                    "http://127.0.0.1:7860/sdapi/v1/options", timeout=3
-                )
-                if response.status_code == 200:
-                    print("✅ Stable Diffusion API is online!")
-                    return
-            except requests.exceptions.RequestException:
-                pass
-            time.sleep(3)
-
-        print("❌ Timeout: Stable Diffusion server did not start in time.")
-    except Exception as e:
-        print(f"❌ Failed to start Stable Diffusion: {e}")

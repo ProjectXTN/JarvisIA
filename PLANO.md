@@ -566,3 +566,7 @@ Corrigido:
 - Novo `brain/system_audio.py`: mede o pico das sessões de áudio do Windows (pycaw), sem contar o próprio Jarvis. Com som tocando (Chrome com a live, música, jogo), toda frase precisa de "Jarvis". Precisa de `pip install pycaw` (adicionado ao requirements); sem ele, vale só a janela de 20 s.
 - Despedida ("tchau", "desligar") sem "Jarvis" no modo conversa é ignorada; "tchau, Jarvis" desliga.
 - Testes: `tests/test_followup.py` (5).
+
+### 2026-11-24 — Stable Diffusion removido do código
+
+- O gerador antigo saiu do Jarvis: `modules/stable_diffusion_controller.py`, abrir/fechar o webui em `core/initializer.py` e `commands/commands_systeme.py`, `JARVIS_SD_AUTOSTART` e `JARVIS_IMAGE_ENGINE`. Imagem agora é só ComfyUI + FLUX (o caminho antigo de comandos também chama `criar_imagem`).
