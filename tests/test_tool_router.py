@@ -175,7 +175,8 @@ class ToolsTest(unittest.TestCase):
             return "texto", "Site"
 
         self.addCleanup(websearch.LAST_SOURCES.clear)
-        with mock.patch.object(websearch, "search_web", side_effect=fake_search):
+        with mock.patch.object(websearch, "search_web", side_effect=fake_search), \
+             mock.patch.object(websearch, "BRAVE_API_KEY", "chave-de-teste"):
             result = tools.buscar_na_internet("x")
         self.assertIn("1. Site — Título A (https://site.com/a)", result)
 
@@ -272,6 +273,18 @@ class ProcessCommandRoutingTest(unittest.TestCase):
              mock.patch.object(self.jc, "should_save_to_file", return_value=False):
             self.assertTrue(self.jc.process_command("explique algo"))
         old.assert_called_once()
+
+class SemChaveTest(unittest.TestCase):
+    def test_sem_chave_da_brave_avisa_em_vez_de_dizer_que_nao_achou(self):
+        from unittest import mock
+        from brain import tools
+        from brain.websearch import websearch
+
+        with mock.patch.object(websearch, "BRAVE_API_KEY", None):
+            for name, args in (("buscar_na_internet", {"consulta": "guerra"}),
+                               ("buscar_noticias", {"assunto": "guerra"})):
+                text, _ = tools.run_tool(name, args)
+                self.assertIn("BRAVE_API_KEY", text, name)
 
 
 if __name__ == "__main__":

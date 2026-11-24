@@ -50,8 +50,16 @@ def _text(kind="string", description="", enum=None):
 
 
 # ------------------------------------------------------------- informação
+_NO_KEY = ("A busca na internet está DESLIGADA: falta a chave BRAVE_API_KEY no arquivo .env do Jarvis. "
+           "Não diga que não achou nada: diga a Pedro que a chave da Brave não está configurada.")
+
+
 def buscar_na_internet(consulta):
-    from brain.websearch.websearch import search_web
+    from brain.websearch.websearch import BRAVE_API_KEY, search_web
+
+    if not BRAVE_API_KEY:
+        print("[WEB] Sem BRAVE_API_KEY no .env: busca desligada.")
+        return _NO_KEY
 
     from brain.websearch.websearch import numbered_sources
 
@@ -62,6 +70,11 @@ def buscar_na_internet(consulta):
 
 def buscar_noticias(assunto):
     from brain.websearch.news import fetch_news
+    from brain.websearch.websearch import BRAVE_API_KEY
+
+    if not BRAVE_API_KEY:
+        print("[WEB] Sem BRAVE_API_KEY no .env: notícias desligadas.")
+        return _NO_KEY
 
     from brain.websearch.websearch import remember_sources
 
