@@ -15,6 +15,7 @@ from brain.speech_stream import run_pipeline
 from brain.player import open_player, expected_delay_ms
 from brain.microphone import get_microphone
 from brain import tts
+import contextlib
 import threading
 import time
 import requests
@@ -251,6 +252,29 @@ def _play_sentence(path, text):
     return _play_interruptible(path, text)
 
 
+_speech_mode = threading.local()
+
+
+@contextlib.contextmanager
+def text_only(on=True):
+    """Nesta thread, as respostas vão só para a janela de texto, sem voz."""
+    previous = getattr(_speech_mode, "text_only", False)
+    _speech_mode.text_only = on
+    try:
+        yield
+    finally:
+        _speech_mode.text_only = previous
+
+
+def _publish(text):
+    try:
+        from brain.chat_window import publish
+
+        publish("jarvis", text)
+    except Exception:
+        pass
+
+
 def speak_stream(pieces, gender="MALE"):
     """Fala um texto que chega em pedaços (resposta do modelo em stream).
 
@@ -258,6 +282,12 @@ def speak_stream(pieces, gender="MALE"):
     são escritas e convertidas em áudio. Devolve o texto falado.
     """
     global silenced
+    if getattr(_speech_mode, "text_only", False):
+        text = "".join(str(p) for p in pieces).strip()
+        if text:
+            print(f"\n🧠 Jarvis (texto): {text}")
+            _publish(text)
+        return text
     if silenced:
         print("[DEBUG] Fala descartada (você interrompeu).")
         closer = getattr(pieces, "close", None)
@@ -272,7 +302,7 @@ def speak_stream(pieces, gender="MALE"):
             prepare=_clean_for_speech,
             discard=_discard_audio,
             max_chars=MAX_SPOKEN_CHARS,
-            on_sentence=lambda text: print(f"\n🧠 Jarvis : {text}"),
+            on_sentence=lambda text: (print(f"\n🧠 Jarvis : {text}"), _publish(text)),
         )
     finally:
         avatar.speak_stop()

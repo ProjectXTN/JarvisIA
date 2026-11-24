@@ -160,6 +160,8 @@ HOME_CITY = os.getenv("JARVIS_HOME_CITY", "Lexy")
 HOME_COUNTRY = os.getenv("JARVIS_HOME_COUNTRY", "FR")
 
 # === Avatar ===
+# Janela de texto ("Jarvis, abre o chat")
+CHAT_PORT = int(os.getenv("JARVIS_CHAT_PORT", "8766"))
 AVATAR_PORT = int(os.getenv("JARVIS_AVATAR_PORT", "8765"))
 # Abre o avatar junto com o Jarvis. Para desligar: JARVIS_AVATAR_AUTO_OPEN=0 no .env
 AVATAR_AUTO_OPEN = os.getenv("JARVIS_AVATAR_AUTO_OPEN", "1") == "1"

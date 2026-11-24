@@ -1,4 +1,5 @@
 import re
+import threading
 import string
 import time
 
@@ -80,7 +81,23 @@ COMMAND_HANDLERS = [
 ]
 
 # Atalhos que rodam antes do modelo (item 33): frases inequívocas e rápidas
+def open_chat_window(query=None):
+    from brain import chat_window
+
+    chat_window.open_window()
+    say("Abri a janela para você escrever.")
+    return True
+
+
+chat_commands = [
+    (r"\b(abr[aei]r?|abre|mostr[ae]r?|quero|preciso)\b.*\b(chat|janela de (texto|conversa|escrever)|"
+     r"caixa de texto|lugar (pra|para) escrever)\b", open_chat_window),
+    (r"\b(quero|vou|deixa eu|prefiro|preciso)\s+(te\s+)?(escrever|digitar)\b", open_chat_window),
+]
+
+
 SHORTCUT_HANDLERS = [
+    chat_commands,
     datetime_commands,
     music_control_commands,
     avatar_view_commands,
@@ -236,13 +253,26 @@ def generate_response(query, lang="pt", api=False, stream=False):
     return response or None
 
 
+# Voz e janela de texto não atendem ao mesmo tempo
+_command_lock = threading.RLock()
+
+
 def process_command(query, lang="pt"):
-    """Trata uma frase por voz. Devolve False apenas quando é para desligar."""
-    config.NOT_BUSY.clear()  # lembretes da rotina esperam terminar
+    """Trata uma frase (falada ou escrita). Devolve False apenas quando é para desligar."""
     try:
-        return _process_command(query, lang)
-    finally:
-        config.NOT_BUSY.set()
+        from brain.chat_window import publish
+
+        publish("pedro", query)
+    except Exception:
+        pass
+    with _command_lock:
+        config.NOT_BUSY.clear()  # lembretes da rotina esperam terminar
+        try:
+            return _process_command(query, lang)
+        finally:
+            config.NOT_BUSY.set()
+
+
 
 
 def _process_command(query, lang="pt"):

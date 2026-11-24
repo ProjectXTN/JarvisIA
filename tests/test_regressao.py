@@ -78,6 +78,8 @@ def _fake_speak_stream(pieces, *a, **k):
 
 fake_audio.speak_stream = _fake_speak_stream
 fake_audio.ask = lambda question: (spoken.append(question), "")[1]
+fake_audio.silenced = False
+fake_audio.text_only = __import__("contextlib").nullcontext
 sys.modules["brain.audio"] = fake_audio
 
 from brain.memory import memory  # noqa: E402

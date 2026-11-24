@@ -549,3 +549,12 @@ Corrigido:
 - Painel em `http://127.0.0.1:11600/painel` (rodar `server.py`): abas Sobre você, Pediu para guardar, Aprendido, Opiniões, Quer estudar, Diário, Compromissos, Contradições e Documentos, com filtro, Corrigir e Apagar. Entra com o `SECRET_TOKEN_JARVIS` (fica só na aba do navegador). Só campos permitidos são editáveis (`brain/persona/painel.py`).
 - Testes: `tests/test_iniciativa.py` (7). Total: 182.
 - Fase 7 concluída, menos o item 61 (ajuste fino LoRA, opcional): fica para depois de algumas semanas de conversas guardadas.
+
+### 2026-11-24 — Janela para escrever ao Jarvis (pedido do Pedro)
+
+- "Jarvis, abre o chat" (também "abre a janela de texto", "quero te escrever", "prefiro digitar", "abre um lugar pra escrever") abre uma janela própria no Chrome em modo app (`brain/chat_window.py` + `interface/chat.html`, porta `JARVIS_CHAT_PORT`, 8766).
+- O texto escrito passa pelo mesmo caminho da voz (`process_command`): ferramentas, memória, perfil, tudo igual. A janela mostra a conversa inteira, inclusive o que foi dito por voz. Enter envia, Shift+Enter pula linha.
+- "Responder só por escrito": a resposta aparece na janela sem falar (`audio.text_only`, vale só para a thread do pedido escrito).
+- Voz e texto não atendem ao mesmo tempo (`_command_lock` em `process_command`). Escrever desfaz um "pare" anterior.
+- Segurança: só 127.0.0.1; cada abertura do Jarvis gera uma chave nova que vai no endereço da janela; pedido sem a chave (de outro site no navegador) recebe 403.
+- Testes: `tests/test_chat_window.py` (6). Total: 188.
