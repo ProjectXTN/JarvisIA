@@ -157,7 +157,7 @@ foreach ($c in $candidatos) {
     if ($null -eq $lista) { continue }
     $tem = @($lista | Where-Object { $_ -like "gemma4*" -or $_ -like "qwen3-embedding*" }).Count
     Write-Host "    Ollama encontrado em $c ($(@($lista).Count) modelos)"
-    if ($tem -gt $melhor) { $melhor = $tem; $OllamaUrl = $c }
+    if ($tem -gt $melhor) { $melhor = $tem; $OllamaUrl = $c }   # empate: fica o primeiro (.env, variável do Windows)
 }
 if (-not $OllamaUrl) {
     $OllamaUrl = "http://127.0.0.1:11434"
@@ -174,7 +174,10 @@ else { $textoEnv = "OLLAMA_HOST=$OllamaUrl`r`n" + $textoEnv }
 [IO.File]::WriteAllText($EnvFile, $textoEnv, (New-Object Text.UTF8Encoding $false))
 $instalados = Modelos-Em $OllamaUrl
 $modelos = @("gemma4:26b", "qwen3-embedding:0.6b")
-if (Perguntar "Baixar também o modelo de programação qwen3.8:27b (~17 GB, para o modo programador)?" $false) {
+$temQwen = ($instalados -contains "qwen3.8:27b")
+if ($temQwen) {
+    Ok "qwen3.8:27b (já estava no Ollama; modo programador pronto)"
+} elseif (Perguntar "Baixar também o modelo de programação qwen3.8:27b (~17 GB, para o modo programador)?" $false) {
     $modelos += "qwen3.8:27b"
 }
 foreach ($m in $modelos) {

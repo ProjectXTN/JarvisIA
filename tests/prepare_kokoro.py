@@ -17,11 +17,32 @@ BASE = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-file
 FILES = ["kokoro-v1.0.onnx", "voices-v1.0.bin"]
 
 
+def _other_copies():
+    """Pastas de outras instalações do Jarvis neste PC (para copiar em vez de baixar)."""
+    home = os.path.expanduser("~")
+    local = os.environ.get("LOCALAPPDATA", os.path.join(home, "AppData", "Local"))
+    places = [os.environ.get("JARVIS_KOKORO_SHARED", ""),
+              r"C:\Projetos\jarvis\models\kokoro",
+              os.path.join(local, "Jarvis", "models", "kokoro"),
+              os.path.join(home, "jarvis", "models", "kokoro"),
+              os.path.join(home, "Projetos", "jarvis", "models", "kokoro")]
+    mine = os.path.abspath(KOKORO_DIR)
+    return [p for p in places if p and os.path.isdir(p) and os.path.abspath(p) != mine]
+
+
 def download(name):
     path = os.path.join(KOKORO_DIR, name)
     if os.path.isfile(path) and os.path.getsize(path) > 1_000_000:
         print(f"[KOKORO] {name} já existe.")
         return path
+    for folder in _other_copies():
+        source = os.path.join(folder, name)
+        if os.path.isfile(source) and os.path.getsize(source) > 1_000_000:
+            import shutil
+
+            shutil.copyfile(source, path)
+            print(f"[KOKORO] {name} copiado de {folder} (sem baixar).")
+            return path
     partial = path + ".part"
     with requests.get(BASE + name, stream=True, timeout=(10, 60)) as response:
         response.raise_for_status()
