@@ -92,14 +92,14 @@ Depende da Fase 2 (modelo novo com ferramentas). Substitui os itens 39 a 41 da F
 
 Depende da Fase 2 (modelo com ferramentas). Hoje o pedido de código só gera texto e é lido em voz alta.
 
-- [ ] 62. Pasta de projetos `C:\Projetos\jarvis_apps\<nome-do-app>`, uma por pedido, com README do que foi pedido
-- [ ] 63. Gerar o projeto em vários arquivos por ferramentas (`criar_arquivo`, `ler_arquivo`, `listar_pasta`); código nunca é falado
-- [ ] 64. Ambiente isolado por projeto (venv próprio); comandos só dentro da pasta do projeto
-- [ ] 65. Confirmação por voz antes de instalar pacotes, executar o app ou fazer build
-- [ ] 66. Ciclo de correção: roda, lê o erro, corrige, até 5 tentativas; depois explica onde travou
-- [ ] 67. Build quando fizer sentido (`pyinstaller` para .exe, `npm run build` para web) e abre a pasta ou o VS Code
-- [ ] 68. Resumo falado curto: o que fez, onde salvou, como rodar
-- [ ] 69. "Continue o app X": reabre um projeto antigo e altera em cima dele
+- [x] 62. Pasta de projetos `C:\Projetos\jarvis_apps\<nome-do-app>`, uma por pedido, com README do que foi pedido
+- [x] 63. Gerar o projeto em vários arquivos por ferramentas (`criar_arquivo`, `ler_arquivo`, `listar_pasta`); código nunca é falado
+- [x] 64. Ambiente isolado por projeto (venv próprio); comandos só dentro da pasta do projeto
+- [x] 65. Confirmação por voz antes de instalar pacotes, executar o app ou fazer build
+- [x] 66. Ciclo de correção: roda, lê o erro, corrige, até 5 tentativas; depois explica onde travou
+- [x] 67. Build quando fizer sentido (`pyinstaller` para .exe, `npm run build` para web) e abre a pasta ou o VS Code
+- [x] 68. Resumo falado curto: o que fez, onde salvou, como rodar
+- [x] 69. "Continue o app X": reabre um projeto antigo e altera em cima dele
 
 ## Extras pedidos durante o projeto
 
@@ -570,3 +570,13 @@ Corrigido:
 ### 2026-11-24 — Stable Diffusion removido do código
 
 - O gerador antigo saiu do Jarvis: `modules/stable_diffusion_controller.py`, abrir/fechar o webui em `core/initializer.py` e `commands/commands_systeme.py`, `JARVIS_SD_AUTOSTART` e `JARVIS_IMAGE_ENGINE`. Imagem agora é só ComfyUI + FLUX (o caminho antigo de comandos também chama `criar_imagem`).
+
+### 2026-11-24 — Fase 8: modo programador (itens 62 a 69)
+
+- Ferramentas novas no roteador: `criar_app` ("crie um app de...", "faça um programa que..."), `continuar_app` ("no app da calculadora, adicione...") e `listar_apps`. Dúvida de programação e trecho curto continuam respondidos direto.
+- `brain/dev/projeto.py` (62, 69): cada app em `C:\Projetos\jarvis_apps\<nome>` (`JARVIS_APPS_DIR`), com README (pedido, histórico) e `.jarvis/historico.json`. Todo caminho é conferido: nada sai da pasta do projeto (`..`, caminho absoluto, `.jarvis`). "Continue o app X" acha o projeto pelo nome falado.
+- `brain/dev/agente.py` (63, 66, 68): laço com o modelo de código (`JARVIS_DEV_MODEL`, padrão qwen3.8:27b, contexto 16k) e ferramentas `criar_arquivo`, `ler_arquivo`, `listar_arquivos`, `instalar_pacotes`, `rodar_app`, `terminar`. Escreve, roda, lê o erro, corrige; depois de 5 execuções com erro para e explica onde travou. Dizer "funcionou" sem ter rodado com sucesso não vale. O conteúdo dos arquivos já salvos sai do histórico para caber no contexto. Até 40 passos.
+- `brain/dev/executor.py` (64, 67): venv próprio em `<app>/.venv`; pip/npm só na pasta do projeto, nomes de pacote validados (nada de `--index-url` ou `;`); sem shell; app com janela ou servidor que segue aberto no fim do teste (25 s) conta como "abriu". Build: PyInstaller `--onefile` ou `npm run build`. No fim abre a pasta no VS Code (ou no Explorer).
+- Confirmação por voz (65): antes de começar, Jarvis pergunta se pode instalar pacotes, rodar para testar e (se pedido) gerar o executável. Sem "sim", só escreve os arquivos.
+- Roda em segundo plano: a voz continua funcionando; o gemma4 sai da placa enquanto o qwen programa e volta no fim. Um app por vez. No fim, resumo falado curto (o que fez, executável, como rodar), esperando o Jarvis terminar de atender se estiver ocupado.
+- Testes: `tests/test_dev.py` (12). Total: 205.

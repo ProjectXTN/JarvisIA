@@ -161,6 +161,11 @@ HOME_COUNTRY = os.getenv("JARVIS_HOME_COUNTRY", "FR")
 # Depois de uma resposta, por quantos segundos o Jarvis aceita outra frase sem
 # ouvir "Jarvis" de novo. Com som tocando no PC (live, vídeo) sempre exige "Jarvis".
 FOLLOWUP_SECONDS = float(os.getenv("JARVIS_FOLLOWUP_SECONDS", "20"))
+# Fase 8: modo programador. Cada app vai para APPS_DIR/<nome>
+APPS_DIR = os.getenv("JARVIS_APPS_DIR", os.path.join(os.path.dirname(BASE_DIR), "jarvis_apps"))
+DEV_MODEL = os.getenv("JARVIS_DEV_MODEL", DEFAULT_MODEL_CODE)
+DEV_NUM_CTX = int(os.getenv("JARVIS_DEV_NUM_CTX", "16384"))
+DEV_MAX_STEPS = int(os.getenv("JARVIS_DEV_MAX_STEPS", "40"))
 # Janela de texto ("Jarvis, abre o chat")
 CHAT_PORT = int(os.getenv("JARVIS_CHAT_PORT", "8766"))
 AVATAR_PORT = int(os.getenv("JARVIS_AVATAR_PORT", "8765"))

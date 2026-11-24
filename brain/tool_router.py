@@ -35,7 +35,8 @@ ROUTER_GUIDE = (
     "conversa, responda direto, sem ferramentas. Se o pedido tiver várias ações, chame "
     "várias ferramentas, na ordem. Ao buscar, escreva a consulta completa, incluindo o "
     "assunto da conversa quando a fala depender dele. Nunca diga que fez, abriu ou "
-    "pesquisou algo sem ter chamado a ferramenta."
+    "pesquisou algo sem ter chamado a ferramenta. Pedido para criar um app, programa, jogo ou "
+    "site de verdade vai para criar_app; dúvida de programação ou trecho curto, responda direto."
 )
 
 ANSWER_GUIDE = (

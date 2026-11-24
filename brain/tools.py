@@ -13,6 +13,7 @@ para não criar ciclos de importação.
 """
 
 import os
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -292,6 +293,84 @@ def musica(acao, busca=""):
     return f"musica({acao}, {busca})"
 
 
+_YES = re.compile(r"\b(sim|pode|podes|claro|ok|okay|manda|beleza|vai|bora|autorizo|positivo|certeza|fechado)\b")
+_NO = re.compile(r"\b(n[aã]o|nao|negativo|nem|espera)\b")
+
+
+def _is_yes(answer):
+    answer = (answer or "").lower()
+    return bool(_YES.search(answer)) and not _NO.search(answer)
+
+
+def _announce(text):
+    """Fala de uma tarefa em segundo plano: espera o Jarvis terminar de atender."""
+    from core import config
+
+    config.NOT_BUSY.wait(300)
+    _say(text)
+
+
+def _start_dev(project, request, build):
+    from brain.audio import ask
+    from brain.dev import agente
+    from brain.image_gen import unload_llm
+    from core.initializer import start_ollama
+
+    extra = " e gerar o executável" if build else ""
+    answer = ask(f"Vou trabalhar no app {project.name.replace('_', ' ')}, na pasta jarvis apps. "
+                 f"Posso instalar os pacotes, rodar o app para testar{extra}?")
+    allow = _is_yes(answer)
+    _say("Combinado, começando. Enquanto programo, minhas respostas podem demorar um pouco. "
+         "Te aviso quando terminar." if allow else
+         "Tudo bem, só vou escrever os arquivos, sem instalar nem rodar nada.")
+    unload_llm()  # o modelo de código e o de conversa não cabem juntos na placa
+    agente.run_in_background(project, request, allow, build and allow, say=_announce,
+                             on_done=start_ollama)
+
+
+def criar_app(descricao, nome, gerar_executavel=False):
+    from brain.dev import agente, projeto
+
+    if agente.busy():
+        _say("Já estou programando outro app. Te aviso quando terminar.")
+        return "criar_app: ocupado"
+    project = projeto.Project(nome)
+    if project.exists() and project.files() not in ([], ["README.md"]):
+        _say(f"Já existe um app chamado {project.name.replace('_', ' ')}; vou mexer em cima dele.")
+    project.create(descricao)
+    _start_dev(project, descricao, bool(gerar_executavel))
+    return f"criar_app({project.name})"
+
+
+def continuar_app(nome, pedido, gerar_executavel=False):
+    from brain.dev import agente, projeto
+
+    if agente.busy():
+        _say("Já estou programando outro app. Te aviso quando terminar.")
+        return "continuar_app: ocupado"
+    project = projeto.find_project(nome)
+    if not project:
+        names = ", ".join(n.replace("_", " ") for n in projeto.list_projects()) or "nenhum ainda"
+        _say(f"Não achei esse app. Os que eu tenho são: {names}.")
+        return f"continuar_app({nome}): não achou"
+    _start_dev(project, pedido, bool(gerar_executavel))
+    return f"continuar_app({project.name})"
+
+
+def listar_apps():
+    from brain.dev import projeto
+
+    names = projeto.list_projects()
+    if not names:
+        return "Nenhum app criado ainda."
+    lines = []
+    for name in names:
+        history = projeto.Project(name).history()
+        last = history[-1] if history else {}
+        lines.append(f"- {name}: {last.get('resumo', 'sem resumo')} ({last.get('quando', '')})")
+    return "Apps em jarvis_apps:\n" + "\n".join(lines)
+
+
 def lembrar_compromisso(quando, o_que):
     from brain.persona import iniciativa
 
@@ -476,6 +555,22 @@ TOOLS = [
          {"acao": _text(enum=["tocar", "pausar", "proxima", "anterior", "biblioteca"]),
           "busca": _text(description="Música, artista ou álbum, quando a ação é tocar")},
          ["acao"]),
+    Tool("criar_app",
+         "Cria um aplicativo, programa, jogo, site, bot ou script DE VERDADE, em arquivos numa pasta "
+         "própria, testando e corrigindo ('crie um app de...', 'faça um programa que...'). Não use "
+         "para dúvidas de programação ou trechos curtos de código: esses responda direto.",
+         criar_app,
+         {"descricao": _text(description="O pedido completo de Pedro, com todos os detalhes"),
+          "nome": _text(description="Nome curto do app, 1 a 3 palavras"),
+          "gerar_executavel": {"type": "boolean", "description": "Pedro pediu .exe ou instalador"}},
+         ["descricao", "nome"]),
+    Tool("continuar_app",
+         "Altera ou continua um app que o Jarvis já criou ('no app da calculadora, adicione...').",
+         continuar_app,
+         {"nome": _text(description="Nome do app"), "pedido": _text(description="O que mudar"),
+          "gerar_executavel": {"type": "boolean"}}, ["nome", "pedido"]),
+    Tool("listar_apps", "Lista os apps que o Jarvis já criou e o último resumo de cada um.",
+         listar_apps, for_model=True),
     Tool("lembrar_compromisso",
          "Anota um compromisso ou lembrete e avisa Pedro por voz na hora ('me lembra amanhã às 15h "
          "de ligar para o banco'). Calcule a data e a hora a partir de agora.",
