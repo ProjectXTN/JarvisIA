@@ -19,6 +19,7 @@ from brain.weatherAPI.weatherAPI import handle_weather_query
 from brain.storage.file_saver import save_response_to_file, should_save_to_file
 from core.settings import STREAMING_ENABLED, WEB_ROUTER_ENABLED, TOOL_ROUTER_ENABLED
 from brain import tool_router
+from core import config
 from brain.pipeline.super_jarvis import today_line
 from brain.memory.memory import llama_stream
 from brain.memory.memory import llama_query, memory_context, remember_turn
@@ -248,6 +249,13 @@ def process_command(query, lang="pt"):
     handled, result = run_command_handlers(query, handlers=SHORTCUT_HANDLERS)
     if handled:
         return True
+
+    # Depois de reiniciar o PC o modelo ainda pode estar saindo do disco
+    if not config.MODEL_READY.is_set():
+        say("Ainda estou carregando, só um instante.")
+        started = time.monotonic()
+        config.MODEL_READY.wait(240)
+        print(f"[OLLAMA] Esperei {time.monotonic() - started:.0f}s o modelo terminar de carregar.")
 
     # Fase 4: o modelo decide (responder, buscar, abrir, tocar...)
     if TOOL_ROUTER_ENABLED:

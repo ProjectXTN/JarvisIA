@@ -11,6 +11,11 @@ from contextlib import contextmanager
 
 _state = threading.local()
 
+# Ligado quando o modelo de conversa terminou de carregar na abertura (ou falhou).
+# Depois de reiniciar o PC o Ollama abre frio e o gemma4 leva um tempo para
+# sair do disco; enquanto isso, quem precisa do Ollama espera aqui.
+MODEL_READY = threading.Event()
+
 
 def __getattr__(name):
     if name == "IS_API_REQUEST":

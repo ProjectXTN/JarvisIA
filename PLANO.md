@@ -500,3 +500,11 @@ Corrigido:
 - `JARVIS_IMAGE_ENGINE=sd` volta ao Stable Diffusion antigo.
 - `tests/prepare_flux.py` baixa os 3 arquivos (modelo fp8, codificador de texto, VAE) para a pasta models do ComfyUI.
 - Testes: `tests/test_image_gen.py` (4).
+
+### 2026-11-24 — Correção: Jarvis travava logo depois de ligar o PC
+
+- Causa: com o PC recém-ligado, o Ollama abre frio e o gemma4:26b leva um tempo para sair do disco. O Ollama carrega um modelo por vez, então os embeddings da abertura e o primeiro comando ficavam na fila; os embeddings estouravam 30 s e o comando esperava junto.
+- `core/config.py`: `MODEL_READY`, ligado quando o pré-carregamento do gemma4 termina (ou falha).
+- `process_command`: se o modelo ainda está carregando, Jarvis diz "Ainda estou carregando, só um instante" e espera (até 4 min) em vez de parecer travado.
+- `semantic_memory.prepare` espera o modelo carregar antes de mexer nos embeddings, e `backfill_vectors` gera os vetores que ficaram faltando (o `teste jarvis.txt` tinha sido indexado sem vetor).
+- Caminho antigo de imagem (quando o roteador falha) também usa o FLUX.

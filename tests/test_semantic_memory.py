@@ -108,6 +108,13 @@ class SemanticMemoryTest(unittest.TestCase):
         self.assertEqual(sm.index_documents(f"{a};{b}"), 2)
         self.assertEqual(sm.search_documents("cachorro")[0]["fonte"], "rex.md")
 
+    def test_preenche_vetores_que_faltam(self):
+        with mock.patch.object(sm, "embed", return_value=None):
+            sm.add("wifi", "A senha do roteador.")
+        self.assertEqual(sm.backfill_vectors(), 1)
+        self.assertEqual(sm.backfill_vectors(), 0)
+        self.assertEqual(sm.search("senha do wifi")[0]["assunto"], "wifi")
+
     def test_trechos_longos_sao_divididos(self):
         text = ". ".join(f"Frase número {i} sobre o assunto" for i in range(200))
         chunks = list(sm._chunks(text))

@@ -271,13 +271,40 @@ def search_documents(pergunta, k=4):
     return search(pergunta, k=k, tipos=("documento",), min_score=0.4)
 
 
+def backfill_vectors(batch=16):
+    """Gera os vetores que faltam (Ollama fora do ar na hora de guardar, ou modelo trocado)."""
+    with _lock, _connect() as conn:
+        rows = conn.execute(
+            "SELECT id, assunto, texto FROM memorias WHERE vetor IS NULL OR modelo IS NULL "
+            "OR modelo != ?", (EMBEDDING_MODEL,)).fetchall()
+    fixed = 0
+    for i in range(0, len(rows), batch):
+        part = rows[i:i + batch]
+        vectors = embed([f"{a}: {t}" if a else t for _, a, t in part])
+        if vectors is None:
+            break
+        with _lock, _connect() as conn:
+            conn.executemany("UPDATE memorias SET vetor = ?, modelo = ? WHERE id = ?",
+                             [(v.tobytes(), EMBEDDING_MODEL, r[0]) for v, r in zip(vectors, part)])
+        fixed += len(part)
+    if fixed:
+        print(f"[MEMÓRIA] {fixed} lembranças receberam o vetor de significado.")
+    return fixed
+
+
 def prepare():
     """Na abertura: atualiza o índice de documentos e importa as memórias antigas."""
+    from core import config
+
+    # Espera o gemma4 terminar de carregar: o Ollama carrega um modelo por vez
+    # e os embeddings ficariam na fila, competindo com a primeira pergunta
+    config.MODEL_READY.wait(300)
     started = time.monotonic()
     try:
         added = index_documents()  # primeiro os documentos: são poucos e rápidos
         if added:
             print(f"[DOCUMENTOS] {added} trechos novos em {time.monotonic() - started:.1f}s.")
         migrate_old_memories()
+        backfill_vectors()
     except Exception as error:
         print(f"[MEMÓRIA] Preparação falhou: {error}")

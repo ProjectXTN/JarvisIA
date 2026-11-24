@@ -83,6 +83,9 @@ from commands.commands_music import music_commands  # noqa: E402
 from commands.commands_systeme import is_shutdown_request  # noqa: E402
 from core import initializer  # noqa: E402
 import jarvis_commands  # noqa: E402
+from core import config as _config  # noqa: E402
+
+_config.MODEL_READY.set()  # nos testes o modelo já está "carregado"
 import re  # noqa: E402
 
 

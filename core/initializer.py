@@ -7,6 +7,7 @@ import threading
 import psutil
 from brain.audio import listen
 from brain.utils.utils import normalize_text, sounds_like_jarvis
+from core import config
 from core.settings import LOCK_FILE, OLLAMA_HOST, DEFAULT_MODEL, OLLAMA_KEEP_ALIVE, OLLAMA_NUM_CTX
 stable_diffusion_process = None
 stable_diffusion_pid = None
@@ -94,9 +95,11 @@ def start_ollama():
         names = {m["name"] for m in response.json()["models"]}
         if DEFAULT_MODEL not in names and DEFAULT_MODEL + ":latest" not in names:
             print(f"[OLLAMA] Modelo {DEFAULT_MODEL} não instalado em {OLLAMA_HOST}.")
+            config.MODEL_READY.set()
             return
     except Exception as error:
         print(f"[OLLAMA] Não consegui consultar modelos: {error}")
+        config.MODEL_READY.set()
         return
     threading.Thread(target=warmup_model, args=(DEFAULT_MODEL,), daemon=True).start()
 
@@ -119,6 +122,8 @@ def warmup_model(model):
         print(f"[OLLAMA] Modelo {model} pronto em {time.time() - start:.1f}s.")
     except Exception as e:
         print(f"[OLLAMA] Não consegui pré-carregar {model}: {e}")
+    finally:
+        config.MODEL_READY.set()
 
 
 def passive_mode():

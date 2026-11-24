@@ -32,6 +32,14 @@ def dispatch_image_command(query):
                     say("Você precisa me dizer o que deseja que eu desenhe!")
                     return True
 
+                from core.settings import IMAGE_ENGINE
+
+                if IMAGE_ENGINE == "flux":
+                    from brain.tools import criar_imagem
+
+                    criar_imagem(cleaned_prompt)
+                    return True
+
                 # O Stable Diffusion não abre mais junto com o Jarvis
                 if not is_stable_diffusion_running():
                     say("Abrindo o gerador de imagens. Isso leva cerca de um minuto.")
