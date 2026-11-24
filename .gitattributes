@@ -1,5 +1,7 @@
-git lfs track "*.ckpt"
-git lfs track "*.safetensors"
-git lfs track "*.pt"
-git lfs track "*.bin"
-git lfs track "*.onnx"
+# Modelos não vão para o git (ficam em models/, no Ollama e no ComfyUI).
+# Se algum entrar por engano, é tratado como binário.
+*.ckpt binary
+*.safetensors binary
+*.pt binary
+*.bin binary
+*.onnx binary
