@@ -595,3 +595,12 @@ Corrigido:
 - `start_jarvis.bat` e `start_jarvis.vbs` sem o caminho `C:\Projetos\jarvis` fixo.
 - `.gitignore`: banco de memória (`*.db`) e os documentos do Pedro em `brain/data_jarvis/` nunca vão para o GitHub.
 - Ainda não testado num PC novo.
+
+### 2026-11-24 — API compatível com o site pedromeireles.dev
+
+- O site chama `https://jarvis.pedromeireles.dev/ask` (túnel para 127.0.0.1:11600) a partir do navegador do visitante. A versão segura da API (Fase 6) quebrava o site: CORS fechado, idioma só pt/en (o site manda `pt-BR`, `fr`) e pergunta até 2000 caracteres (o gráfico de conceitos manda prompts longos).
+- Agora: CORS liberado por padrão para `https://pedromeireles.dev`, `https://www.pedromeireles.dev` e `http://localhost:5173` (`JARVIS_API_ORIGINS` troca); idioma normalizado (`pt-BR`→pt, desconhecido→pt, aceita fr); até 8000 caracteres.
+- O token do site é público (vai no JavaScript do Vite), então: limite de 20 perguntas por minuto por visitante (`JARVIS_API_RATE`, IP pelo `CF-Connecting-IP` do Cloudflare).
+- Privacidade: em pedidos da API a personalidade não leva o perfil do Pedro, o diário nem as opiniões, e o modelo é avisado que fala com um visitante (`persona.core.public_block`). Perguntas do site não entram em `turnos`, então não viram "fatos sobre o Pedro".
+- `start_api.bat` e `start_api.vbs` (sem janela) para abrir a API junto com o Windows.
+- Testes: `tests/test_server.py` (+5). Total: 211.

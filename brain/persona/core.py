@@ -94,8 +94,20 @@ def build_block():
     return "\n".join(lines)
 
 
+def public_block():
+    """Para a API/site: só o jeito de ser, nada sobre a vida do Pedro (perfil, diário, opiniões)."""
+    persona = load_persona()
+    return ("Sua personalidade: " + "; ".join(persona["tracos"]) + ". "
+            "Você está falando com um visitante do site de Pedro, não com o Pedro: não conte nada "
+            "pessoal sobre ele.")
+
+
 def prompt_block():
     """Bloco da personalidade (em cache). Nunca deixa a conversa cair por causa dele."""
+    from core import config
+
+    if config.IS_API_REQUEST:
+        return public_block()
     now = time.monotonic()
     if _cache["text"] and now - _cache["at"] < CACHE_SECONDS:
         return _cache["text"]

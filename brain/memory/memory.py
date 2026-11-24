@@ -31,6 +31,10 @@ def remember_turn(prompt, response):
             memory_context.append((prompt[:6000], response[:6000]))
             del memory_context[:-MAX_CONTEXT]
         try:  # Fase 7: a conversa alimenta o perfil do Pedro e o diário
+            from core import config
+
+            if config.IS_API_REQUEST:  # visitante do site: não é o Pedro
+                return
             from brain.persona.perfil import record_turn
 
             record_turn(prompt, response)

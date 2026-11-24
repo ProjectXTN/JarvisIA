@@ -27,9 +27,13 @@ if __name__ == "__main__":
 
     log.setup()
 
-MAX_QUESTION = 2000
-LANGS = {"pt", "en"}
+MAX_QUESTION = 8000          # o site manda prompts longos (gráfico de conceitos)
+LANGS = {"pt", "en", "fr"}
 MIN_TOKEN = 16
+# Site do Pedro (pedromeireles.dev) e o Vite em desenvolvimento. JARVIS_API_ORIGINS troca a lista.
+DEFAULT_ORIGINS = "https://pedromeireles.dev,https://www.pedromeireles.dev,http://localhost:5173"
+# Pedidos por minuto por visitante (o token do site é público, vai no JavaScript)
+RATE_PER_MINUTE = int(os.getenv("JARVIS_API_RATE", "20"))
 
 
 class BadRequest(ValueError):
@@ -52,10 +56,34 @@ def parse_question(data):
         raise BadRequest("O campo 'question' precisa ser um texto.")
     if len(question) > MAX_QUESTION:
         raise BadRequest(f"Pergunta longa demais (máximo {MAX_QUESTION} caracteres).")
-    lang = data.get("lang", "pt")
+    lang = str(data.get("lang") or "pt").lower()[:2]  # o site manda "pt-BR", "en-US", "fr"
     if lang not in LANGS:
-        raise BadRequest("Idioma inválido (use 'pt' ou 'en').")
+        lang = "pt"
     return question.strip(), lang
+
+
+class RateLimiter:
+    """No máximo `per_minute` pedidos por visitante em 60 s."""
+
+    def __init__(self, per_minute):
+        self.per_minute = per_minute
+        self.hits = {}
+        self.lock = threading.Lock()
+
+    def allow(self, who, now=None):
+        import time
+
+        now = now or time.monotonic()
+        with self.lock:
+            recent = [t for t in self.hits.get(who, []) if now - t < 60]
+            if len(recent) >= self.per_minute:
+                self.hits[who] = recent
+                return False
+            recent.append(now)
+            self.hits[who] = recent
+            if len(self.hits) > 5000:  # não cresce sem fim
+                self.hits = {k: v for k, v in self.hits.items() if v and now - v[-1] < 60}
+            return True
 
 
 def allowed_origins(value):
@@ -75,6 +103,11 @@ def create_app(token, answer, origins=()):
 
         CORS(app, origins=list(origins))
     busy = threading.Lock()
+    limiter = RateLimiter(RATE_PER_MINUTE)
+
+    def visitor():
+        # Atrás do túnel do Cloudflare o IP real vem neste cabeçalho
+        return request.headers.get("CF-Connecting-IP") or request.remote_addr or "?"
 
     @app.get("/")
     def home():
@@ -133,6 +166,8 @@ def create_app(token, answer, origins=()):
     def ask_jarvis():
         if not token_ok(request.headers.get("Authorization"), token):
             return jsonify({"error": "Unauthorized"}), 401
+        if not limiter.allow(visitor()):
+            return jsonify({"error": "Muitas perguntas seguidas; espere um minuto."}), 429
         try:
             question, lang = parse_question(request.get_json(silent=True))
         except BadRequest as error:
@@ -168,7 +203,7 @@ def main():
         return process_command_api(question, lang=lang)
 
     app = create_app(token, answer,
-                     allowed_origins(os.getenv("JARVIS_API_ORIGINS")))
+                     allowed_origins(os.getenv("JARVIS_API_ORIGINS", DEFAULT_ORIGINS)))
     if host not in ("127.0.0.1", "localhost"):
         print(f"⚠️ API aberta para a rede em {host}; use só em rede confiável.")
     try:

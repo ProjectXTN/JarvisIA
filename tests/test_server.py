@@ -25,8 +25,12 @@ class QuestionTest(unittest.TestCase):
     def test_valida(self):
         self.assertEqual(server.parse_question({"question": " Oi "}), ("Oi", "pt"))
         self.assertEqual(server.parse_question({"question": "Hi", "lang": "en"}), ("Hi", "en"))
+        self.assertEqual(server.parse_question({"question": "Oi", "lang": "pt-BR"}), ("Oi", "pt"))
+        self.assertEqual(server.parse_question({"question": "Salut", "lang": "fr"}), ("Salut", "fr"))
+        self.assertEqual(server.parse_question({"question": "Oi", "lang": "xx"}), ("Oi", "pt"))
+        self.assertEqual(len(server.parse_question({"question": "x" * 5000})[0]), 5000)  # prompt do site
         for bad in (None, [], {}, {"question": 3}, {"question": "  "},
-                    {"question": "x" * 2001}, {"question": "oi", "lang": "xx"}):
+                    {"question": "x" * 8001}):
             with self.assertRaises(server.BadRequest):
                 server.parse_question(bad)
 
@@ -55,6 +59,44 @@ class ApiStateTest(unittest.TestCase):
         t.join()
         self.assertEqual(seen, {"api": True, "voz": False})
         self.assertFalse(config.IS_API_REQUEST)
+
+class RateTest(unittest.TestCase):
+    def test_limite_por_visitante(self):
+        limiter = server.RateLimiter(3)
+        self.assertEqual([limiter.allow("a", now=t) for t in (0, 1, 2, 3)], [True, True, True, False])
+        self.assertTrue(limiter.allow("b", now=3))
+        self.assertTrue(limiter.allow("a", now=61))
+
+    def test_origens_do_site_por_padrao(self):
+        origins = server.allowed_origins(server.DEFAULT_ORIGINS)
+        self.assertIn("https://pedromeireles.dev", origins)
+        self.assertIn("https://www.pedromeireles.dev", origins)
+
+
+class PrivacidadeTest(unittest.TestCase):
+    def test_site_nao_recebe_dados_do_pedro(self):
+        from unittest import mock
+        from brain.persona import core
+
+        with mock.patch.object(core, "build_block", return_value="Pedro tem uma RTX 4090; diário de ontem"):
+            core.invalidate()
+            with config.api_request():
+                block = core.prompt_block()
+        self.assertNotIn("RTX", block)
+        self.assertIn("visitante", block)
+        core.invalidate()
+
+    def test_perguntas_do_site_nao_viram_perfil(self):
+        from unittest import mock
+        from brain.memory import memory
+
+        with mock.patch("brain.persona.perfil.record_turn") as record:
+            with config.api_request():
+                memory.remember_turn("eu sou o Pedro e moro em Paris", "Ok.")
+            record.assert_not_called()
+            memory.remember_turn("eu moro em Lexy", "Anotado.")
+            record.assert_called_once()
+        memory.clear_history()
 
 
 if __name__ == "__main__":
