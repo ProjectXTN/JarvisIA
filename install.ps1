@@ -131,22 +131,54 @@ if (-not (Test-Path $EnvFile)) {
 
 # ---------------------------------------------------------------- 4. Ollama
 Passo "4/7 Modelos do Ollama"
-$OllamaUrl = "http://127.0.0.1:11434"
+# Procura um Ollama que já esteja rodando (porta padrão, a do .env, a do Windows, 11500)
+# antes de abrir outro: senão o instalador baixa de novo modelos que o PC já tem.
+function Url-Ollama($v) {
+    $v = "$v".Trim()
+    if (-not $v) { return $null }
+    if ($v -notmatch "^https?://") { $v = "http://$v" }
+    return $v.TrimEnd("/") -replace "//0\.0\.0\.0", "//127.0.0.1"
+}
+function Modelos-Em($url) {
+    try { return (Invoke-RestMethod "$url/api/tags" -TimeoutSec 3).models | ForEach-Object { $_.name } }
+    catch { return $null }
+}
+$candidatos = @()
 $linha = Select-String -Path $EnvFile -Pattern "^OLLAMA_HOST=(.+)$" | Select-Object -First 1
-if ($linha) { $OllamaUrl = $linha.Matches[0].Groups[1].Value.Trim() }
-if ($OllamaUrl -notmatch "^https?://") { $OllamaUrl = "http://$OllamaUrl" }
-$env:OLLAMA_HOST = $OllamaUrl -replace "^https?://", ""
-try { Invoke-WebRequest "$OllamaUrl/api/tags" -UseBasicParsing -TimeoutSec 3 | Out-Null }
-catch {
+if ($linha) { $candidatos += Url-Ollama $linha.Matches[0].Groups[1].Value }
+$candidatos += Url-Ollama ([Environment]::GetEnvironmentVariable("OLLAMA_HOST", "User"))
+$candidatos += Url-Ollama ([Environment]::GetEnvironmentVariable("OLLAMA_HOST", "Machine"))
+$candidatos += "http://127.0.0.1:11434", "http://127.0.0.1:11500"
+$candidatos = $candidatos | Where-Object { $_ } | Select-Object -Unique
+$OllamaUrl = $null
+$melhor = -1
+foreach ($c in $candidatos) {
+    $lista = Modelos-Em $c
+    if ($null -eq $lista) { continue }
+    $tem = @($lista | Where-Object { $_ -like "gemma4*" -or $_ -like "qwen3-embedding*" }).Count
+    Write-Host "    Ollama encontrado em $c ($(@($lista).Count) modelos)"
+    if ($tem -gt $melhor) { $melhor = $tem; $OllamaUrl = $c }
+}
+if (-not $OllamaUrl) {
+    $OllamaUrl = "http://127.0.0.1:11434"
     Write-Host "    Abrindo o Ollama..."
     Start-Process "ollama" -ArgumentList "serve" -WindowStyle Hidden
     Start-Sleep -Seconds 6
 }
+Ok "Usando o Ollama em $OllamaUrl"
+$env:OLLAMA_HOST = $OllamaUrl -replace "^https?://", ""
+# Grava no .env o Ollama escolhido (o Jarvis usa o mesmo)
+$textoEnv = Get-Content $EnvFile -Raw -Encoding UTF8
+if ($textoEnv -match "(?m)^OLLAMA_HOST=") { $textoEnv = $textoEnv -replace "(?m)^OLLAMA_HOST=.*$", "OLLAMA_HOST=$OllamaUrl" }
+else { $textoEnv = "OLLAMA_HOST=$OllamaUrl`r`n" + $textoEnv }
+[IO.File]::WriteAllText($EnvFile, $textoEnv, (New-Object Text.UTF8Encoding $false))
+$instalados = Modelos-Em $OllamaUrl
 $modelos = @("gemma4:26b", "qwen3-embedding:0.6b")
 if (Perguntar "Baixar também o modelo de programação qwen3.8:27b (~17 GB, para o modo programador)?" $false) {
     $modelos += "qwen3.8:27b"
 }
 foreach ($m in $modelos) {
+    if ($instalados -contains $m -or $instalados -contains "$m:latest") { Ok "$m (já estava no Ollama)"; continue }
     Write-Host "    ollama pull $m"
     & ollama pull $m
     if ($LASTEXITCODE -ne 0) { Aviso "Não consegui baixar $m. Rode depois: ollama pull $m" } else { Ok $m }
