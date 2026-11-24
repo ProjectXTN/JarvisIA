@@ -115,6 +115,21 @@ game_commands = [
     (r"\b(modo (de )?jogo|modo game|vou jogar|hora de jogar)\b", game_mode_on),
 ]
 
+def open_monitor_window(query=None):
+    from brain import chat_window
+
+    chat_window.open_window("/monitor", "760,820")
+    say("Abri o monitor da placa de vídeo e do processador.")
+    return True
+
+
+monitor_commands = [
+    (r"\b(abr[aei]r?|abre|mostr[ae]r?|quero ver|ver)\b.{0,25}\b(monitor|uso da placa|uso do processador|"
+     r"consumo|desempenho)\b", open_monitor_window),
+    (r"\bquanto\b.{0,30}\b(usando|gastando|consumindo)\b.{0,30}\b(placa|gpu|processador|cpu|mem[oó]ria)\b",
+     open_monitor_window),
+]
+
 chat_commands = [
     (r"\b(abr[aei]r?|abre|mostr[ae]r?|quero|preciso)\b.*\b(chat|janela de (texto|conversa|escrever)|"
      r"caixa de texto|lugar (pra|para) escrever)\b", open_chat_window),
@@ -124,6 +139,7 @@ chat_commands = [
 
 SHORTCUT_HANDLERS = [
     game_commands,
+    monitor_commands,
     chat_commands,
     datetime_commands,
     music_control_commands,

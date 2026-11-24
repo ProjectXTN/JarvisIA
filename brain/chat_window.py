@@ -92,6 +92,17 @@ class _Handler(BaseHTTPRequestHandler):
                 return self._send(403, b"Abra pelo Jarvis: diga 'abre o chat'.", "text/plain; charset=utf-8")
             with open(os.path.join(BASE_DIR, "interface", "chat.html"), "rb") as f:
                 return self._send(200, f.read(), "text/html; charset=utf-8")
+        if url.path == "/monitor":
+            if not self._key_ok(query):
+                return self._send(403, b"Abra pelo Jarvis: diga 'abre o monitor'.", "text/plain; charset=utf-8")
+            with open(os.path.join(BASE_DIR, "interface", "monitor.html"), "rb") as f:
+                return self._send(200, f.read(), "text/html; charset=utf-8")
+        if url.path == "/monitor/dados":
+            if not self._key_ok():
+                return self._send(403, {"erro": "chave"})
+            from brain.monitor import snapshot
+
+            return self._send(200, snapshot())
         if url.path == "/mensagens":
             if not self._key_ok():
                 return self._send(403, {"erro": "chave"})
@@ -128,13 +139,13 @@ def start():
     raise RuntimeError("Nenhuma porta livre para a janela de texto.")
 
 
-def open_window():
-    url = start()
+def open_window(path="/", size="480,720"):
+    url = start().replace("/?k=", f"{path}?k=" if path != "/" else "/?k=")
     from brain.avatar import _browser_for_app_window
 
     browser = _browser_for_app_window()
     if browser:
-        subprocess.Popen([browser, f"--app={url}", "--window-size=480,720"],
+        subprocess.Popen([browser, f"--app={url}", f"--window-size={size}"],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     else:
         webbrowser.open(url, new=1)

@@ -77,6 +77,40 @@ class ServidorTest(unittest.TestCase):
         msgs = json.loads(body)["mensagens"]
         self.assertEqual([(m["quem"], m["texto"]) for m in msgs[-2:]], [("pedro", "oi"), ("jarvis", "Olá, Pedro.")])
 
+class MonitorTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.base = chat_window.start().split("/?")[0]
+
+    def test_frases_que_abrem_o_monitor(self):
+        for phrase in ("abre o monitor", "mostra o uso da placa", "quanto você está usando da placa de vídeo",
+                       "quero ver o consumo"):
+            handlers = jarvis_commands._matching_handlers(phrase, (), [jarvis_commands.monitor_commands])
+            self.assertTrue(list(handlers), phrase)
+        self.assertFalse(list(jarvis_commands._matching_handlers("abre o youtube", (), [jarvis_commands.monitor_commands])))
+
+    def test_pagina_e_dados_so_com_chave(self):
+        with self.assertRaises(urllib.error.HTTPError):
+            _request(self.base + "/monitor/dados")
+        status, html = _request(f"{self.base}/monitor?k={chat_window.KEY}")
+        self.assertIn("Monitor do Jarvis", html)
+        fake = {"hora": "10:00:00", "gpu": None, "cpu": 12.0}
+        with mock.patch("brain.monitor.snapshot", return_value=fake):
+            _, body = _request(self.base + "/monitor/dados", key=chat_window.KEY)
+        self.assertEqual(json.loads(body)["cpu"], 12.0)
+
+    def test_leitura_sem_placa_nem_ollama_nao_quebra(self):
+        from brain import monitor
+
+        with mock.patch.object(monitor, "_nvidia_smi", return_value=None), \
+             mock.patch.object(monitor.requests, "get", side_effect=monitor.requests.RequestException("off")):
+            monitor._cache["data"] = None
+            data = monitor.snapshot()
+        self.assertIsNone(data["gpu"])
+        self.assertIsNone(data["modelos"])
+        self.assertFalse(data["comfyui"])
+        self.assertGreater(data["ram_total"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

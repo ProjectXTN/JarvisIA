@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jarvis — monitor</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface-1: #1a1a19; --border: rgba(255,255,255,0.10);
+    --text-primary: #f0efec; --text-secondary: #c3c2b7; --text-muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --series-1: #3987e5;
+    --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--text-primary);
+         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; align-items: baseline; gap: 12px; padding: 16px 20px 6px; }
+  h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  .muted { color: var(--text-muted); font-size: 12px; }
+  main { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px; padding: 10px 20px 20px; }
+  .tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; position: relative; }
+  .tile h2 { margin: 0 0 2px; font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+  .value { font-size: 32px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+  .value small { font-size: 14px; font-weight: 400; color: var(--text-secondary); margin-left: 4px; }
+  .sub { color: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+  svg.spark { width: 100%; height: 64px; display: block; margin-top: 8px; overflow: visible; }
+  .bar { height: 8px; border-radius: 4px; background: var(--grid); margin-top: 8px; overflow: hidden; }
+  .bar > div { height: 100%; background: var(--series-1); border-radius: 4px; transition: width .4s; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-primary);
+          border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px 2px 8px; margin: 6px 6px 0 0; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  ul { list-style: none; margin: 8px 0 0; padding: 0; }
+  li { display: flex; justify-content: space-between; padding: 6px 0; border-top: 1px solid var(--grid);
+       font-variant-numeric: tabular-nums; }
+  li:first-child { border-top: 0; }
+  .tip { position: absolute; pointer-events: none; background: #262624; border: 1px solid var(--border);
+         border-radius: 6px; padding: 3px 8px; font-size: 12px; white-space: nowrap; display: none; }
+  .wide { grid-column: 1 / -1; }
+</style>
+</head>
+<body>
+<header><h1>Monitor do Jarvis</h1><span class="muted" id="status">conectando…</span></header>
+<main>
+  <section class="tile" id="t-gpu">
+    <h2 id="gpu-name">Placa de vídeo — uso</h2>
+    <div class="value" id="gpu-uso">–<small>%</small></div>
+    <div class="sub" id="gpu-sub">–</div>
+    <svg class="spark" id="s-gpu" role="img" aria-label="Uso da placa nos últimos 90 segundos"></svg>
+  </section>
+  <section class="tile">
+    <h2>Memória da placa (VRAM)</h2>
+    <div class="value" id="vram">–<small>GB</small></div>
+    <div class="sub" id="vram-sub">–</div>
+    <svg class="spark" id="s-vram" role="img" aria-label="VRAM usada nos últimos 90 segundos"></svg>
+  </section>
+  <section class="tile">
+    <h2>Processador — uso total</h2>
+    <div class="value" id="cpu">–<small>%</small></div>
+    <div class="sub" id="cpu-sub">–</div>
+    <svg class="spark" id="s-cpu" role="img" aria-label="Uso do processador nos últimos 90 segundos"></svg>
+  </section>
+  <section class="tile">
+    <h2>Memória RAM</h2>
+    <div class="value" id="ram">–<small>GB</small></div>
+    <div class="bar"><div id="ram-bar" style="width:0"></div></div>
+    <div class="sub" id="jarvis" style="margin-top:10px">–</div>
+  </section>
+  <section class="tile wide">
+    <h2>O que o Jarvis tem carregado</h2>
+    <div id="pills"></div>
+    <ul id="models"></ul>
+  </section>
+</main>
+<div class="tip" id="tip"></div>
+<script>
+const KEY = new URLSearchParams(location.search).get("k") || "";
+const N = 90;  // 90 leituras = 90 segundos
+const hist = { gpu: [], vram: [], cpu: [] };
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+
+function push(name, value, time) {
+  hist[name].push({ v: value, t: time });
+  if (hist[name].length > N) hist[name].shift();
+}
+
+// Linha de 2px + área suave, eixo fixo (0..max), uma série por gráfico.
+function spark(id, data, max, unit) {
+  const svg = $(id), w = svg.clientWidth || 300, h = 64;
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.innerHTML = "";
+  const base = document.createElementNS(NS, "line");
+  Object.entries({ x1: 0, x2: w, y1: h - 0.5, y2: h - 0.5, stroke: "var(--axis)", "stroke-width": 1 })
+    .forEach(([k, v]) => base.setAttribute(k, v));
+  svg.appendChild(base);
+  if (data.length < 2) return;
+  const x = i => (w * (i + N - data.length)) / (N - 1);
+  const y = v => h - 2 - (Math.max(0, Math.min(v, max)) / max) * (h - 6);
+  const pts = data.map((d, i) => `${x(i).toFixed(1)},${y(d.v).toFixed(1)}`);
+  const area = document.createElementNS(NS, "polygon");
+  area.setAttribute("points", `${x(0)},${h} ${pts.join(" ")} ${x(data.length - 1)},${h}`);
+  area.setAttribute("fill", "var(--series-1)"); area.setAttribute("opacity", "0.14");
+  svg.appendChild(area);
+  const line = document.createElementNS(NS, "polyline");
+  line.setAttribute("points", pts.join(" "));
+  Object.entries({ fill: "none", stroke: "var(--series-1)", "stroke-width": 2, "stroke-linejoin": "round",
+                   "stroke-linecap": "round" }).forEach(([k, v]) => line.setAttribute(k, v));
+  svg.appendChild(line);
+  const cross = document.createElementNS(NS, "line");
+  Object.entries({ y1: 0, y2: h, stroke: "var(--text-muted)", "stroke-width": 1, visibility: "hidden" })
+    .forEach(([k, v]) => cross.setAttribute(k, v));
+  svg.appendChild(cross);
+  svg.onmousemove = e => {
+    const r = svg.getBoundingClientRect(), px = (e.clientX - r.left) * (w / r.width);
+    let best = 0, bestDx = Infinity;
+    data.forEach((d, i) => { const dx = Math.abs(x(i) - px); if (dx < bestDx) { bestDx = dx; best = i; } });
+    cross.setAttribute("x1", x(best)); cross.setAttribute("x2", x(best)); cross.setAttribute("visibility", "visible");
+    const tip = $("tip");
+    tip.textContent = `${data[best].t} · ${data[best].v.toFixed(unit === "GB" ? 1 : 0)} ${unit}`;
+    tip.style.display = "block";
+    tip.style.left = Math.min(e.pageX + 12, innerWidth - tip.offsetWidth - 8) + "px";
+    tip.style.top = (e.pageY - 34) + "px";
+  };
+  svg.onmouseleave = () => { cross.setAttribute("visibility", "hidden"); $("tip").style.display = "none"; };
+}
+
+function status(temp) {
+  if (temp == null) return null;
+  if (temp >= 88) return ["critical", "muito quente"];
+  if (temp >= 82) return ["serious", "quente"];
+  if (temp >= 75) return ["warning", "morna"];
+  return ["good", "normal"];
+}
+
+function pill(color, text) {
+  return `<span class="pill"><span class="dot" style="background:var(--${color})"></span>${text}</span>`;
+}
+
+async function tick() {
+  try {
+    const r = await fetch("/monitor/dados", { headers: { "X-Jarvis-Key": KEY } });
+    const d = await r.json();
+    $("status").textContent = "atualizado " + d.hora;
+    const g = d.gpu;
+    if (g) {
+      $("gpu-name").textContent = `${g.nome} — uso`;
+      $("gpu-uso").innerHTML = `${Math.round(g.uso)}<small>%</small>`;
+      const st = status(g.temperatura);
+      $("gpu-sub").innerHTML = `${Math.round(g.temperatura)} °C ` +
+        (st ? `<span class="dot" style="background:var(--${st[0]});margin:0 4px 0 2px"></span>${st[1]}` : "") +
+        ` · ${Math.round(g.potencia)} W de ${Math.round(g.potencia_max)} W`;
+      const usedGb = g.vram_usada / 1024, totalGb = g.vram_total / 1024;
+      $("vram").innerHTML = `${usedGb.toFixed(1)}<small>GB de ${totalGb.toFixed(0)} GB</small>`;
+      $("vram-sub").textContent = `${Math.round(100 * g.vram_usada / g.vram_total)}% ocupada · livre ${(totalGb - usedGb).toFixed(1)} GB`;
+      push("gpu", g.uso, d.hora); push("vram", usedGb, d.hora);
+      spark("s-gpu", hist.gpu, 100, "%"); spark("s-vram", hist.vram, totalGb, "GB");
+    } else {
+      $("gpu-sub").textContent = "nvidia-smi não encontrado";
+    }
+    $("cpu").innerHTML = `${Math.round(d.cpu)}<small>%</small>`;
+    $("cpu-sub").textContent = `${d.nucleos} núcleos lógicos`;
+    push("cpu", d.cpu, d.hora); spark("s-cpu", hist.cpu, 100, "%");
+    $("ram").innerHTML = `${d.ram_usada}<small>GB de ${d.ram_total} GB</small>`;
+    $("ram-bar").style.width = `${(100 * d.ram_usada / d.ram_total).toFixed(0)}%`;
+    $("jarvis").textContent = `Só o Jarvis: ${d.jarvis_cpu}% do processador · ${d.jarvis_ram} MB de RAM (Whisper e voz incluídos)`;
+    $("pills").innerHTML =
+      pill(d.modo_jogo ? "warning" : "good", d.modo_jogo ? "Modo jogo ligado" : "Modo normal") +
+      pill(d.modelos === null ? "critical" : "good", d.modelos === null ? "Ollama fora do ar" : "Ollama no ar") +
+      pill(d.comfyui ? "warning" : "good", d.comfyui ? "ComfyUI aberto (ocupa a placa)" : "ComfyUI fechado");
+    const models = d.modelos || [];
+    $("models").innerHTML = models.length
+      ? models.map(m => `<li><span>${m.nome}</span><span class="sub">${(m.vram_mb / 1024).toFixed(1)} GB na placa` +
+          (m.total_mb > m.vram_mb + 100 ? ` · ${((m.total_mb - m.vram_mb) / 1024).toFixed(1)} GB na RAM` : "") + `</span></li>`).join("")
+      : `<li><span class="sub">Nenhum modelo carregado agora — a placa está livre do Jarvis (só a escuta, ~1,5 GB).</span></li>`;
+  } catch (e) {
+    $("status").textContent = "sem conexão com o Jarvis";
+  }
+  setTimeout(tick, 1000);
+}
+addEventListener("resize", () => { spark("s-gpu", hist.gpu, 100, "%"); spark("s-cpu", hist.cpu, 100, "%"); });
+tick();
+</script>
+</body>
+</html>

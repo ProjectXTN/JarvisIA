@@ -642,3 +642,10 @@ Corrigido:
 - O instalador abria outro Ollama na 11434 sem ver o do Pedro na 11500 → agora procura Ollama já rodando (.env, variável OLLAMA_HOST, 11434, 11500), usa o que tiver os modelos, grava no .env e pula `ollama pull` do que já existe. (Os dois usavam a mesma pasta de modelos: nada foi baixado em dobro.)
 - Instalador chamado pelo Setup (32 bits) não via a placa NVIDIA nem o Chrome → `install.bat` sempre usa o PowerShell de 64 bits.
 - Ollama: só ficaram os modelos que o Jarvis usa (gemma4:26b, qwen3-embedding:0.6b, qwen3.8:27b).
+
+### 2026-11-24 — Monitor da placa e do processador
+
+- "Jarvis, abre o monitor" (também "mostra o uso da placa", "quanto você está usando da placa?") abre uma janela (Chrome em modo app, mesma chave e servidor local da janela de texto) com: uso da placa, temperatura (normal/morna/quente/muito quente) e potência; VRAM usada; processador; RAM; quanto o próprio Jarvis gasta; modelos do Ollama carregados (GB na placa e na RAM); se o ComfyUI está aberto; se o modo jogo está ligado. Gráficos dos últimos 90 s com valor ao passar o mouse. Atualiza a cada segundo.
+- `brain/monitor.py` lê `nvidia-smi`, `psutil` e `/api/ps` do Ollama; `interface/monitor.html`.
+- Busca sem `BRAVE_API_KEY`: Jarvis avisa que falta a chave (antes dizia que não achou nada).
+- Testes: +3 (monitor). Total: 224.
