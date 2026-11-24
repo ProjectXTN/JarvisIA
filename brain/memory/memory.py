@@ -30,6 +30,22 @@ def remember_turn(prompt, response):
         with _history_lock:
             memory_context.append((prompt[:6000], response[:6000]))
             del memory_context[:-MAX_CONTEXT]
+        try:  # Fase 7: a conversa alimenta o perfil do Pedro e o diário
+            from brain.persona.perfil import record_turn
+
+            record_turn(prompt, response)
+        except Exception as error:
+            print(f"[PERFIL] Não guardei o turno: {error}")
+
+
+def persona_block():
+    try:
+        from brain.persona.core import prompt_block
+
+        block = prompt_block()
+    except Exception:
+        block = ""
+    return f"\n{block}" if block else ""
 
 
 def clear_history():
@@ -63,7 +79,7 @@ def _read_timeout(mode):
 def _build_messages(prompt, lang, history, use_voice_history, images=None):
     instruction = {"pt": "Responda em português brasileiro.",
                    "fr": "Répondez en français.", "en": "Reply in English."}.get(lang, "Responda no idioma do usuário.")
-    messages = [{"role": "system", "content": system_prompt + " " + instruction}]
+    messages = [{"role": "system", "content": system_prompt + " " + instruction + persona_block()}]
     if history is None:
         with _history_lock:
             turns = list(memory_context) if use_voice_history else []

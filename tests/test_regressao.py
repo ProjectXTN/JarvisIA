@@ -11,6 +11,10 @@ import importlib.machinery
 import os
 import sys
 import tempfile
+
+# Testes nunca escrevem no banco de verdade (memória, perfil, diário)
+os.environ["JARVIS_MEMORY_DB"] = os.path.join(tempfile.mkdtemp(prefix="jarvis_teste_"), "memoria.db")
+import tempfile
 import types
 import unittest
 from unittest import mock

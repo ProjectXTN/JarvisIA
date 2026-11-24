@@ -22,6 +22,7 @@ from brain.memory.memory import (
     open_chat,
     remember_turn,
     system_prompt,
+    persona_block,
 )
 from brain.pipeline.super_jarvis import today_line
 
@@ -61,7 +62,7 @@ def _base_messages(query, lang):
     instruction = {"pt": "Responda em português brasileiro.", "en": "Reply in English.",
                    "fr": "Répondez en français."}.get(lang, "Responda no idioma do usuário.")
     messages = [{"role": "system",
-                 "content": f"{system_prompt} {instruction}\n{today_line(lang)}\n{ROUTER_GUIDE}"}]
+                 "content": f"{system_prompt} {instruction}{persona_block()}\n{today_line(lang)}\n{ROUTER_GUIDE}"}]
     for question, answer in list(memory_context)[-MAX_CONTEXT:]:
         messages += [{"role": "user", "content": question},
                      {"role": "assistant", "content": answer}]

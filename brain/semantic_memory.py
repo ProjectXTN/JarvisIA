@@ -110,7 +110,19 @@ def add(assunto, texto, fonte="Pedro", tipo="fato", file_hash=None):
         return cursor.lastrowid
 
 
-def search(consulta, k=3, tipos=("fato", "aprendido"), min_score=0.45):
+def update_text(memory_id, texto, assunto=None):
+    """Troca o texto (e o vetor) de uma lembrança, mantendo o id."""
+    vector = embed([f"{assunto}: {texto}" if assunto else texto])
+    blob = vector[0].tobytes() if vector is not None and len(vector) else None
+    with _lock, _connect() as conn:
+        conn.execute(
+            "UPDATE memorias SET texto = ?, assunto = COALESCE(?, assunto), vetor = ?, modelo = ?, "
+            "criado = ? WHERE id = ?",
+            (texto, assunto, blob, EMBEDDING_MODEL if blob else None,
+             datetime.now().strftime("%Y-%m-%d %H:%M:%S"), memory_id))
+
+
+def search(consulta, k=3, tipos=("fato", "aprendido", "perfil"), min_score=0.45):
     """As k lembranças mais parecidas com a consulta: lista de dicts com score."""
     with _lock, _connect() as conn:
         marks = ",".join("?" * len(tipos))
@@ -156,7 +168,7 @@ def forget(consulta, min_score=0.6):
 def list_subjects(limit=30):
     with _lock, _connect() as conn:
         rows = conn.execute(
-            "SELECT assunto, texto FROM memorias WHERE tipo IN ('fato', 'aprendido') "
+            "SELECT assunto, texto FROM memorias WHERE tipo IN ('fato', 'aprendido', 'perfil') "
             "ORDER BY criado DESC LIMIT ?", (limit,)).fetchall()
     return [assunto or texto[:40] for assunto, texto in rows]
 

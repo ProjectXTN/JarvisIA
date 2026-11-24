@@ -77,15 +77,15 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 
 Depende da Fase 2 (modelo novo com ferramentas). Substitui os itens 39 a 41 da Fase 5.
 
-- [ ] 52. Personalidade própria em `brain/persona/`: traços fixos, humor do dia e opiniões que ele forma e guarda
-- [ ] 53. Memória de longo prazo sobre o Pedro: fatos, preferências e projetos extraídos das conversas, com busca por semelhança
-- [ ] 54. Diário: ao fim de cada dia, resumo do que conversaram e do que aprendeu, lido na próxima inicialização
+- [x] 52. Personalidade própria em `brain/persona/`: traços fixos, humor do dia e opiniões que ele forma e guarda
+- [x] 53. Memória de longo prazo sobre o Pedro: fatos, preferências e projetos extraídos das conversas, com busca por semelhança
+- [x] 54. Diário: ao fim de cada dia, resumo do que conversaram e do que aprendeu, lido na próxima inicialização
 - [ ] 55. Curiosidade: lista de temas a estudar, alimentada pelas conversas e pelos interesses do Pedro
 - [ ] 56. Estudo autônomo quando o PC está ocioso: busca, lê, resume, confere em mais de uma fonte e guarda com a fonte
 - [ ] 57. Reflexão noturna: revisa o que aprendeu, junta notas repetidas, marca contradições e atualiza opiniões
 - [ ] 58. Iniciativa: puxa assunto sobre o que aprendeu, lembra compromissos, comenta novidades dos temas do Pedro
 - [ ] 59. Painel "o que o Jarvis sabe": ver, corrigir e apagar memórias e aprendizados
-- [ ] 60. Limites de segurança: internet só para leitura, nada de executar, comprar ou enviar sem permissão
+- [x] 60. Limites de segurança: internet só para leitura, nada de executar, comprar ou enviar sem permissão
 - [ ] 61. (Opcional, avançado) Ajuste fino LoRA mensal com as conversas aprovadas pelo Pedro
 
 ## Fase 8 — Modo programador: criar apps de verdade
@@ -520,3 +520,14 @@ Corrigido:
 - `Dockerfile` e `docker-compose.yml`: só a API de texto, com o Ollama no Windows (`host.docker.internal`). O Jarvis de voz roda no venv. Ainda não testado.
 - `server.py` estava no `.gitignore` e nunca tinha ido para o git; agora vai (não guarda segredo, o token vem do .env).
 - Próximo: Fase 7 (Jarvis vivo). Pendente do Pedro: item 16 (`ollama rm` dos modelos antigos).
+
+### 2026-11-24 — Fase 7, parte 1: personalidade, perfil do Pedro, diário e limites (itens 52, 53, 54, 60)
+
+- `brain/persona/persona.json`: traços fixos, princípios e os humores possíveis. Editável à mão.
+- `brain/persona/core.py`: monta o bloco que entra no começo de toda conversa (roteador e caminho antigo): traços, humor do dia, até 15 fatos sobre o Pedro, o diário de ontem e as opiniões formadas. Fica 5 min em cache e não usa embeddings, então não atrasa a resposta. Humor do dia: sorteado uma vez por dia, com o diário de ontem puxando (estudou → curioso; projeto → focado; brincadeira → brincalhão).
+- `brain/persona/perfil.py`: cada troca da conversa por voz vai para a tabela `turnos`. Quando o Jarvis volta ao modo passivo (2 min sem fala) e na abertura, o gemma4 lê os turnos novos e devolve em JSON até 5 fatos duradouros sobre o Pedro (preferência, projeto, pessoa, rotina, fato). Viram lembranças tipo `perfil`; um fato quase igual (semelhança ≥ 0,88) substitui o antigo. Se o Ollama falhar, os turnos ficam para a próxima.
+- `brain/persona/diario.py`: na abertura e no modo passivo, escreve o diário (3 a 5 frases, primeira pessoa) de cada dia passado que teve conversa e ainda não tem diário (até 3 dias).
+- `brain/persona/limites.py`: o que o Jarvis fizer sozinho só pode ler: lista fechada de ferramentas de leitura (busca, notícias, clima, memória, documentos) e bloqueio de endereços locais, rede de casa e bancos. Será usado pelo estudo autônomo e pela iniciativa.
+- `consultar_memoria` e `listar_memorias` também enxergam os fatos do perfil.
+- Testes nunca mais escrevem no banco de verdade: `JARVIS_MEMORY_DB` aponta para um banco temporário em `tests/test_regressao.py`.
+- Testes: `tests/test_persona.py` (10). Total no `run_all`: 165.

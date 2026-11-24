@@ -58,6 +58,16 @@ def handle_study_mode(query):
     return False
 
 
+def persona_background():
+    """Fase 7: tira fatos da conversa e escreve os diários que faltam."""
+    from core import config
+    from brain.persona import diario, perfil
+
+    config.MODEL_READY.wait(300)
+    perfil.process_pending()
+    diario.catch_up()
+
+
 def main():
     if is_already_running():
         print("⚠️ There is already an instance of Jarvis running.")
@@ -74,6 +84,7 @@ def main():
     # atualiza o índice da pasta de documentos, sem atrasar a abertura
     from brain import semantic_memory
     Thread(target=semantic_memory.prepare, daemon=True).start()
+    Thread(target=persona_background, daemon=True).start()
     if SD_AUTOSTART:
         start_stable_diffusion()
 
@@ -124,6 +135,8 @@ def main():
                         say(
                             "Nenhuma atividade detectada. Retornando para o modo passivo."
                         )
+                        # Parado: hora de ler a conversa (perfil do Pedro) e do diário
+                        Thread(target=persona_background, daemon=True).start()
                         break
                     continue
 
