@@ -12,6 +12,8 @@ Se o Ollama recusar ferramentas ou der erro antes de começar, levanta
 RouterUnavailable e o Jarvis usa o caminho antigo (regras de palavras).
 """
 
+from datetime import datetime
+
 from brain import audio
 from brain import tools as toolbox
 from brain.audio import speak_stream
@@ -61,8 +63,9 @@ class RouterUnavailable(Exception):
 def _base_messages(query, lang):
     instruction = {"pt": "Responda em português brasileiro.", "en": "Reply in English.",
                    "fr": "Répondez en français."}.get(lang, "Responda no idioma do usuário.")
+    now = f"Agora são {datetime.now():%H:%M}."
     messages = [{"role": "system",
-                 "content": f"{system_prompt} {instruction}{persona_block()}\n{today_line(lang)}\n{ROUTER_GUIDE}"}]
+                 "content": f"{system_prompt} {instruction}{persona_block()}\n{today_line(lang)} {now}\n{ROUTER_GUIDE}"}]
     for question, answer in list(memory_context)[-MAX_CONTEXT:]:
         messages += [{"role": "user", "content": question},
                      {"role": "assistant", "content": answer}]

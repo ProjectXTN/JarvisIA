@@ -93,6 +93,19 @@ def main():
     # Hello Pedro! =)
     personalized_greeting()
 
+    # Fase 7: compromissos do dia e o que aprendeu sozinho desde a última conversa
+    try:
+        from brain.persona import iniciativa
+        from brain.memory.memory import remember_turn
+
+        lines = iniciativa.opening_lines()
+        for line in lines:
+            say(line)
+        if lines:  # no histórico: "sim, conta" funciona em seguida
+            remember_turn("[Jarvis puxou assunto ao abrir]", " ".join(lines))
+    except Exception as error:
+        print(f"[INICIATIVA] {error}")
+
     while True:
         query = passive_mode()
         if not query:

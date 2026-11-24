@@ -80,6 +80,49 @@ def create_app(token, answer, origins=()):
     def ping():
         return jsonify({"status": "online"})
 
+    # ---- Painel "o que o Jarvis sabe" (Fase 7, item 59): página + API com o mesmo token
+    def authorized():
+        return token_ok(request.headers.get("Authorization"), token)
+
+    @app.get("/painel")
+    def panel_page():
+        here = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(here, "interface", "painel.html"), encoding="utf-8") as f:
+            return f.read(), 200, {"Content-Type": "text/html; charset=utf-8",
+                                   "Cache-Control": "no-store",
+                                   "Content-Security-Policy": "default-src 'self' 'unsafe-inline'"}
+
+    @app.get("/api/painel")
+    def panel_data():
+        if not authorized():
+            return jsonify({"error": "Unauthorized"}), 401
+        from brain.persona import painel
+
+        return jsonify(painel.overview())
+
+    @app.post("/api/painel/<kind>/<row_id>")
+    def panel_change(kind, row_id):
+        if not authorized():
+            return jsonify({"error": "Unauthorized"}), 401
+        from brain.persona import painel
+
+        data = request.get_json(silent=True) or {}
+        try:
+            if data.get("acao") == "apagar":
+                count = (painel.delete_memory(row_id) if kind == "memorias"
+                         else painel.delete_row(kind, row_id))
+            elif kind == "memorias":
+                painel.edit_memory(row_id, data.get("valor"), data.get("assunto"))
+                count = 1
+            else:
+                count = painel.edit_row(kind, row_id, data.get("campo"), data.get("valor"))
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+        from brain.persona.core import invalidate
+
+        invalidate()
+        return jsonify({"ok": bool(count)})
+
     @app.post("/ask")
     def ask_jarvis():
         if not token_ok(request.headers.get("Authorization"), token):

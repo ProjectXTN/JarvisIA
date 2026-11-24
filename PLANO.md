@@ -83,8 +83,8 @@ Depende da Fase 2 (modelo novo com ferramentas). Substitui os itens 39 a 41 da F
 - [x] 55. Curiosidade: lista de temas a estudar, alimentada pelas conversas e pelos interesses do Pedro
 - [x] 56. Estudo autônomo quando o PC está ocioso: busca, lê, resume, confere em mais de uma fonte e guarda com a fonte
 - [x] 57. Reflexão noturna: revisa o que aprendeu, junta notas repetidas, marca contradições e atualiza opiniões
-- [ ] 58. Iniciativa: puxa assunto sobre o que aprendeu, lembra compromissos, comenta novidades dos temas do Pedro
-- [ ] 59. Painel "o que o Jarvis sabe": ver, corrigir e apagar memórias e aprendizados
+- [x] 58. Iniciativa: puxa assunto sobre o que aprendeu, lembra compromissos, comenta novidades dos temas do Pedro
+- [x] 59. Painel "o que o Jarvis sabe": ver, corrigir e apagar memórias e aprendizados
 - [x] 60. Limites de segurança: internet só para leitura, nada de executar, comprar ou enviar sem permissão
 - [ ] 61. (Opcional, avançado) Ajuste fino LoRA mensal com as conversas aprovadas pelo Pedro
 
@@ -541,3 +541,11 @@ Corrigido:
 - O antigo `auto_learning` (temas aleatórios sem fonte, gravava até mensagens de erro) saiu do `jarvis.py`. "Comece a estudar" / "pare de estudar" agora ligam e desligam a rotina. `JARVIS_AUTONOMY=0` desliga de vez.
 - Cada pedido marca atividade (`config.LAST_ACTIVITY`); a rotina espera o Pedro parar.
 - Testes: `tests/test_autonomia.py` (10). Total: 175.
+
+### 2026-11-24 — Fase 7, parte 3: iniciativa e painel (itens 58 e 59)
+
+- `brain/persona/iniciativa.py` + ferramentas `lembrar_compromisso`, `listar_compromissos`, `cancelar_compromisso`: "me lembra amanhã às 15h de ligar para o banco" vira um compromisso (o roteador agora recebe a hora atual). A rotina confere a cada minuto, mesmo com a autonomia desligada, e avisa por voz na hora ("Pedro, lembrete: ..."), esperando terminar se estiver atendendo um pedido (`config.NOT_BUSY`). Atraso máximo de 12 h (PC desligado na hora); avisa uma vez só.
+- Ao abrir: depois do bom-dia, fala os compromissos do dia e puxa UM assunto do que estudou sozinho e ainda não contou ("Enquanto você estava fora, estudei sobre X. Quer que eu conte?"). A frase entra no histórico, então "sim, conta" funciona.
+- Painel em `http://127.0.0.1:11600/painel` (rodar `server.py`): abas Sobre você, Pediu para guardar, Aprendido, Opiniões, Quer estudar, Diário, Compromissos, Contradições e Documentos, com filtro, Corrigir e Apagar. Entra com o `SECRET_TOKEN_JARVIS` (fica só na aba do navegador). Só campos permitidos são editáveis (`brain/persona/painel.py`).
+- Testes: `tests/test_iniciativa.py` (7). Total: 182.
+- Fase 7 concluída, menos o item 61 (ajuste fino LoRA, opcional): fica para depois de algumas semanas de conversas guardadas.

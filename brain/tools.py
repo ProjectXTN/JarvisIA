@@ -292,6 +292,34 @@ def musica(acao, busca=""):
     return f"musica({acao}, {busca})"
 
 
+def lembrar_compromisso(quando, o_que):
+    from brain.persona import iniciativa
+
+    moment = iniciativa.add_reminder(quando, o_que)
+    if not moment:
+        _say("Não entendi para quando é o lembrete.")
+        return f"lembrar_compromisso({quando}): data inválida"
+    _say(f"Combinado, te lembro {iniciativa.spoken_time(moment)}: {o_que}.")
+    return f"lembrar_compromisso({moment:%Y-%m-%d %H:%M}, {o_que})"
+
+
+def listar_compromissos():
+    from brain.persona import iniciativa
+
+    items = iniciativa.upcoming(days=30)
+    if not items:
+        return "Nenhum compromisso anotado."
+    return "Compromissos anotados:\n" + "\n".join(f"- {q}: {t}" for _, q, t in items)
+
+
+def cancelar_compromisso(o_que):
+    from brain.persona import iniciativa
+
+    removed = iniciativa.cancel(o_que)
+    _say(f"Cancelei o lembrete: {removed}." if removed else "Não achei esse lembrete.")
+    return f"cancelar_compromisso({o_que}): {'ok' if removed else 'não achou'}"
+
+
 def criar_imagem(descricao, prompt_em_ingles="", formato="quadrada"):
     from core.settings import IMAGE_ENGINE
 
@@ -456,6 +484,16 @@ TOOLS = [
          {"acao": _text(enum=["tocar", "pausar", "proxima", "anterior", "biblioteca"]),
           "busca": _text(description="Música, artista ou álbum, quando a ação é tocar")},
          ["acao"]),
+    Tool("lembrar_compromisso",
+         "Anota um compromisso ou lembrete e avisa Pedro por voz na hora ('me lembra amanhã às 15h "
+         "de ligar para o banco'). Calcule a data e a hora a partir de agora.",
+         lembrar_compromisso,
+         {"quando": _text(description="Data e hora no formato AAAA-MM-DDTHH:MM"),
+          "o_que": _text(description="O que lembrar, curto")}, ["quando", "o_que"]),
+    Tool("listar_compromissos", "Lista os compromissos e lembretes anotados.", listar_compromissos,
+         for_model=True),
+    Tool("cancelar_compromisso", "Cancela um lembrete anotado.", cancelar_compromisso,
+         {"o_que": _text()}, ["o_que"]),
     Tool("criar_imagem", "Gera uma imagem a partir de uma descrição (desenhe, crie uma imagem, gere uma foto).",
          criar_imagem,
          {"descricao": _text(description="O pedido de Pedro, em português"),

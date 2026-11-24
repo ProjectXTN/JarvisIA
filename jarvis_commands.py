@@ -238,6 +238,14 @@ def generate_response(query, lang="pt", api=False, stream=False):
 
 def process_command(query, lang="pt"):
     """Trata uma frase por voz. Devolve False apenas quando é para desligar."""
+    config.NOT_BUSY.clear()  # lembretes da rotina esperam terminar
+    try:
+        return _process_command(query, lang)
+    finally:
+        config.NOT_BUSY.set()
+
+
+def _process_command(query, lang="pt"):
     query = clean_query(query)
 
     print(f"[DEBUG] Phrase after cleaning: {query}")

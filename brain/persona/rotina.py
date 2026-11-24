@@ -106,6 +106,12 @@ def step():
 def _loop():
     config.MODEL_READY.wait(600)
     while not _stop.wait(60):
+        try:  # lembretes valem mesmo com a autonomia desligada ou o PC em uso
+            from brain.persona.iniciativa import check_and_announce
+
+            check_and_announce()
+        except Exception as error:
+            print(f"[LEMBRETE] Falhou: {error}")
         if not state["enabled"] or not is_idle():
             continue
         try:
