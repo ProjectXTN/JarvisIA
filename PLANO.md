@@ -61,8 +61,8 @@ Acompanhamento do trabalho no branch `refactor-2026`.
 - [x] 37. RAG: carregar o índice uma vez e usar `as_retriever()` (llama-index trocado por índice próprio em SQLite, atualizado só quando o arquivo muda)
 - [x] 38. Trocar o modelo de embeddings e reindexar (`qwen3-embedding:0.6b`, multilíngue; Pedro precisa rodar `ollama pull qwen3-embedding:0.6b`)
 - [x] 39. Memória de longo prazo com busca por semelhança (base pronta; a extração automática das conversas fica no item 53)
-- [ ] 40. `auto_learning`: resumir antes de salvar, rejeitar erros, limitar ciclos
-- [ ] 41. Resumo automático da conversa ao encerrar
+- [x] 40. `auto_learning`: resumir antes de salvar, rejeitar erros, limitar ciclos (substituído pelo estudo autônomo, item 56)
+- [x] 41. Resumo automático da conversa ao encerrar (substituído pelo perfil e pelo diário, itens 53 e 54)
 
 ## Fase 6 — Imagem, API e acabamento
 
